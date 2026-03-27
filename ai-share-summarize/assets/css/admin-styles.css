@@ -1,0 +1,832 @@
+/**
+ * AI Share & Summarize - Admin Styles
+ *
+ * Analytics dashboard, dashboard widget, and promo banner styles.
+ * Design adapted from VigIA plugin patterns.
+ *
+ * @package AiShareSummarize
+ * @since 1.5.0
+ */
+
+/* CSS Variables for brand colors */
+:root {
+	--aiss-brand: #7224D1;
+	--aiss-brand-light: rgba(114, 36, 209, 0.1);
+	--aiss-brand-hover: #5e1db0;
+}
+
+/* Main wrapper */
+.aiss-wrap {
+	max-width: 100%;
+	margin: 20px 20px 20px 0;
+	box-sizing: border-box;
+}
+
+/* Tab navigation */
+.aiss-wrap .nav-tab-wrapper {
+	margin-bottom: 25px;
+}
+
+.aiss-wrap .nav-tab-wrapper .nav-tab-active {
+	border-bottom-color: #fff;
+}
+
+/* Page title icon (v1.7.0) */
+.aiss-page-icon {
+	font-size: 28px;
+	width: 28px;
+	height: 28px;
+	color: var(--aiss-brand);
+	vertical-align: middle;
+	margin-right: 2px;
+}
+
+/* Date filter */
+.aiss-date-filter {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 15px;
+	margin-bottom: 25px;
+	padding: 15px 20px;
+	background: #fff;
+	border: 1px solid #c3c4c7;
+}
+
+.aiss-date-filter-left {
+	display: flex;
+	align-items: center;
+	flex-wrap: wrap;
+	gap: 10px;
+}
+
+.aiss-date-filter-left label {
+	font-weight: 600;
+	color: #1d2327;
+}
+
+.aiss-date-filter-left select {
+	min-width: 140px;
+}
+
+.aiss-custom-dates {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+}
+
+.aiss-date-separator {
+	color: #646970;
+}
+
+/* Comparison controls (v1.7.0) */
+.aiss-compare-label {
+	display: flex;
+	align-items: center;
+	gap: 5px;
+	margin-left: 15px;
+	padding-left: 15px;
+	border-left: 1px solid #c3c4c7;
+	font-weight: normal !important;
+}
+
+.aiss-compare-label input[type="checkbox"] {
+	margin: 0;
+}
+
+#aiss-compare-range:disabled {
+	opacity: 0.5;
+}
+
+/* Export CSV button */
+.aiss-date-filter-right {
+	display: flex;
+	align-items: center;
+}
+
+/* Export dropdown (v1.7.0) */
+.aiss-export-dropdown {
+	position: relative;
+	display: inline-block;
+}
+
+/* Export button: inline-flex for icon + text alignment */
+.aiss-export-btn {
+	display: inline-flex !important;
+	align-items: center !important;
+	gap: 5px;
+	line-height: 1 !important;
+}
+
+/* Specificity (0,3,0) to override WP core .button .dashicons defaults */
+.aiss-export-dropdown .aiss-export-btn .dashicons {
+	font-size: 16px;
+	width: 16px;
+	height: 16px;
+	line-height: 1;
+	flex-shrink: 0;
+	position: static;
+	top: auto;
+	vertical-align: middle;
+}
+
+.aiss-export-btn .dashicons-arrow-down-alt2 {
+	margin-left: 2px;
+}
+
+.aiss-export-menu {
+	display: none;
+	position: absolute;
+	top: 100%;
+	right: 0;
+	margin-top: 4px;
+	min-width: 180px;
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	box-shadow: 0 3px 6px rgba(0, 0, 0, 0.1);
+	z-index: 100;
+}
+
+.aiss-export-menu.open {
+	display: block;
+}
+
+.aiss-export-option {
+	display: block;
+	width: 100%;
+	padding: 10px 15px;
+	border: none;
+	background: none;
+	text-align: left;
+	cursor: pointer;
+	font-size: 13px;
+	color: #1d2327;
+	transition: background-color 0.15s;
+}
+
+.aiss-export-option:hover:not(:disabled) {
+	background-color: #f0f0f1;
+}
+
+.aiss-export-option:not(:last-child) {
+	border-bottom: 1px solid #f0f0f1;
+}
+
+/* Stats grid */
+.aiss-stats-grid {
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	gap: 20px;
+	margin-bottom: 25px;
+}
+
+.aiss-stat-card {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	gap: 15px;
+	padding: 20px;
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	transition: box-shadow 0.2s ease;
+	box-sizing: border-box;
+	min-width: 0;
+}
+
+.aiss-stat-card:hover {
+	box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.aiss-stat-icon {
+	flex-shrink: 0;
+	width: 40px;
+	height: 40px;
+	font-size: 40px;
+	line-height: 1;
+	color: var(--aiss-brand);
+}
+
+.aiss-stat-icon::before {
+	display: block;
+	width: 40px;
+	height: 40px;
+	line-height: 40px;
+	text-align: center;
+}
+
+.aiss-stat-content {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	justify-content: center;
+	min-width: 0;
+}
+
+.aiss-stat-value {
+	font-size: 32px;
+	font-weight: 600;
+	color: #1d2327;
+	line-height: 1;
+	margin-bottom: 4px;
+}
+
+.aiss-stat-label {
+	font-size: 11px;
+	color: #646970;
+	text-transform: uppercase;
+	letter-spacing: 0.3px;
+	line-height: 1.2;
+}
+
+/* Stat card comparison indicators (v1.7.0) */
+.aiss-stat-compare {
+	font-size: 12px;
+	margin-top: 4px;
+	display: none;
+}
+
+.aiss-stat-compare.positive {
+	color: #00a32a;
+	display: block;
+}
+
+.aiss-stat-compare.negative {
+	color: #d63638;
+	display: block;
+}
+
+.aiss-stat-compare.neutral {
+	color: #646970;
+	display: block;
+}
+
+/* Chart container */
+.aiss-chart-container {
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	padding: 20px;
+	box-sizing: border-box;
+	min-width: 0;
+	overflow: visible;
+	margin-bottom: 25px;
+}
+
+.aiss-chart-container h3 {
+	margin: 0 0 15px;
+	font-size: 14px;
+	font-weight: 600;
+	color: #1d2327;
+}
+
+.aiss-chart-wrapper {
+	position: relative;
+	height: 300px;
+	min-width: 0;
+	overflow: visible;
+}
+
+/* Chart comparison tooltip (v1.7.0) — matches Chart.js default tooltip style */
+.aiss-chart-tooltip {
+	position: absolute;
+	pointer-events: none;
+	opacity: 0;
+	transition: opacity 0.15s ease;
+	background: rgba(0, 0, 0, 0.8);
+	color: #fff;
+	border-radius: 6px;
+	padding: 8px 12px;
+	font-size: 12px;
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+	line-height: 1.5;
+	z-index: 10;
+	white-space: nowrap;
+}
+
+.aiss-tooltip-header {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	padding-bottom: 6px;
+	margin-bottom: 6px;
+	border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+	font-weight: 600;
+	font-size: 11px;
+}
+
+.aiss-tooltip-vs {
+	color: rgba(255, 255, 255, 0.5);
+	font-weight: 400;
+}
+
+.aiss-tooltip-row {
+	display: flex;
+	justify-content: space-between;
+	gap: 20px;
+	padding: 2px 0;
+}
+
+.aiss-tooltip-label {
+	color: rgba(255, 255, 255, 0.7);
+}
+
+.aiss-tooltip-value {
+	font-weight: 600;
+	text-align: right;
+}
+
+.aiss-tooltip-dot {
+	display: inline-block;
+	width: 8px;
+	height: 8px;
+	border-radius: 50%;
+	margin-right: 5px;
+	vertical-align: middle;
+}
+
+.aiss-tooltip-footer {
+	padding-top: 6px;
+	margin-top: 6px;
+	border-top: 1px solid rgba(255, 255, 255, 0.2);
+	font-weight: 600;
+	font-size: 11px;
+}
+
+.aiss-tooltip-footer.positive {
+	color: #68de7c;
+}
+
+.aiss-tooltip-footer.negative {
+	color: #f87171;
+}
+
+.aiss-tooltip-footer.neutral {
+	color: rgba(255, 255, 255, 0.5);
+}
+
+.aiss-period-indicator {
+	font-weight: 400;
+	font-size: 12px;
+	color: #646970;
+	margin-left: 8px;
+}
+
+/* Chart legend (Fix #2: platform breakdown) */
+.aiss-chart-legend {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px 16px;
+	margin-top: 14px;
+	padding-top: 12px;
+	border-top: 1px solid #f0f0f1;
+}
+
+.aiss-legend-item {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	font-size: 12px;
+	color: #50575e;
+	cursor: pointer;
+}
+
+.aiss-legend-item:hover {
+	color: #1d2327;
+}
+
+.aiss-legend-dot {
+	flex-shrink: 0;
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+}
+
+/* Tables row */
+.aiss-tables-row {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 20px;
+	margin-bottom: 25px;
+}
+
+.aiss-table-container {
+	background: #fff;
+	border: 1px solid #c3c4c7;
+	padding: 20px;
+	box-sizing: border-box;
+	min-width: 0;
+	overflow: hidden;
+}
+
+.aiss-table-container h3 {
+	margin: 0 0 15px;
+	font-size: 14px;
+	font-weight: 600;
+	color: #1d2327;
+}
+
+.aiss-table-container table {
+	border: none;
+}
+
+.aiss-table-container table th {
+	background: #f6f7f7;
+	border-bottom: 1px solid #c3c4c7;
+	padding: 10px 12px;
+	font-weight: 600;
+}
+
+.aiss-table-container table td {
+	padding: 10px 12px;
+	vertical-align: middle;
+}
+
+.aiss-table-container table .num {
+	text-align: right;
+	white-space: nowrap;
+}
+
+.aiss-col-id {
+	width: 60px;
+}
+
+.aiss-loading {
+	text-align: center;
+	color: #646970;
+	padding: 30px !important;
+}
+
+/* Platform color dot in table */
+.aiss-platform-dot {
+	display: inline-block;
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+	margin-right: 8px;
+	vertical-align: middle;
+	flex-shrink: 0;
+}
+
+.aiss-platform-name {
+	display: flex;
+	align-items: center;
+}
+
+/* Type badge: Social / AI */
+.aiss-col-type {
+	width: 100px;
+	white-space: nowrap;
+}
+
+.aiss-type-badge {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 4px;
+	padding: 3px 8px;
+	border-radius: 3px;
+	font-size: 11px;
+	font-weight: 500;
+	color: #555;
+	border: 1px solid #ddd;
+	line-height: 1.4;
+	min-width: 72px;
+	min-height: 26px;
+	box-sizing: border-box;
+}
+
+.aiss-type-badge .dashicons {
+	font-size: 13px;
+	width: 13px;
+	height: 13px;
+	color: #555;
+}
+
+/* Social: white background */
+.aiss-type-social {
+	background: #fff;
+}
+
+/* AI: light gray background */
+.aiss-type-ai {
+	background: #f0f0f0;
+}
+
+/* Edit link in top content table */
+.aiss-edit-link {
+	color: #2271b1;
+	text-decoration: none;
+	font-size: 12px;
+	margin-left: 8px;
+}
+
+.aiss-edit-link:hover {
+	color: var(--aiss-brand);
+	text-decoration: underline;
+}
+
+/* Table header with inline pagination (v1.7.0) */
+.aiss-table-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	gap: 10px;
+	min-height: 32px;
+	margin-bottom: 15px;
+}
+
+.aiss-table-header h3 {
+	margin: 0;
+	flex: 1;
+}
+
+/* Pager controls (v1.7.0, replaces Load more buttons) */
+.aiss-pager {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	white-space: nowrap;
+	flex-shrink: 0;
+}
+
+.aiss-pager-btn {
+	background: none;
+	border: 1px solid #dcdcde;
+	border-radius: 3px;
+	color: #2271b1;
+	cursor: pointer;
+	font-size: 14px;
+	line-height: 1;
+	padding: 3px 7px;
+	min-width: 26px;
+	text-align: center;
+}
+
+.aiss-pager-btn:hover:not(:disabled) {
+	border-color: #2271b1;
+	color: #135e96;
+}
+
+.aiss-pager-btn:disabled {
+	color: #a7aaad;
+	border-color: #dcdcde;
+	cursor: default;
+}
+
+.aiss-pager-info {
+	color: #50575e;
+	font-size: 13px;
+	padding: 0 4px;
+}
+
+/* Bottom pager wrapper (right-aligned below table) */
+.aiss-pager-bottom-wrap {
+	display: flex;
+	justify-content: flex-end;
+	margin-top: 10px;
+}
+
+/* Promotional notice */
+.aiss-promo-notice {
+	background: #f6f7f7;
+	border: 1px solid #c3c4c7;
+	padding: 20px;
+	margin-top: 10px;
+}
+
+.aiss-promo-notice > h4 {
+	margin: 0 0 20px;
+	font-size: 15px;
+	font-weight: 600;
+	color: #1d2327;
+}
+
+.aiss-promo-columns {
+	display: grid;
+	grid-template-columns: repeat(3, 1fr);
+	gap: 25px;
+}
+
+.aiss-promo-column {
+	background: #fff;
+	border: 1px solid #dcdcde;
+	padding: 20px;
+	display: flex;
+	flex-direction: column;
+}
+
+.aiss-promo-column > .dashicons {
+	font-size: 28px;
+	width: 28px;
+	height: 28px;
+	color: var(--aiss-brand);
+	margin-bottom: 12px;
+}
+
+.aiss-promo-column h5 {
+	margin: 0 0 10px;
+	font-size: 13px;
+	font-weight: 600;
+	color: #1d2327;
+	line-height: 1.4;
+}
+
+.aiss-promo-column p {
+	margin: 0 0 15px;
+	color: #50575e;
+	font-size: 13px;
+	line-height: 1.5;
+	flex-grow: 1;
+}
+
+/* Specificity (0,3,0) to override WP core .button defaults */
+.aiss-promo-notice .aiss-promo-column .button {
+	align-self: flex-start;
+	margin-top: auto;
+	white-space: normal;
+	height: auto;
+	min-height: auto;
+	line-height: 1.4;
+	padding: 6px 12px;
+	text-align: center;
+}
+
+/* Dashboard widget styles */
+.aiss-widget-stats {
+	display: flex;
+	justify-content: space-around;
+	padding: 15px 0;
+	margin-bottom: 15px;
+	border-bottom: 1px solid #f0f0f1;
+}
+
+.aiss-widget-stat {
+	text-align: center;
+}
+
+.aiss-widget-stat-value {
+	display: block;
+	font-size: 24px;
+	font-weight: 600;
+	color: #1d2327;
+	line-height: 1.2;
+}
+
+.aiss-widget-stat-label {
+	font-size: 11px;
+	color: #646970;
+	text-transform: uppercase;
+}
+
+.aiss-widget h4 {
+	margin: 0 0 10px;
+	font-size: 13px;
+	color: #1d2327;
+}
+
+.aiss-widget-section-title {
+	margin: 0 0 10px;
+	font-size: 13px;
+	color: #1d2327;
+}
+
+.aiss-widget-list {
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.aiss-widget-list li {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 8px 0;
+	border-bottom: 1px solid #f0f0f1;
+}
+
+.aiss-widget-list li:last-child {
+	border-bottom: none;
+}
+
+.aiss-widget-platform-name {
+	flex: 1;
+	font-weight: 500;
+}
+
+.aiss-widget-platform-count {
+	font-weight: 600;
+	color: var(--aiss-brand);
+}
+
+.aiss-widget-empty {
+	text-align: center;
+	color: #646970;
+	padding: 20px 0;
+}
+
+.aiss-widget-footer {
+	margin: 15px 0 0;
+	padding-top: 15px;
+	border-top: 1px solid #f0f0f1;
+	text-align: right;
+}
+
+.aiss-widget-footer a {
+	text-decoration: none;
+	font-weight: 500;
+}
+
+/* Widget sparkline */
+.aiss-widget .aiss-sparkline-container {
+	display: flex !important;
+	align-items: flex-end;
+	gap: 3px;
+	height: 40px;
+	width: 100%;
+}
+
+.aiss-widget .aiss-sparkline-bar {
+	flex: 1;
+	background: var(--aiss-brand);
+	border-radius: 2px 2px 0 0;
+	min-height: 2px;
+	min-width: 8px;
+	transition: opacity 0.2s;
+}
+
+.aiss-widget .aiss-sparkline-bar:hover {
+	opacity: 0.8;
+}
+
+.aiss-widget .aiss-sparkline-labels {
+	display: flex !important;
+	justify-content: space-between;
+	width: 100%;
+	margin-top: 5px;
+	margin-bottom: 10px;
+	font-size: 11px;
+	color: #888;
+}
+
+/* VigIA tip notice */
+.aiss-vigia-tip {
+	margin-top: 0 !important;
+	margin-bottom: 20px !important;
+}
+
+/* Data retention row alignment (WP 7.0 fix) */
+.aiss-retention-row > div {
+	display: flex;
+	flex-direction: column;
+}
+
+/* Responsive */
+@media screen and (max-width: 1200px) {
+	.aiss-tables-row {
+		grid-template-columns: 1fr;
+	}
+
+	.aiss-promo-columns {
+		grid-template-columns: repeat(2, 1fr);
+	}
+}
+
+@media screen and (max-width: 960px) {
+	.aiss-stats-grid {
+		grid-template-columns: repeat(2, 1fr);
+	}
+}
+
+@media screen and (max-width: 782px) {
+	.aiss-date-filter {
+		flex-direction: column;
+		align-items: flex-start;
+	}
+
+	.aiss-date-filter-left {
+		width: 100%;
+	}
+
+	.aiss-compare-label {
+		margin-left: 0;
+		padding-left: 0;
+		border-left: none;
+		margin-top: 10px;
+		width: 100%;
+	}
+
+	.aiss-stats-grid {
+		grid-template-columns: 1fr;
+	}
+
+	.aiss-promo-columns {
+		grid-template-columns: 1fr;
+	}
+
+	.aiss-table-header {
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 8px;
+	}
+}

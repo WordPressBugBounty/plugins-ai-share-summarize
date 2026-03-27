@@ -1,0 +1,611 @@
+/**
+ * AI Share & Summarize Plugin - CSS Styles
+ * Refactored with CSS custom properties, no !important overrides.
+ * Version: 1.6.0
+ */
+
+/* =============================================
+   CSS Custom Properties - Brand colors
+   ============================================= */
+.ayudawp-share-buttons {
+	--ayudawp-twitter: #000000;
+	--ayudawp-linkedin: #0077b5;
+	--ayudawp-facebook: #1877f2;
+	--ayudawp-telegram: #26A5E4;
+	--ayudawp-whatsapp: #25d366;
+	--ayudawp-email: #6c757d;
+	--ayudawp-raindrop: #0F66E3;
+	--ayudawp-reddit: #FF4500;
+	--ayudawp-bluesky: #0085FF;
+	--ayudawp-line: #00C300;
+	--ayudawp-mastodon: #6364FF;
+	--ayudawp-threads: #000000;
+	--ayudawp-pinterest: #BD081C;
+	--ayudawp-claude: #D97757;
+	--ayudawp-chatgpt: #10a37f;
+	--ayudawp-google-ai: #E84430;
+	--ayudawp-gemini: #8E75B2;
+	--ayudawp-grok: #000000;
+	--ayudawp-perplexity: #20808D;
+	--ayudawp-deepseek: #4D6BFE;
+	--ayudawp-mistral: #F7D046;
+	--ayudawp-copilot: #6264A7;
+	--ayudawp-qwen: #615CED;
+	--ayudawp-meta-ai: #0081FB;
+	--ayudawp-custom-bg: #333333;
+	--ayudawp-custom-text: #ffffff;
+}
+
+/* =============================================
+   Main container
+   ============================================= */
+.ayudawp-share-buttons,
+.ayudawp-share-buttons h3,
+.ayudawp-share-buttons h4,
+.ayudawp-share-buttons h5,
+.ayudawp-share-buttons h6,
+.ayudawp-share-buttons span,
+.ayudawp-share-buttons .ayudawp-title,
+.ayudawp-buttons-container {
+	background: transparent;
+	background-color: transparent;
+}
+
+.ayudawp-share-buttons {
+	margin: 30px 0;
+	padding: 20px 0;
+	border-top: 1px solid #e0e0e0;
+	border-bottom: 1px solid #e0e0e0;
+	clear: both;
+}
+
+/* Centered alignment */
+.ayudawp-share-buttons.ayudawp-aiss-centered {
+	text-align: center;
+}
+
+.ayudawp-share-buttons.ayudawp-aiss-centered .ayudawp-buttons-container {
+	justify-content: center;
+}
+
+/* =============================================
+   Title styles
+   ============================================= */
+.ayudawp-share-buttons .ayudawp-title {
+	margin: 0 0 15px 0;
+	font-size: 16px;
+	font-weight: 600;
+	color: #555;
+	font-family: inherit;
+	display: block;
+}
+
+.ayudawp-share-buttons h3.ayudawp-title { font-size: 18px; }
+.ayudawp-share-buttons h4.ayudawp-title { font-size: 16px; }
+.ayudawp-share-buttons h5.ayudawp-title { font-size: 14px; }
+.ayudawp-share-buttons h6.ayudawp-title { font-size: 13px; }
+.ayudawp-share-buttons span.ayudawp-title { font-size: 16px; font-weight: 600; }
+
+/* Section title (v1.6.0) - spacing between groups */
+.ayudawp-share-buttons .ayudawp-section-title {
+	margin-top: 18px;
+}
+
+/* Section separator (when no title but groups exist) */
+.ayudawp-section-separator {
+	width: 100%;
+	height: 0;
+	margin: 12px 0 4px;
+	border: 0;
+}
+
+/* =============================================
+   Buttons container
+   ============================================= */
+.ayudawp-buttons-container {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px;
+	align-items: center;
+}
+
+/* =============================================
+   Base button styles
+   ============================================= */
+.ayudawp-share-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	padding: 8px 16px;
+	border-radius: 4px;
+	text-decoration: none;
+	font-weight: 500;
+	font-size: 14px;
+	line-height: 1.4;
+	transition: all 0.3s ease;
+	border: 1px solid #ddd;
+	width: 180px;
+	min-height: 40px;
+	text-align: center;
+	background: transparent;
+	color: #333;
+	font-family: inherit;
+	text-transform: capitalize;
+	gap: 6px;
+	cursor: pointer;
+	position: relative;
+	overflow: hidden;
+	white-space: nowrap;
+	box-sizing: border-box;
+	-webkit-box-sizing: border-box;
+	-moz-box-sizing: border-box;
+}
+
+/* Reset button defaults */
+button.ayudawp-share-btn {
+	border: 1px solid #ddd;
+	background: transparent;
+	color: #333;
+	font-family: inherit;
+	font-size: 14px;
+	font-weight: 500;
+	outline: none;
+	appearance: none;
+	-webkit-appearance: none;
+	-moz-appearance: none;
+}
+
+/* Hover/focus/active states */
+.ayudawp-share-btn:hover {
+	transform: translateY(-2px);
+	text-decoration: none;
+	color: #000;
+	background: rgba(0,0,0,0.05);
+	border-color: #999;
+	box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.ayudawp-share-btn:focus {
+	outline: 2px solid #0073aa;
+	outline-offset: 2px;
+	text-decoration: none;
+}
+
+.ayudawp-share-btn:visited,
+.ayudawp-share-btn:active {
+	text-decoration: none;
+}
+
+.ayudawp-share-btn:active {
+	transform: translateY(0);
+}
+
+button.ayudawp-share-btn:focus {
+	outline: 2px solid #0073aa;
+	outline-offset: 2px;
+}
+
+/* =============================================
+   Button sizes (v1.6.0)
+   ============================================= */
+
+/* Compact */
+.ayudawp-share-buttons.size-compact .ayudawp-share-btn {
+	padding: 5px 10px;
+	font-size: 12px;
+	width: 140px;
+	min-height: 32px;
+}
+
+/* Large */
+.ayudawp-share-buttons.size-large .ayudawp-share-btn {
+	padding: 12px 24px;
+	font-size: 16px;
+	width: 220px;
+	min-height: 48px;
+}
+
+/* Fluid - buttons expand to fill available space */
+.ayudawp-share-buttons.size-fluid .ayudawp-share-btn {
+	width: auto;
+	flex: 1 1 140px;
+	max-width: 240px;
+}
+
+/* =============================================
+   Icon styles
+   ============================================= */
+.ayudawp-icon-wrapper {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	flex-shrink: 0;
+}
+
+.ayudawp-icon {
+	fill: currentColor;
+}
+
+.ayudawp-share-buttons.with-icons .ayudawp-share-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.ayudawp-share-buttons.with-icons .ayudawp-button-text {
+	display: inline;
+}
+
+/* =============================================
+   ICONS-ONLY style
+   ============================================= */
+.ayudawp-share-buttons.icons-only .ayudawp-share-btn {
+	min-width: 44px;
+	width: 44px;
+	height: 44px;
+	padding: 0;
+	border-radius: 6px;
+	justify-content: center;
+	transition: all 0.3s ease;
+}
+
+.ayudawp-share-buttons.icons-only.square .ayudawp-share-btn {
+	border-radius: 4px;
+}
+
+.ayudawp-share-buttons.icons-only.circular .ayudawp-share-btn {
+	border-radius: 50%;
+}
+
+/* Icons-only size variants */
+.ayudawp-share-buttons.icons-only.size-compact .ayudawp-share-btn {
+	width: 36px;
+	height: 36px;
+	min-width: 36px;
+}
+
+.ayudawp-share-buttons.icons-only.size-large .ayudawp-share-btn {
+	width: 54px;
+	height: 54px;
+	min-width: 54px;
+}
+
+/* =============================================
+   MINIMAL style (default) - Clean transparent background
+   ============================================= */
+.ayudawp-share-buttons .ayudawp-share-btn,
+.ayudawp-share-buttons.minimal .ayudawp-share-btn {
+	background: transparent;
+	color: #333;
+	border: 1px solid #ddd;
+}
+
+.ayudawp-share-buttons .ayudawp-share-btn:hover,
+.ayudawp-share-buttons.minimal .ayudawp-share-btn:hover {
+	background: rgba(0,0,0,0.05);
+	color: #000;
+	border-color: #999;
+}
+
+/* =============================================
+   BRAND style - Platform colors
+   Uses CSS custom properties for maintainability.
+   Higher specificity via double class selector.
+   ============================================= */
+.ayudawp-share-buttons.brand .ayudawp-share-btn.twitter    { background: var(--ayudawp-twitter); border-color: var(--ayudawp-twitter); color: #fff; }
+.ayudawp-share-buttons.brand .ayudawp-share-btn.linkedin   { background: var(--ayudawp-linkedin); border-color: var(--ayudawp-linkedin); color: #fff; }
+.ayudawp-share-buttons.brand .ayudawp-share-btn.facebook   { background: var(--ayudawp-facebook); border-color: var(--ayudawp-facebook); color: #fff; }
+.ayudawp-share-buttons.brand .ayudawp-share-btn.telegram   { background: var(--ayudawp-telegram); border-color: var(--ayudawp-telegram); color: #fff; }
+.ayudawp-share-buttons.brand .ayudawp-share-btn.whatsapp   { background: var(--ayudawp-whatsapp); border-color: var(--ayudawp-whatsapp); color: #fff; }
+.ayudawp-share-buttons.brand .ayudawp-share-btn.email      { background: var(--ayudawp-email); border-color: var(--ayudawp-email); color: #fff; }
+.ayudawp-share-buttons.brand .ayudawp-share-btn.raindrop   { background: var(--ayudawp-raindrop); border-color: var(--ayudawp-raindrop); color: #fff; }
+.ayudawp-share-buttons.brand .ayudawp-share-btn.reddit     { background: var(--ayudawp-reddit); border-color: var(--ayudawp-reddit); color: #fff; }
+.ayudawp-share-buttons.brand .ayudawp-share-btn.bluesky    { background: var(--ayudawp-bluesky); border-color: var(--ayudawp-bluesky); color: #fff; }
+.ayudawp-share-buttons.brand .ayudawp-share-btn.line       { background: var(--ayudawp-line); border-color: var(--ayudawp-line); color: #fff; }
+.ayudawp-share-buttons.brand .ayudawp-share-btn.mastodon   { background: var(--ayudawp-mastodon); border-color: var(--ayudawp-mastodon); color: #fff; }
+.ayudawp-share-buttons.brand .ayudawp-share-btn.threads    { background: var(--ayudawp-threads); border-color: var(--ayudawp-threads); color: #fff; }
+.ayudawp-share-buttons.brand .ayudawp-share-btn.pinterest  { background: var(--ayudawp-pinterest); border-color: var(--ayudawp-pinterest); color: #fff; }
+.ayudawp-share-buttons.brand .ayudawp-share-btn.claude     { background: var(--ayudawp-claude); border-color: var(--ayudawp-claude); color: #fff; }
+.ayudawp-share-buttons.brand .ayudawp-share-btn.chatgpt    { background: var(--ayudawp-chatgpt); border-color: var(--ayudawp-chatgpt); color: #fff; }
+.ayudawp-share-buttons.brand .ayudawp-share-btn.google-ai  { background: var(--ayudawp-google-ai); border-color: var(--ayudawp-google-ai); color: #fff; }
+.ayudawp-share-buttons.brand .ayudawp-share-btn.gemini     { background: var(--ayudawp-gemini); border-color: var(--ayudawp-gemini); color: #fff; }
+.ayudawp-share-buttons.brand .ayudawp-share-btn.grok       { background: var(--ayudawp-grok); border-color: var(--ayudawp-grok); color: #fff; }
+.ayudawp-share-buttons.brand .ayudawp-share-btn.perplexity { background: var(--ayudawp-perplexity); border-color: var(--ayudawp-perplexity); color: #fff; }
+.ayudawp-share-buttons.brand .ayudawp-share-btn.deepseek   { background: var(--ayudawp-deepseek); border-color: var(--ayudawp-deepseek); color: #fff; }
+.ayudawp-share-buttons.brand .ayudawp-share-btn.mistral    { background: var(--ayudawp-mistral); border-color: var(--ayudawp-mistral); color: #1a1a1a; }
+.ayudawp-share-buttons.brand .ayudawp-share-btn.copilot    { background: var(--ayudawp-copilot); border-color: var(--ayudawp-copilot); color: #fff; }
+.ayudawp-share-buttons.brand .ayudawp-share-btn.qwen       { background: var(--ayudawp-qwen); border-color: var(--ayudawp-qwen); color: #fff; }
+.ayudawp-share-buttons.brand .ayudawp-share-btn.meta-ai    { background: var(--ayudawp-meta-ai); border-color: var(--ayudawp-meta-ai); color: #fff; }
+
+/* Brand hover: darken via filter (single rule for all) */
+.ayudawp-share-buttons.brand .ayudawp-share-btn:hover {
+	filter: brightness(0.88);
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+/* =============================================
+   OUTLINE style (v1.6.0) - Brand-colored borders, transparent bg
+   ============================================= */
+.ayudawp-share-buttons.outline .ayudawp-share-btn.twitter    { border-color: var(--ayudawp-twitter); color: var(--ayudawp-twitter); background: transparent; }
+.ayudawp-share-buttons.outline .ayudawp-share-btn.linkedin   { border-color: var(--ayudawp-linkedin); color: var(--ayudawp-linkedin); background: transparent; }
+.ayudawp-share-buttons.outline .ayudawp-share-btn.facebook   { border-color: var(--ayudawp-facebook); color: var(--ayudawp-facebook); background: transparent; }
+.ayudawp-share-buttons.outline .ayudawp-share-btn.telegram   { border-color: var(--ayudawp-telegram); color: var(--ayudawp-telegram); background: transparent; }
+.ayudawp-share-buttons.outline .ayudawp-share-btn.whatsapp   { border-color: var(--ayudawp-whatsapp); color: var(--ayudawp-whatsapp); background: transparent; }
+.ayudawp-share-buttons.outline .ayudawp-share-btn.email      { border-color: var(--ayudawp-email); color: var(--ayudawp-email); background: transparent; }
+.ayudawp-share-buttons.outline .ayudawp-share-btn.raindrop   { border-color: var(--ayudawp-raindrop); color: var(--ayudawp-raindrop); background: transparent; }
+.ayudawp-share-buttons.outline .ayudawp-share-btn.reddit     { border-color: var(--ayudawp-reddit); color: var(--ayudawp-reddit); background: transparent; }
+.ayudawp-share-buttons.outline .ayudawp-share-btn.bluesky    { border-color: var(--ayudawp-bluesky); color: var(--ayudawp-bluesky); background: transparent; }
+.ayudawp-share-buttons.outline .ayudawp-share-btn.line       { border-color: var(--ayudawp-line); color: var(--ayudawp-line); background: transparent; }
+.ayudawp-share-buttons.outline .ayudawp-share-btn.mastodon   { border-color: var(--ayudawp-mastodon); color: var(--ayudawp-mastodon); background: transparent; }
+.ayudawp-share-buttons.outline .ayudawp-share-btn.threads    { border-color: var(--ayudawp-threads); color: var(--ayudawp-threads); background: transparent; }
+.ayudawp-share-buttons.outline .ayudawp-share-btn.pinterest  { border-color: var(--ayudawp-pinterest); color: var(--ayudawp-pinterest); background: transparent; }
+.ayudawp-share-buttons.outline .ayudawp-share-btn.claude     { border-color: var(--ayudawp-claude); color: var(--ayudawp-claude); background: transparent; }
+.ayudawp-share-buttons.outline .ayudawp-share-btn.chatgpt    { border-color: var(--ayudawp-chatgpt); color: var(--ayudawp-chatgpt); background: transparent; }
+.ayudawp-share-buttons.outline .ayudawp-share-btn.google-ai  { border-color: var(--ayudawp-google-ai); color: var(--ayudawp-google-ai); background: transparent; }
+.ayudawp-share-buttons.outline .ayudawp-share-btn.gemini     { border-color: var(--ayudawp-gemini); color: var(--ayudawp-gemini); background: transparent; }
+.ayudawp-share-buttons.outline .ayudawp-share-btn.grok       { border-color: var(--ayudawp-grok); color: var(--ayudawp-grok); background: transparent; }
+.ayudawp-share-buttons.outline .ayudawp-share-btn.perplexity { border-color: var(--ayudawp-perplexity); color: var(--ayudawp-perplexity); background: transparent; }
+.ayudawp-share-buttons.outline .ayudawp-share-btn.deepseek   { border-color: var(--ayudawp-deepseek); color: var(--ayudawp-deepseek); background: transparent; }
+.ayudawp-share-buttons.outline .ayudawp-share-btn.mistral    { border-color: var(--ayudawp-mistral); color: #8a6a00; background: transparent; }
+.ayudawp-share-buttons.outline .ayudawp-share-btn.copilot    { border-color: var(--ayudawp-copilot); color: var(--ayudawp-copilot); background: transparent; }
+.ayudawp-share-buttons.outline .ayudawp-share-btn.qwen       { border-color: var(--ayudawp-qwen); color: var(--ayudawp-qwen); background: transparent; }
+.ayudawp-share-buttons.outline .ayudawp-share-btn.meta-ai    { border-color: var(--ayudawp-meta-ai); color: var(--ayudawp-meta-ai); background: transparent; }
+
+/* Outline hover: fill with brand color */
+.ayudawp-share-buttons.outline .ayudawp-share-btn:hover {
+	color: #fff;
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+
+.ayudawp-share-buttons.outline .ayudawp-share-btn.twitter:hover    { background: var(--ayudawp-twitter); }
+.ayudawp-share-buttons.outline .ayudawp-share-btn.linkedin:hover   { background: var(--ayudawp-linkedin); }
+.ayudawp-share-buttons.outline .ayudawp-share-btn.facebook:hover   { background: var(--ayudawp-facebook); }
+.ayudawp-share-buttons.outline .ayudawp-share-btn.telegram:hover   { background: var(--ayudawp-telegram); }
+.ayudawp-share-buttons.outline .ayudawp-share-btn.whatsapp:hover   { background: var(--ayudawp-whatsapp); }
+.ayudawp-share-buttons.outline .ayudawp-share-btn.email:hover      { background: var(--ayudawp-email); }
+.ayudawp-share-buttons.outline .ayudawp-share-btn.raindrop:hover   { background: var(--ayudawp-raindrop); }
+.ayudawp-share-buttons.outline .ayudawp-share-btn.reddit:hover     { background: var(--ayudawp-reddit); }
+.ayudawp-share-buttons.outline .ayudawp-share-btn.bluesky:hover    { background: var(--ayudawp-bluesky); }
+.ayudawp-share-buttons.outline .ayudawp-share-btn.line:hover       { background: var(--ayudawp-line); }
+.ayudawp-share-buttons.outline .ayudawp-share-btn.mastodon:hover   { background: var(--ayudawp-mastodon); }
+.ayudawp-share-buttons.outline .ayudawp-share-btn.threads:hover    { background: var(--ayudawp-threads); }
+.ayudawp-share-buttons.outline .ayudawp-share-btn.pinterest:hover  { background: var(--ayudawp-pinterest); }
+.ayudawp-share-buttons.outline .ayudawp-share-btn.claude:hover     { background: var(--ayudawp-claude); }
+.ayudawp-share-buttons.outline .ayudawp-share-btn.chatgpt:hover    { background: var(--ayudawp-chatgpt); }
+.ayudawp-share-buttons.outline .ayudawp-share-btn.google-ai:hover  { background: var(--ayudawp-google-ai); }
+.ayudawp-share-buttons.outline .ayudawp-share-btn.gemini:hover     { background: var(--ayudawp-gemini); }
+.ayudawp-share-buttons.outline .ayudawp-share-btn.grok:hover       { background: var(--ayudawp-grok); }
+.ayudawp-share-buttons.outline .ayudawp-share-btn.perplexity:hover { background: var(--ayudawp-perplexity); }
+.ayudawp-share-buttons.outline .ayudawp-share-btn.deepseek:hover   { background: var(--ayudawp-deepseek); }
+.ayudawp-share-buttons.outline .ayudawp-share-btn.mistral:hover    { background: var(--ayudawp-mistral); color: #1a1a1a; }
+.ayudawp-share-buttons.outline .ayudawp-share-btn.copilot:hover    { background: var(--ayudawp-copilot); }
+.ayudawp-share-buttons.outline .ayudawp-share-btn.qwen:hover       { background: var(--ayudawp-qwen); }
+.ayudawp-share-buttons.outline .ayudawp-share-btn.meta-ai:hover    { background: var(--ayudawp-meta-ai); }
+
+/* =============================================
+   CUSTOM style (v1.6.0) - User-defined colors via CSS vars
+   ============================================= */
+.ayudawp-share-buttons.custom .ayudawp-share-btn {
+	background: var(--ayudawp-custom-bg);
+	border-color: var(--ayudawp-custom-bg);
+	color: var(--ayudawp-custom-text);
+}
+
+.ayudawp-share-buttons.custom .ayudawp-share-btn:hover {
+	filter: brightness(0.88);
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+/* =============================================
+   ICONS-ONLY style with brand colors
+   ============================================= */
+.ayudawp-share-buttons.icons-only .ayudawp-share-btn.twitter    { background: var(--ayudawp-twitter); border-color: var(--ayudawp-twitter); color: #fff; }
+.ayudawp-share-buttons.icons-only .ayudawp-share-btn.linkedin   { background: var(--ayudawp-linkedin); border-color: var(--ayudawp-linkedin); color: #fff; }
+.ayudawp-share-buttons.icons-only .ayudawp-share-btn.facebook   { background: var(--ayudawp-facebook); border-color: var(--ayudawp-facebook); color: #fff; }
+.ayudawp-share-buttons.icons-only .ayudawp-share-btn.telegram   { background: var(--ayudawp-telegram); border-color: var(--ayudawp-telegram); color: #fff; }
+.ayudawp-share-buttons.icons-only .ayudawp-share-btn.whatsapp   { background: var(--ayudawp-whatsapp); border-color: var(--ayudawp-whatsapp); color: #fff; }
+.ayudawp-share-buttons.icons-only .ayudawp-share-btn.email      { background: var(--ayudawp-email); border-color: var(--ayudawp-email); color: #fff; }
+.ayudawp-share-buttons.icons-only .ayudawp-share-btn.raindrop   { background: var(--ayudawp-raindrop); border-color: var(--ayudawp-raindrop); color: #fff; }
+.ayudawp-share-buttons.icons-only .ayudawp-share-btn.reddit     { background: var(--ayudawp-reddit); border-color: var(--ayudawp-reddit); color: #fff; }
+.ayudawp-share-buttons.icons-only .ayudawp-share-btn.bluesky    { background: var(--ayudawp-bluesky); border-color: var(--ayudawp-bluesky); color: #fff; }
+.ayudawp-share-buttons.icons-only .ayudawp-share-btn.line       { background: var(--ayudawp-line); border-color: var(--ayudawp-line); color: #fff; }
+.ayudawp-share-buttons.icons-only .ayudawp-share-btn.mastodon   { background: var(--ayudawp-mastodon); border-color: var(--ayudawp-mastodon); color: #fff; }
+.ayudawp-share-buttons.icons-only .ayudawp-share-btn.threads    { background: var(--ayudawp-threads); border-color: var(--ayudawp-threads); color: #fff; }
+.ayudawp-share-buttons.icons-only .ayudawp-share-btn.pinterest  { background: var(--ayudawp-pinterest); border-color: var(--ayudawp-pinterest); color: #fff; }
+.ayudawp-share-buttons.icons-only .ayudawp-share-btn.claude     { background: var(--ayudawp-claude); border-color: var(--ayudawp-claude); color: #fff; }
+.ayudawp-share-buttons.icons-only .ayudawp-share-btn.chatgpt    { background: var(--ayudawp-chatgpt); border-color: var(--ayudawp-chatgpt); color: #fff; }
+.ayudawp-share-buttons.icons-only .ayudawp-share-btn.google-ai  { background: var(--ayudawp-google-ai); border-color: var(--ayudawp-google-ai); color: #fff; }
+.ayudawp-share-buttons.icons-only .ayudawp-share-btn.gemini     { background: var(--ayudawp-gemini); border-color: var(--ayudawp-gemini); color: #fff; }
+.ayudawp-share-buttons.icons-only .ayudawp-share-btn.grok       { background: var(--ayudawp-grok); border-color: var(--ayudawp-grok); color: #fff; }
+.ayudawp-share-buttons.icons-only .ayudawp-share-btn.perplexity { background: var(--ayudawp-perplexity); border-color: var(--ayudawp-perplexity); color: #fff; }
+.ayudawp-share-buttons.icons-only .ayudawp-share-btn.deepseek   { background: var(--ayudawp-deepseek); border-color: var(--ayudawp-deepseek); color: #fff; }
+.ayudawp-share-buttons.icons-only .ayudawp-share-btn.mistral    { background: var(--ayudawp-mistral); border-color: var(--ayudawp-mistral); color: #1a1a1a; }
+.ayudawp-share-buttons.icons-only .ayudawp-share-btn.copilot    { background: var(--ayudawp-copilot); border-color: var(--ayudawp-copilot); color: #fff; }
+.ayudawp-share-buttons.icons-only .ayudawp-share-btn.qwen       { background: var(--ayudawp-qwen); border-color: var(--ayudawp-qwen); color: #fff; }
+.ayudawp-share-buttons.icons-only .ayudawp-share-btn.meta-ai    { background: var(--ayudawp-meta-ai); border-color: var(--ayudawp-meta-ai); color: #fff; }
+
+/* Icons-only hover */
+.ayudawp-share-buttons.icons-only .ayudawp-share-btn:hover {
+	filter: brightness(0.88);
+	transform: translateY(-2px);
+	box-shadow: 0 3px 10px rgba(0,0,0,0.15);
+}
+
+/* =============================================
+   DARK style - For dark backgrounds
+   ============================================= */
+.ayudawp-share-buttons.dark {
+	border-top-color: #444;
+	border-bottom-color: #444;
+}
+
+.ayudawp-share-buttons.dark .ayudawp-share-btn {
+	background: transparent;
+	color: #e0e0e0;
+	border: 1px solid #666;
+}
+
+.ayudawp-share-buttons.dark .ayudawp-share-btn:hover {
+	background: rgba(255,255,255,0.1);
+	color: #fff;
+	border-color: #999;
+}
+
+.ayudawp-share-buttons.dark .ayudawp-title {
+	color: #e0e0e0;
+}
+
+/* =============================================
+   Tooltip styles
+   ============================================= */
+.ayudawp-tooltip {
+	position: absolute;
+	background: #333;
+	color: #fff;
+	padding: 6px 12px;
+	border-radius: 4px;
+	font-size: 12px;
+	white-space: nowrap;
+	pointer-events: none;
+	opacity: 0;
+	transition: opacity 0.3s ease;
+	z-index: 9999;
+	box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+.ayudawp-tooltip:after {
+	content: '';
+	position: absolute;
+	bottom: -6px;
+	left: 50%;
+	transform: translateX(-50%);
+	width: 0;
+	height: 0;
+	border-left: 6px solid transparent;
+	border-right: 6px solid transparent;
+	border-top: 6px solid #333;
+}
+
+.ayudawp-tooltip.active {
+	opacity: 1;
+}
+
+/* =============================================
+   Responsive
+   ============================================= */
+@media (max-width: 768px) {
+	.ayudawp-buttons-container {
+		gap: 8px;
+	}
+
+	.ayudawp-share-btn {
+		padding: 6px 12px;
+		font-size: 13px;
+		width: 150px;
+		min-height: 36px;
+	}
+
+	.ayudawp-share-buttons.size-compact .ayudawp-share-btn {
+		width: 120px;
+		min-height: 30px;
+		font-size: 11px;
+	}
+
+	.ayudawp-share-buttons.size-large .ayudawp-share-btn {
+		width: 180px;
+		font-size: 14px;
+	}
+
+	.ayudawp-share-buttons.size-fluid .ayudawp-share-btn {
+		flex: 1 1 120px;
+		max-width: none;
+	}
+
+	.ayudawp-share-buttons.icons-only .ayudawp-share-btn {
+		width: 40px;
+		height: 40px;
+		min-width: 40px;
+	}
+
+	.ayudawp-share-buttons {
+		padding: 15px 0;
+		margin: 20px 0;
+	}
+
+	.ayudawp-share-buttons .ayudawp-title {
+		font-size: 15px;
+		margin-bottom: 12px;
+	}
+}
+
+@media (max-width: 480px) {
+	.ayudawp-buttons-container {
+		flex-direction: column;
+		align-items: center;
+	}
+
+	.ayudawp-share-btn {
+		width: 100%;
+		max-width: 300px;
+	}
+
+	.ayudawp-share-buttons.size-fluid .ayudawp-share-btn {
+		width: 100%;
+		max-width: 300px;
+		flex: none;
+	}
+
+	.ayudawp-share-buttons.icons-only .ayudawp-buttons-container {
+		display: grid;
+		grid-template-columns: repeat(auto-fill, 40px);
+		gap: 8px;
+		flex-direction: row;
+	}
+
+	.ayudawp-share-buttons.ayudawp-aiss-centered.icons-only .ayudawp-buttons-container {
+		display: flex;
+		flex-wrap: wrap;
+		margin: 0 auto;
+		max-width: 300px;
+		justify-content: center;
+	}
+
+	.ayudawp-share-buttons:not(.ayudawp-aiss-centered).icons-only .ayudawp-buttons-container {
+		margin: 0;
+		max-width: 100%;
+		justify-content: flex-start;
+	}
+
+	.ayudawp-share-buttons.icons-only .ayudawp-share-btn {
+		width: 40px;
+		max-width: 40px;
+	}
+}
+
+/* =============================================
+   Admin danger zone (shared with frontend CSS)
+   ============================================= */
+.ayudawp-danger-zone {
+	padding: 15px;
+	margin-top: 10px;
+	border: 2px solid #dc3232;
+	background: #fff2f2;
+	border-radius: 4px;
+}
+
+.ayudawp-danger-zone label {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-weight: 600;
+	color: #dc3232;
+}
+
+.ayudawp-warning {
+	color: #dc3232;
+	font-weight: 500;
+	margin-top: 8px;
+}
