@@ -284,3 +284,73 @@ function ayudawp_aiss_get_platform_colors() {
 		'meta_ai'    => '#0081FB',
 	);
 }
+
+/**
+ * Enqueue frontend CSS, JS and localized data
+ *
+ * Centralised helper so both auto-insert (class-frontend) and
+ * shortcode (class-shortcode) share the same enqueue logic.
+ * Safe to call multiple times — assets are only loaded once.
+ *
+ * @since 1.7.2
+ */
+function ayudawp_aiss_enqueue_frontend_assets() {
+	if ( wp_style_is( 'ayudawp-aiss-styles', 'enqueued' ) ) {
+		return;
+	}
+
+	wp_enqueue_style(
+		'ayudawp-aiss-styles',
+		AYUDAWP_AISS_PLUGIN_URL . 'assets/css/ai-share-summarize.css',
+		array(),
+		AYUDAWP_AISS_VERSION
+	);
+
+	wp_enqueue_script(
+		'ayudawp-aiss-scripts',
+		AYUDAWP_AISS_PLUGIN_URL . 'assets/js/ai-share-summarize.js',
+		array( 'jquery' ),
+		AYUDAWP_AISS_VERSION,
+		true
+	);
+
+	wp_localize_script( 'ayudawp-aiss-scripts', 'ayudawpAissL10n', array(
+		'promptCopied'       => __( 'Prompt copied to clipboard!', 'ai-share-summarize' ),
+		// Generic copy-prompt tooltips.
+		'copyPromptShort'    => __( 'Copy prompt & open', 'ai-share-summarize' ),
+		'copyPromptLong'     => __( 'Copy prompt and open', 'ai-share-summarize' ),
+		// Gemini specific tooltips.
+		'geminiTooltipShort' => __( 'Copy prompt & open', 'ai-share-summarize' ),
+		'geminiTooltipLong'  => __( 'Copy prompt and open Gemini', 'ai-share-summarize' ),
+		// DeepSeek specific tooltips.
+		'deepseekTooltipShort' => __( 'Copy prompt & open', 'ai-share-summarize' ),
+		'deepseekTooltipLong'  => __( 'Copy prompt and open DeepSeek', 'ai-share-summarize' ),
+		// Copilot specific tooltips.
+		'copilotTooltipShort' => __( 'Copy prompt & open', 'ai-share-summarize' ),
+		'copilotTooltipLong'  => __( 'Copy prompt and open Copilot', 'ai-share-summarize' ),
+		// Platform names for tooltips.
+		'platformNames'      => array(
+			'twitter'    => 'X (Twitter)',
+			'linkedin'   => 'LinkedIn',
+			'facebook'   => 'Facebook',
+			'telegram'   => 'Telegram',
+			'whatsapp'   => 'WhatsApp',
+			'email'      => __( 'Email', 'ai-share-summarize' ),
+			'raindrop'   => 'Raindrop',
+			'reddit'     => 'Reddit',
+			'bluesky'    => 'Bluesky',
+			'line'       => 'LINE',
+			'claude'     => 'Claude AI',
+			'chatgpt'    => 'ChatGPT',
+			'google_ai'  => 'Google AI',
+			'gemini'     => 'Gemini',
+			'grok'       => 'Grok',
+			'perplexity' => 'Perplexity',
+			'deepseek'   => 'DeepSeek',
+			'mistral'    => 'Mistral AI',
+			'copilot'    => 'Microsoft Copilot',
+		),
+		// Analytics click tracking (v1.5.0) - no nonce needed for public counter.
+		'trackUrl'           => esc_url_raw( rest_url( 'aiss/v1/track' ) ),
+	) );
+}

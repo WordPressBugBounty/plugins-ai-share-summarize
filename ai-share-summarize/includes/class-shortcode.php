@@ -34,6 +34,10 @@ class AyudaWP_AISS_Shortcode {
 	 * @return string Shortcode output.
 	 */
 	public function ayudawp_shortcode_share_buttons( $atts ) {
+		// Ensure assets are loaded when shortcode is processed late
+		// (page builders may render after wp_enqueue_scripts).
+		ayudawp_aiss_enqueue_frontend_assets();
+
 		$atts = shortcode_atts(
 			array(
 				'buttons'      => '',

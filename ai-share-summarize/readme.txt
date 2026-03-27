@@ -3,7 +3,7 @@ Contributors: fernandot,ayudawp
 Tags: claude, chatgpt, social share, ai, perplexity
 Requires at least: 5.0
 Tested up to: 7.0
-Stable tag: 1.7.1
+Stable tag: 1.7.2
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -405,6 +405,12 @@ When enabled, buttons will automatically be hidden on content marked as noindex 
 9. Dashboard widget with sparkline and top platforms
 
 == Changelog ==
+
+= 1.7.2 =
+* Fixed: Buttons appearing in footer or sidebar on themes that apply the_content filter outside the main loop
+* Fixed: Missing styles when using shortcodes with page builders that process content after asset enqueue (Bricks Builder, etc.)
+* Fixed: Mastodon instance and title text were stored as default values on new installations instead of being placeholder-only
+* Improved: Frontend asset enqueue logic centralised in a single helper function shared by auto-insert and shortcode modes
 
 = 1.7.1 =
 * Fixed: Admin CSS specificity issues with WordPress 7.0 new button and dashicon styles

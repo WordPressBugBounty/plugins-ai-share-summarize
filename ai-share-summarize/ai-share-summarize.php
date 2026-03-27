@@ -3,7 +3,7 @@
  * Plugin Name: AI Share & Summarize
  * Plugin URI: https://servicios.ayudawp.com/
  * Description: Share on social media and also generate summaries with citations from the top AIs (Claude, ChatGPT, Google AI, Gemini, Grok, Perplexity, DeepSeek, Mistral, Copilot, Qwen, Meta AI).
- * Version: 1.7.1
+ * Version: 1.7.2
  * Author: Fernando Tellado
  * Author URI: https://ayudawp.com/
  * Text Domain: ai-share-summarize
@@ -22,7 +22,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Define plugin constants.
-define( 'AYUDAWP_AISS_VERSION', '1.7.1' );
+define( 'AYUDAWP_AISS_VERSION', '1.7.2' );
 define( 'AYUDAWP_AISS_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'AYUDAWP_AISS_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'AYUDAWP_AISS_PLUGIN_BASENAME', plugin_basename( __FILE__ ) );
@@ -208,9 +208,9 @@ class AyudaWP_AI_Share_Summarize {
 			'auto_insert_position'       => 'after_content',
 			'auto_insert_content_types'  => array( 'post' ),
 			'twitter_handle'             => '',
-			'mastodon_instance'          => 'mastodon.social',
+			'mastodon_instance'          => '',
 			'custom_text'                => '',
-			'title_text'                 => __( 'Social Share or Summarize with AI', 'ai-share-summarize' ),
+			'title_text'                 => '',
 			'title_style'                => 'span',
 			'ai_section_title'           => '',
 			'social_section_title'       => '',
