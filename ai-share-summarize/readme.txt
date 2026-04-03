@@ -3,7 +3,7 @@ Contributors: fernandot,ayudawp
 Tags: claude, chatgpt, social share, ai, perplexity
 Requires at least: 5.0
 Tested up to: 7.0
-Stable tag: 1.7.2
+Stable tag: 1.7.3
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -406,6 +406,12 @@ When enabled, buttons will automatically be hidden on content marked as noindex 
 
 == Changelog ==
 
+= 1.7.3 =
+* Improved: Block editor now uses a native sidebar panel (PluginDocumentSettingPanel) instead of a classic meta box for the post exclusion checkbox
+* Improved: Compatible with WordPress 7.0 real-time collaboration (RTC) — the classic meta box no longer disables collaborative editing
+* Improved: Sidebar panel includes plugin dashicon for better visual identification
+* Improved: Fallback to classic meta box in the block editor if the sidebar script is missing
+
 = 1.7.2 =
 * Fixed: Buttons appearing in footer or sidebar on themes that apply the_content filter outside the main loop
 * Fixed: Missing styles when using shortcodes with page builders that process content after asset enqueue (Bricks Builder, etc.)
@@ -605,6 +611,9 @@ When enabled, buttons will automatically be hidden on content marked as noindex 
 
 == Upgrade Notice ==
 
+= 1.7.3 =
+WordPress 7.0 real-time collaboration compatibility! Block editor exclusion checkbox now uses a native sidebar panel instead of a classic meta box. Classic editor fully unchanged. Recommended update for all users.
+
 = 1.7.1 =
 WordPress 7.0 compatibility! Fixes admin CSS specificity issues with export button icons, promo banner buttons, and type badges. Also works fine with WP 6.9.x.
 
@@ -777,6 +786,27 @@ Since version 1.6.0, the plugin uses CSS custom properties for all brand colors.
 **Example: Hide specific button:**
 `.ayudawp-share-btn.facebook {
     display: none;
+}`
+
+**Customize or remove separator lines:**
+The main container has top and bottom border lines. You can hide or replace them:
+
+`.ayudawp-share-buttons {
+    border-top: none;
+    border-bottom: none;
+}`
+
+Hide only the top separator:
+
+`.ayudawp-share-buttons {
+    border-top: none;
+}`
+
+Replace with your own style:
+
+`.ayudawp-share-buttons {
+    border-top: 2px dashed #ccc;
+    border-bottom: 2px dashed #ccc;
 }`
 
 **Important notes:**
