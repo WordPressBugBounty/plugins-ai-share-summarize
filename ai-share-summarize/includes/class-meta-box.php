@@ -176,6 +176,9 @@ class AyudaWP_AISS_Meta_Box {
 	 * Registers a PluginDocumentSettingPanel that replaces the classic
 	 * meta box in the block editor, keeping RTC compatibility.
 	 *
+	 * Translations are passed from PHP via wp_localize_script() so
+	 * the JS does not depend on wp-i18n or JSON translation files.
+	 *
 	 * @since 1.7.3
 	 */
 	public function ayudawp_enqueue_editor_sidebar() {
@@ -188,12 +191,17 @@ class AyudaWP_AISS_Meta_Box {
 		wp_enqueue_script(
 			'ayudawp-aiss-editor-sidebar',
 			AYUDAWP_AISS_PLUGIN_URL . 'assets/js/editor-sidebar.js',
-			array( 'wp-plugins', 'wp-edit-post', 'wp-data', 'wp-components', 'wp-element', 'wp-i18n' ),
+			array( 'wp-plugins', 'wp-edit-post', 'wp-data', 'wp-components', 'wp-element' ),
 			AYUDAWP_AISS_VERSION,
 			true
 		);
 
-		wp_set_script_translations( 'ayudawp-aiss-editor-sidebar', 'ai-share-summarize' );
+		// Pass translated strings from PHP to JS.
+		wp_localize_script( 'ayudawp-aiss-editor-sidebar', 'aissI18n', array(
+			'panelTitle' => __( 'AI Share & Summarize', 'ai-share-summarize' ),
+			'label'      => __( 'Hide share buttons on this content', 'ai-share-summarize' ),
+			'help'       => __( 'Check this box to prevent the share and AI buttons from appearing on this specific content.', 'ai-share-summarize' ),
+		) );
 	}
 
 	/**

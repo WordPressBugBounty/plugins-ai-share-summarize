@@ -3,7 +3,7 @@ Contributors: fernandot,ayudawp
 Tags: claude, chatgpt, social share, ai, perplexity
 Requires at least: 5.0
 Tested up to: 7.0
-Stable tag: 1.7.3
+Stable tag: 1.7.4
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -405,6 +405,9 @@ When enabled, buttons will automatically be hidden on content marked as noindex 
 9. Dashboard widget with sparkline and top platforms
 
 == Changelog ==
+
+= 1.7.4 =
+* Fixed: Block editor sidebar panel translations now load correctly via wp_localize_script() instead of relying on JSON translation files
 
 = 1.7.3 =
 * Improved: Block editor now uses a native sidebar panel (PluginDocumentSettingPanel) instead of a classic meta box for the post exclusion checkbox
