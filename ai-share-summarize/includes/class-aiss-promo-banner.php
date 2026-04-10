@@ -167,6 +167,18 @@ class AyudaWP_AISS_Promo_Banner {
             'description' => __( 'Display your scheduled and future posts on the frontend to gain and retain visits.', 'ai-share-summarize' ),
             'button'      => __( 'Install Scheduled Posts Showcase', 'ai-share-summarize' ),
         	),
+			'noindexer'                        => array(
+				'icon'        => 'dashicons-editor-unlink',
+				'title'       => __( 'Control search indexing', 'ai-share-summarize' ),
+				'description' => __( 'Tell search engines what not to index. Apply noindex per post, page, or entire post types with simple override controls.', 'ai-share-summarize' ),
+				'button'      => __( 'Install NoIndexer', 'ai-share-summarize' ),
+			),
+			'periscopio'                       => array(
+				'icon'        => 'dashicons-rss',
+				'title'       => __( 'Custom dashboard news', 'ai-share-summarize' ),
+				'description' => __( 'Add your own custom feeds and links to the news and events dashboard widget and replace the WordPress default one.', 'ai-share-summarize' ),
+				'button'      => __( 'Install Periscope', 'ai-share-summarize' ),
+			),
 			'lightbox-images-for-divi'         => array(
 				'icon'        => 'dashicons-format-gallery',
 				'title'       => __( 'Lightbox for Divi', 'ai-share-summarize' ),

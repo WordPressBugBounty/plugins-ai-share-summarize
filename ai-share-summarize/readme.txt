@@ -3,7 +3,7 @@ Contributors: fernandot,ayudawp
 Tags: claude, chatgpt, social share, ai, perplexity
 Requires at least: 5.0
 Tested up to: 7.0
-Stable tag: 1.7.4
+Stable tag: 1.8.0
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -27,7 +27,7 @@ Share on social media and generate summaries with citations from leading AIs (Cl
 * **CSV export**: Download analytics data or timeline summaries as CSV files for analysis in Excel or Google Sheets
 * **Dashboard widget**: Quick stats overview with 7-day sparkline directly on the WordPress dashboard
 * **[VigIA](https://wordpress.org/plugins/vigia/) integration**: Cross-reference click data with AI crawler visits when VigIA plugin is active
-* **SEO plugin integration**: Automatically exclude noindex content (Yoast, Rank Math, All in One SEO, SEOPress, The SEO Framework)
+* **SEO plugin integration**: Automatically exclude noindex content (Yoast, Rank Math, All in One SEO, SEOPress, The SEO Framework, NoIndexer)
 * **SEO optimization options**: Choose between `<a>` links with nofollow or `<button>` elements to optimize your link profile
 * **Universal tooltips**: Helpful tooltips on ALL buttons for better user experience
 * **Smart automatic insertion**: Configure exactly where and on which content types to display buttons
@@ -234,7 +234,7 @@ Edit the post or page where you want to hide buttons, find the "AI Share & Summa
 
 = Can I automatically hide buttons on noindex content? =
 
-Yes! The plugin integrates with major SEO plugins (Yoast, Rank Math, All in One SEO, SEOPress, The SEO Framework). Enable the "Exclude noindex content" option in settings to automatically hide buttons on content marked as noindex.
+Yes! The plugin integrates with major SEO plugins (Yoast, Rank Math, All in One SEO, SEOPress, The SEO Framework) and the NoIndexer plugin. Enable the "Exclude noindex content" option in settings to automatically hide buttons on content marked as noindex.
 
 = What's the difference between Google AI and Gemini buttons? =
 
@@ -389,6 +389,7 @@ The plugin detects and integrates with:
 - All in One SEO
 - SEOPress
 - The SEO Framework
+- NoIndexer
 
 When enabled, buttons will automatically be hidden on content marked as noindex in any of these plugins.
 
@@ -405,6 +406,11 @@ When enabled, buttons will automatically be hidden on content marked as noindex 
 9. Dashboard widget with sparkline and top platforms
 
 == Changelog ==
+
+= 1.8.0 =
+* Added: NoIndexer plugin integration for noindex content detection — uses the full priority resolution (individual meta, bulk rules, exclusions)
+* Added: NoIndexer and Periscope plugins to the promotional banner rotation
+* Improved: SEO integration settings now display all detected noindex providers
 
 = 1.7.4 =
 * Fixed: Block editor sidebar panel translations now load correctly via wp_localize_script() instead of relying on JSON translation files
@@ -613,6 +619,9 @@ When enabled, buttons will automatically be hidden on content marked as noindex 
 * Updated: All icon graphics for better platform recognition
 
 == Upgrade Notice ==
+
+= 1.8.0 =
+NoIndexer integration! Content marked as noindex by the NoIndexer plugin is now automatically detected and excluded from showing buttons. Also added Periscope and NoIndexer to the promotional banner.
 
 = 1.7.3 =
 WordPress 7.0 real-time collaboration compatibility! Block editor exclusion checkbox now uses a native sidebar panel instead of a classic meta box. Classic editor fully unchanged. Recommended update for all users.

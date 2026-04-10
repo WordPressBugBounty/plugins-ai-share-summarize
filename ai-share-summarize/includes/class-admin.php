@@ -548,6 +548,7 @@ class AyudaWP_AISS_Admin {
 		$options         = get_option( 'ayudawp_aiss_options' );
 		$exclude_noindex = isset( $options['exclude_noindex'] ) ? $options['exclude_noindex'] : true;
 		$seo_plugin      = AyudaWP_AISS_SEO_Integration::ayudawp_detect_seo_plugin();
+		$has_noindexer   = class_exists( 'Noindexer_Frontend' );
 		?>
 		<div class="ayudawp-seo-integration">
 			<label style="display: flex; align-items: center; gap: 8px;">
@@ -556,12 +557,19 @@ class AyudaWP_AISS_Admin {
 			</label>
 			<p class="description" style="margin-top: 8px; margin-left: 24px;">
 				<?php esc_html_e( 'Automatically exclude content marked as noindex in your SEO plugin.', 'ai-share-summarize' ); ?>
-				<?php if ( $seo_plugin ) : ?>
+				<?php if ( $seo_plugin || $has_noindexer ) : ?>
 					<span class="ayudawp-seo-detected">
 						<span class="dashicons dashicons-yes-alt"></span>
 						<?php
-						/* translators: %s: SEO plugin name */
-						printf( esc_html__( 'Detected: %s', 'ai-share-summarize' ), esc_html( $seo_plugin['name'] ) );
+						$detected = array();
+						if ( $seo_plugin ) {
+							$detected[] = $seo_plugin['name'];
+						}
+						if ( $has_noindexer ) {
+							$detected[] = 'NoIndexer';
+						}
+						/* translators: %s: detected plugin name(s) */
+						printf( esc_html__( 'Detected: %s', 'ai-share-summarize' ), esc_html( implode( ', ', $detected ) ) );
 						?>
 					</span>
 				<?php else : ?>
@@ -572,7 +580,7 @@ class AyudaWP_AISS_Admin {
 			</p>
 		</div>
 		<p class="description" style="margin-top: 10px;">
-			<?php esc_html_e( 'Compatible with:', 'ai-share-summarize' ); ?> Yoast SEO, Rank Math, All in One SEO, SEOPress, The SEO Framework
+			<?php esc_html_e( 'Compatible with:', 'ai-share-summarize' ); ?> Yoast SEO, Rank Math, All in One SEO, SEOPress, The SEO Framework, NoIndexer
 		</p>
 		<?php
 	}

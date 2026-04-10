@@ -85,6 +85,11 @@ class AyudaWP_AISS_SEO_Integration {
      * @return bool True if post is noindex, false otherwise
      */
     public static function ayudawp_is_post_noindex($post_id) {
+        // Check NoIndexer plugin first (preferred static method).
+        if ( class_exists( 'Noindexer_Frontend' ) && Noindexer_Frontend::is_noindex( $post_id ) ) {
+            return true;
+        }
+
         $seo = self::ayudawp_detect_seo_plugin();
         
         if (!$seo) {
