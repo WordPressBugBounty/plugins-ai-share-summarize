@@ -320,6 +320,7 @@ class AyudaWP_AISS_Admin {
 			'button_order'               => esc_html__( 'Buttons order', 'ai-share-summarize' ),
 			'button_alignment'           => esc_html__( 'Button alignment', 'ai-share-summarize' ),
 			'button_colors'              => esc_html__( 'Button style', 'ai-share-summarize' ),
+			'dark_mode_adaptation'       => esc_html__( 'Dark mode adaptation', 'ai-share-summarize' ),
 			'button_size'                => esc_html__( 'Button size', 'ai-share-summarize' ),
 			'show_icons'                 => esc_html__( 'Show icons', 'ai-share-summarize' ),
 			'icon_style'                 => esc_html__( 'Icons only style', 'ai-share-summarize' ),
@@ -820,6 +821,31 @@ class AyudaWP_AISS_Admin {
 		</div>
 		<?php
 		echo '<p class="description">' . esc_html__( 'Select the visual style for the buttons. Icons only style shows only icons without text.', 'ai-share-summarize' ) . '</p>';
+	}
+
+	/**
+	 * Dark mode adaptation field
+	 */
+	public function ayudawp_dark_mode_adaptation_callback() {
+		$options = get_option( 'ayudawp_aiss_options' );
+		$mode    = isset( $options['dark_mode_adaptation'] ) ? $options['dark_mode_adaptation'] : 'disabled';
+
+		$modes = array(
+			'disabled' => esc_html__( 'Disabled (default)', 'ai-share-summarize' ),
+			'auto'     => esc_html__( 'Auto: detect dark backgrounds and adapt buttons', 'ai-share-summarize' ),
+		);
+
+		foreach ( $modes as $key => $label ) {
+			$checked = ( $mode === $key ) ? 'checked="checked"' : '';
+			echo '<label style="display: block; margin-bottom: 5px;">
+					<input type="radio" name="ayudawp_aiss_options[dark_mode_adaptation]" value="' . esc_attr( $key ) . '" ' . esc_attr( $checked ) . '>
+					' . esc_html( $label ) . '
+				  </label>';
+		}
+
+		echo '<p class="description" style="margin-top: 10px;">'
+			. esc_html__( 'Off by default since most themes don\'t offer a dark mode. Enable "Auto" if your theme does: a tiny script measures the real background of the buttons container and, only when it is dark, switches X, Threads and Grok to legible colors and adapts the Minimal/Outline text. The "Custom" and "For dark backgrounds" styles are never overridden (they are explicit choices).', 'ai-share-summarize' )
+			. '</p>';
 	}
 
 	/**

@@ -99,6 +99,7 @@ function ayudawp_aiss_validate_options( $input ) {
 		'mastodon_instance',
 		'custom_color_bg',
 		'custom_color_text',
+		'dark_mode_adaptation',
 	);
 	$textarea_fields = array( 'default_prompt', 'custom_text' );
 	$array_fields    = array( 'enabled_buttons', 'display_locations', 'auto_insert_content_types', 'button_custom_order_ai', 'button_custom_order_social' );
@@ -154,6 +155,12 @@ function ayudawp_aiss_validate_options( $input ) {
 	$valid_styles = array( 'minimal', 'brand', 'outline', 'dark', 'icons-only', 'custom' );
 	if ( isset( $validated['button_colors'] ) && ! in_array( $validated['button_colors'], $valid_styles, true ) ) {
 		$validated['button_colors'] = 'minimal';
+	}
+
+	// Validate dark_mode_adaptation.
+	$valid_dark_modes = array( 'disabled', 'auto' );
+	if ( isset( $validated['dark_mode_adaptation'] ) && ! in_array( $validated['dark_mode_adaptation'], $valid_dark_modes, true ) ) {
+		$validated['dark_mode_adaptation'] = 'disabled';
 	}
 
 	// Sanitize hex colors.
@@ -314,6 +321,9 @@ function ayudawp_aiss_enqueue_frontend_assets() {
 		true
 	);
 
+	$options          = get_option( 'ayudawp_aiss_options', array() );
+	$dark_adapt_mode  = isset( $options['dark_mode_adaptation'] ) ? $options['dark_mode_adaptation'] : 'disabled';
+
 	wp_localize_script( 'ayudawp-aiss-scripts', 'ayudawpAissL10n', array(
 		'promptCopied'       => __( 'Prompt copied to clipboard!', 'ai-share-summarize' ),
 		// Generic copy-prompt tooltips.
@@ -352,5 +362,8 @@ function ayudawp_aiss_enqueue_frontend_assets() {
 		),
 		// Analytics click tracking (v1.5.0) - no nonce needed for public counter.
 		'trackUrl'           => esc_url_raw( rest_url( 'aiss/v1/track' ) ),
+		// Dark-mode adaptation: 'disabled' (default) or 'auto'
+		// ('auto' enables the JS background detector that toggles .is-on-dark).
+		'darkAdaptMode'      => $dark_adapt_mode,
 	) );
 }

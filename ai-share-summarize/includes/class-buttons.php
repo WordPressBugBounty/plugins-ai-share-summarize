@@ -117,7 +117,7 @@ class AyudaWP_AISS_Buttons {
 		$html = '<div class="' . esc_attr( $style_class ) . '"' . $custom_style . '>';
 
 		// Global title (only if no section titles).
-		if ( ! $use_section_titles && ! empty( trim( $title_text ) ) && 'icons-only' !== $color_style ) {
+		if ( ! $use_section_titles && ! empty( trim( $title_text ) ) ) {
 			$html .= '<' . esc_attr( $title_style ) . ' class="ayudawp-title">' . esc_html( $title_text ) . '</' . esc_attr( $title_style ) . '>';
 		}
 
@@ -148,7 +148,7 @@ class AyudaWP_AISS_Buttons {
 			}
 
 			foreach ( $groups as $index => $group ) {
-				if ( ! empty( $group['title'] ) && 'icons-only' !== $color_style ) {
+				if ( ! empty( $group['title'] ) ) {
 					$section_class = $index > 0 ? ' ayudawp-section-title' : '';
 					$html .= '<' . esc_attr( $title_style ) . ' class="ayudawp-title' . esc_attr( $section_class ) . '">' . esc_html( $group['title'] ) . '</' . esc_attr( $title_style ) . '>';
 				} elseif ( $index > 0 ) {

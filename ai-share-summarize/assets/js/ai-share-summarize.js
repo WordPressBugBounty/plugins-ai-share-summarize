@@ -1,8 +1,71 @@
 /**
  * AI Share & Summarize Plugin - JavaScript
  * Advanced functionality for tooltips, hover effects, responsive behavior and click tracking
- * Version: 1.5.0
+ * Version: 1.9.0
  */
+
+/**
+ * Optional dark-background detection.
+ *
+ * Active only when the admin selects the "auto" dark-mode adaptation mode.
+ * Walks up from each share-buttons container looking for the first opaque
+ * background, computes its WCAG relative luminance, and toggles the
+ * .is-on-dark class accordingly. Runs once on DOMContentLoaded and again
+ * when the OS-level prefers-color-scheme flips (themes that wire dark mode
+ * to that media query change their background at that moment, so we need
+ * to re-measure). No MutationObserver is installed to keep runtime cost
+ * negligible.
+ */
+(function() {
+    if ( ! window.ayudawpAissL10n || 'auto' !== window.ayudawpAissL10n.darkAdaptMode ) {
+        return;
+    }
+
+    function detect() {
+        var nodes = document.querySelectorAll(
+            '.ayudawp-share-buttons:not(.dark):not(.custom)'
+        );
+        for ( var i = 0; i < nodes.length; i++ ) {
+            var node = nodes[ i ].parentElement;
+            var bg   = '';
+            while ( node && node !== document.documentElement ) {
+                var computed = window.getComputedStyle( node ).backgroundColor;
+                if ( computed && 'rgba(0, 0, 0, 0)' !== computed && 'transparent' !== computed ) {
+                    bg = computed;
+                    break;
+                }
+                node = node.parentElement;
+            }
+            if ( ! bg ) {
+                continue;
+            }
+            var match = bg.match( /\d+(\.\d+)?/g );
+            if ( ! match || match.length < 3 ) {
+                continue;
+            }
+            var r = parseFloat( match[ 0 ] ) / 255;
+            var g = parseFloat( match[ 1 ] ) / 255;
+            var b = parseFloat( match[ 2 ] ) / 255;
+            var lum = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+            nodes[ i ].classList.toggle( 'is-on-dark', lum < 0.5 );
+        }
+    }
+
+    if ( 'loading' === document.readyState ) {
+        document.addEventListener( 'DOMContentLoaded', detect );
+    } else {
+        detect();
+    }
+
+    if ( window.matchMedia ) {
+        var mq = window.matchMedia( '(prefers-color-scheme: dark)' );
+        if ( mq.addEventListener ) {
+            mq.addEventListener( 'change', detect );
+        } else if ( mq.addListener ) {
+            mq.addListener( detect );
+        }
+    }
+})();
 
 jQuery(document).ready(function($) {
 

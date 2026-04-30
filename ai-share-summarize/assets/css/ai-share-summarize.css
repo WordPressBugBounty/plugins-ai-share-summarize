@@ -1,7 +1,7 @@
 /**
  * AI Share & Summarize Plugin - CSS Styles
  * Refactored with CSS custom properties, no !important overrides.
- * Version: 1.6.0
+ * Version: 1.9.0
  */
 
 /* =============================================
@@ -34,6 +34,19 @@
 	--ayudawp-meta-ai: #0081FB;
 	--ayudawp-custom-bg: #333333;
 	--ayudawp-custom-text: #ffffff;
+
+	/* Dark-mode adaptation tokens. Used by the .is-on-dark class set by
+	   the optional JS background detector when the parent's background
+	   luminance is below 0.5. The "on-dark" variants are only applied to
+	   platforms whose brand color is pure black (twitter, threads, grok),
+	   which would disappear on dark backgrounds. */
+	--ayudawp-on-dark-fg: #e6e6e6;
+	--ayudawp-on-dark-fg-muted: #b8b8b8;
+	--ayudawp-on-dark-border: #555;
+	--ayudawp-on-dark-border-subtle: rgba(255,255,255,0.18);
+	--ayudawp-twitter-on-dark: #ffffff;
+	--ayudawp-threads-on-dark: #ffffff;
+	--ayudawp-grok-on-dark: #ffffff;
 }
 
 /* =============================================
@@ -456,6 +469,59 @@ button.ayudawp-share-btn:focus {
 
 .ayudawp-share-buttons.dark .ayudawp-title {
 	color: #e0e0e0;
+}
+
+/* =============================================
+   Auto adaptation to dark backgrounds
+   Triggered by the .is-on-dark class set by the JS background detector
+   (added when the container's parent background luminance is below 0.5).
+   Skipped when container has .dark or .custom (explicit manual choices).
+   ============================================= */
+
+.ayudawp-share-buttons.is-on-dark:not(.dark):not(.custom) {
+	border-top-color: #444;
+	border-bottom-color: #444;
+}
+
+.ayudawp-share-buttons.is-on-dark:not(.dark):not(.custom) .ayudawp-title {
+	color: var(--ayudawp-on-dark-fg-muted);
+}
+
+/* MINIMAL on dark: legible text and visible border */
+.ayudawp-share-buttons.is-on-dark:not(.brand):not(.outline):not(.custom):not(.icons-only):not(.dark) .ayudawp-share-btn {
+	color: var(--ayudawp-on-dark-fg);
+	border-color: var(--ayudawp-on-dark-border);
+}
+
+.ayudawp-share-buttons.is-on-dark:not(.brand):not(.outline):not(.custom):not(.icons-only):not(.dark) .ayudawp-share-btn:hover {
+	background: rgba(255,255,255,0.08);
+	color: #fff;
+	border-color: #888;
+}
+
+/* OUTLINE on dark: black-branded platforms switch to white */
+.ayudawp-share-buttons.is-on-dark.outline .ayudawp-share-btn.twitter,
+.ayudawp-share-buttons.is-on-dark.outline .ayudawp-share-btn.threads,
+.ayudawp-share-buttons.is-on-dark.outline .ayudawp-share-btn.grok {
+	border-color: var(--ayudawp-twitter-on-dark);
+	color: var(--ayudawp-twitter-on-dark);
+}
+
+/* Mistral text was #8a6a00 (low contrast on dark) — fall back to brand color */
+.ayudawp-share-buttons.is-on-dark.outline .ayudawp-share-btn.mistral {
+	color: var(--ayudawp-mistral);
+}
+
+/* BRAND and ICONS-ONLY on dark: black-branded platforms get a subtle
+   light border so they stand out from the dark page background */
+.ayudawp-share-buttons.is-on-dark.brand .ayudawp-share-btn.twitter,
+.ayudawp-share-buttons.is-on-dark.brand .ayudawp-share-btn.threads,
+.ayudawp-share-buttons.is-on-dark.brand .ayudawp-share-btn.grok,
+.ayudawp-share-buttons.is-on-dark.icons-only .ayudawp-share-btn.twitter,
+.ayudawp-share-buttons.is-on-dark.icons-only .ayudawp-share-btn.threads,
+.ayudawp-share-buttons.is-on-dark.icons-only .ayudawp-share-btn.grok {
+	border-color: var(--ayudawp-on-dark-border-subtle);
+	box-shadow: 0 0 0 1px var(--ayudawp-on-dark-border-subtle) inset;
 }
 
 /* =============================================

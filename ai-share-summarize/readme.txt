@@ -3,7 +3,7 @@ Contributors: fernandot,ayudawp
 Tags: claude, chatgpt, social share, ai, perplexity
 Requires at least: 5.0
 Tested up to: 7.0
-Stable tag: 1.8.0
+Stable tag: 1.9.0
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -407,6 +407,14 @@ When enabled, buttons will automatically be hidden on content marked as noindex 
 
 == Changelog ==
 
+= 1.9.0 =
+* Added: Optional "Dark mode adaptation" setting (Disabled by default / Auto). When set to Auto, a tiny script measures the real background luminance of the buttons container and only adapts colors when it is genuinely dark — so light pages stay untouched even if the visitor's OS prefers dark
+* Added: Light border on X, Threads and Grok buttons over dark backgrounds so they stand out from the page (Auto mode)
+* Added: Section and global titles now also display when using the "Icons only" button style
+* Improved: Outline style shows X, Threads and Grok in white over dark backgrounds (instead of unreadable black) — Auto mode
+* Improved: Minimal style text and titles use legible light colors on dark backgrounds — Auto mode
+* Changed: Version history moved to a dedicated changelog.txt file served from the plugin's public SVN, keeping readme.txt focused on the current release
+
 = 1.8.0 =
 * Added: NoIndexer plugin integration for noindex content detection — uses the full priority resolution (individual meta, bulk rules, exclusions)
 * Added: NoIndexer and Periscope plugins to the promotional banner rotation
@@ -427,252 +435,12 @@ When enabled, buttons will automatically be hidden on content marked as noindex 
 * Fixed: Mastodon instance and title text were stored as default values on new installations instead of being placeholder-only
 * Improved: Frontend asset enqueue logic centralised in a single helper function shared by auto-insert and shortcode modes
 
-= 1.7.1 =
-* Fixed: Admin CSS specificity issues with WordPress 7.0 new button and dashicon styles
-* Fixed: Export CSV button icon alignment broken by WP core .button .dashicons override
-* Fixed: Promotional banner buttons forced to 40px height by WP core min-height reset
-* Fixed: AI/Social type badges now have consistent height across all platforms
-* Fixed: Data retention row vertical alignment improved for mixed-height controls
-* Added: New service recommendation in promotional banner rotation
-* Tested up to WordPress 7.0
-
-= 1.7.0 =
-* Added: Period comparison for analytics — compare with previous period, same period last year, or a custom date range
-* Added: Comparison indicators on stat cards showing percentage change with color-coded arrows
-* Added: Timeline chart automatically switches to total view with dashed comparison line when comparison is active
-* Added: Two-column HTML tooltip on comparison chart showing both periods with change percentage and difference
-* Added: Export CSV dropdown with two options: "Current period" (full data) and "Timeline summary" (daily breakdown)
-* Added: Timeline export includes comparison columns automatically when comparison is active
-* Added: Client-side paginated navigation with arrow buttons replacing "Load more" on both analytics tables
-* Added: Top and bottom paginators on platforms and content tables, synced and only visible when more than 10 rows
-* Added: Dashicon before plugin name on analytics and settings page titles
-* Added: REST API endpoints: stats/compare, timeline/compare, export/timeline
-* Added: Database method for zero-filled timeline data (used for comparison alignment by index)
-* Fixed: Platform type labels (AI/Social) in the top platforms table are now translatable
-* Improved: Tables load all results in a single request for faster client-side pagination
-
-= 1.6.2 =
-* Fix: Prevent button text wrapping on themes with larger font sizes or narrower button widths
-
-= 1.6.1 =
-* Fixed: Settings link in plugins screen now correctly points to the Settings tab instead of the default Analytics tab
-* Fixed: Mastodon instance field now uses placeholder instead of a pre-filled default value
-* Fixed: Global title field now uses placeholder instead of a pre-filled default value, consistent with section title fields
-
-= 1.6.0 =
-* Added: Mastodon support with configurable instance field for federated sharing
-* Added: Threads (Meta) social sharing button
-* Added: Pinterest social sharing button
-* Added: Qwen (Alibaba) AI platform integration with copy-to-clipboard behavior
-* Added: Meta AI platform integration with copy-to-clipboard behavior
-* Added: Official brand SVG icons from Simple Icons library for all supported platforms
-* Added: Outline button style (brand-colored borders, transparent background, fills on hover)
-* Added: Custom colors button style with built-in color picker (wp_color_picker)
-* Added: 4 button size presets: compact, normal, large, and fluid
-* Added: Optional section titles for separate AI and Social group headings
-* Added: Drag & drop reordering within AI and Social groups in settings
-* Added: Shortcode attributes: ai_title, social_title, size
-* Changed: X (Twitter) brand color updated from blue (#1da1f2) to black (#000000)
-* Changed: Default and Minimal styles merged into a single "Minimal (default)" style
-* Changed: All platform brand colors updated to match current official guidelines
-* Changed: SEO button type setting simplified to clean radio buttons with a single description
-* Improved: CSS fully refactored using CSS custom properties, no more !important overrides
-* Improved: Brand and icons-only styles now use a single hover rule (brightness filter) instead of per-platform hover declarations
-* Improved: Centralized platform color definitions in functions-helpers.php for consistency across CSS, JS, and admin
-* Improved: Icon rendering switched from stroke-based to fill-based SVG for sharper brand representation
-* Improved: Mixed button order correctly displays the general title even when section titles are configured
-* Improved: Mastodon, Threads, Pinterest, Qwen, and Meta AI added to analytics platform maps
-
-= 1.5.5 =
-* Improved: New plugin suggestion added.
-
-= 1.5.4 =
-* Fixed: Links from the Analytics and Settings plugins page now take you to the correct tabs. 
-
-= 1.5.3 =
-* Changed: Analytics tab is now the default tab when opening the plugin settings page
-
-= 1.5.2 =
-* Added: Data retention settings with configurable period (1 month, 3 months, 6 months, 1 year, or forever)
-* Added: Automatic daily purge of analytics data older than the configured retention period
-* Added: "Delete all data" button for manual one-click analytics data removal
-* Changed: "Data cleanup" setting renamed to "Data retention" with improved layout
-* Improved: Retention period, uninstall cleanup, and manual deletion grouped in a single settings row
-
-= 1.5.1 =
-* Fixed: Click tracking now works correctly with full-page caching plugins (SiteGround Speed Optimizer, WP Super Cache, etc.)
-* Fixed: Analytics REST API responses no longer cached by server-side caching plugins
-* Improved: Dashboard widget uses transient cache to reduce database queries on admin homepage
-* Improved: Removed aggressive cache invalidation on every click insert for better performance under load
-
-= 1.5.0 =
-* Added: Click analytics dashboard with timeline charts, platform breakdown, and content performance tables
-* Added: Per-platform breakdown in timeline chart with brand colors and interactive legend
-* Added: CSV export for analytics data (date, platform, type, post title, post URL, clicks)
-* Added: REST API endpoints for analytics data (stats, timeline, timeline-by-platform, platforms, content, export)
-* Added: Dashboard widget with 7-day sparkline chart and top platforms summary
-* Added: VigIA integration - cross-reference share clicks with AI crawler visits
-* Added: Dynamic promotional banner with AyudaWP plugin catalog rotation
-* Added: Tabbed admin interface (Settings / Analytics)
-* Added: Direct Analytics link in plugin row on the plugins screen
-* Added: Platform type badges (Social / AI) in analytics tables
-* Improved: Frontend CSS/JS only load on pages where buttons are actually displayed
-* Improved: Posts with buttons disabled via meta box no longer load plugin assets
-* Improved: Admin styles moved to external CSS file following WordPress coding standards
-* Fixed: Export CSV button icon vertical alignment
-* Fixed: Analytics dashboard failing to load due to incomplete localized data
-
-= 1.4.1 =
-* Fixed: Minor edits to the text on the settings page
-
-= 1.4.0 =
-* Added: Individual post/page exclusion via meta box (works with both classic and block editors)
-* Added: SEO plugin integration to automatically exclude noindex content
-* Added: Support for Yoast SEO, Rank Math, All in One SEO, SEOPress, and The SEO Framework
-* Changed: LINE icon updated to be more distinctive (smiley face in speech bubble)
-* Changed: Simplified settings page info box with link to plugin page for shortcode examples
-* Changed: Promotional section redesigned with 3-column layout and plugin install modals
-* Improved: Clean separation of includes in organized file structure
-* Improved: Better defaults for new installations
-
-= 1.3.1 =
-* Fixed: DeepSeek button now works correctly using copy-to-clipboard method (web interface doesn't support URL parameters)
-* Fixed: Microsoft Copilot button now works correctly using copy-to-clipboard method (?q= parameter no longer supported)
-* Improved: DeepSeek and Copilot now use the same reliable approach as Gemini
-* Improved: Added specific tooltips for DeepSeek and Copilot indicating copy-to-clipboard behavior
-* Improved: Unified handling for all platforms that require copy-to-clipboard (Gemini, DeepSeek, Copilot)
-
-= 1.3.0 =
-* Added: Support for Reddit, Bluesky, and LINE social networks
-* Added: Integration with DeepSeek, Mistral AI, and Microsoft Copilot
-* Added: Universal tooltip system for ALL buttons (not just icons-only)
-* Fixed: Inconsistent sizing between link and button elements
-* Fixed: Hover effects now work uniformly across all button types
-* Improved: Better tooltip positioning and styling
-* Improved: Consistent 44px size for icons-only mode (both links and buttons)
-* Improved: JavaScript event handling for better compatibility
-* Improved: CSS transitions and animations for smoother interactions
-* Improved: Mobile responsiveness for new platforms
-* Updated: Icon set with new platform graphics
-* Updated: Documentation with new platform information
-
-= 1.2.0 =
-* Added: Google AI button with direct integration to Google AI Mode
-* Added: Support for Google's new AI Mode (udm=50) for direct AI responses
-* Improved: Renamed "Google AI (Gemini)" to just "Gemini" for clarity
-* Improved: Users can now choose between Google AI (automatic) or Gemini (copy & paste)
-* Improved: Better support for regions where Google AI Mode is available
-* Fixed: Links mode (`<a>` elements) now work correctly with added data attributes for JavaScript handling
-* Updated: Frontend JavaScript to handle both Google AI and Gemini buttons
-* Updated: Icon system with new Google AI icon (search with sparkle)
-* Updated: CSS with styles for both Google AI and Gemini buttons
-* Updated: Documentation with information about both Google AI options
-
-= 1.1.4 =
-* Added: Button alignment option (left/centered) for better design control
-* Improved: All buttons now have uniform width (180px) for consistent appearance
-* Improved: Buttons stack vertically on mobile (480px and below) preventing text overflow
-* Improved: Icons-only mode properly centered when alignment is set to centered
-* Improved: Better responsive behavior with optimized button widths across all screen sizes
-* Fixed: Text wrapping issues in buttons with longer labels like "X (Twitter)"
-
-= 1.1.3 =
-* Fixed: Resolved JavaScript event handler conflicts that prevented buttons from working on some sites when logged in
-* Improved: Better event handling with capture phase to prevent interference from other plugins
-* Improved: More elegant centered notification for Google AI prompt copying
-* Improved: Enhanced compatibility with themes and plugins that modify JavaScript execution
-* Fixed: Resolved button functionality issues in WordPress admin environment
-
-= 1.1.2 =
-* Improved: Removed more unnecessary colours and icons in plugin settings page
-
-= 1.1.1 =
-* Improved: Removed all unnecessary colours and icons in plugin settings page
-
-= 1.1.0 =
-* Added: SEO settings section with option to choose between `<a>` links or `<button>` elements
-* Added: Full support for button elements as an alternative to links
-* Added: Detailed explanations of SEO implications for each option
-* Improved: JavaScript to handle both link and button elements seamlessly
-* Improved: CSS to ensure consistent styling for both element types
-* Improved: Admin interface with new SEO section and better organization
-* Fixed: Better accessibility for button elements
-* Updated: Documentation to explain SEO benefits of each approach
-
-= 1.0.9 =
-* Fixed: Added missed translations for tooltips
-
-= 1.0.8 =
-* Added: Icons-only button style for modern, minimalist design
-* Added: Option to show icons alongside text in any existing style
-* Added: Icon style selection (circular or square corners for icons-only mode)
-* Added: Enhanced tooltips for icons-only buttons showing platform names
-* Added: Responsive grid layout for icons-only mode on mobile devices
-* Added: Data cleanup control - optional automatic data deletion on plugin uninstall
-* Added: Improved icon system with lightweight SVG graphics
-* Improved: Complete code restructuring with modular architecture for better performance
-* Improved: Separated functionality into individual class files in /includes folder
-* Improved: Enhanced mobile responsiveness for all button styles
-* Improved: Better default values (AIs first, brand colors, span titles, circular icons)
-* Improved: Enhanced admin interface with icon previews and danger zone styling
-* Fixed: Better CSS specificity to prevent theme conflicts
-* Updated: All icon graphics for better platform recognition
+For older changelog entries, please check the [changelog.txt](https://plugins.svn.wordpress.org/ai-share-summarize/trunk/changelog.txt) file
 
 == Upgrade Notice ==
 
-= 1.8.0 =
-NoIndexer integration! Content marked as noindex by the NoIndexer plugin is now automatically detected and excluded from showing buttons. Also added Periscope and NoIndexer to the promotional banner.
-
-= 1.7.3 =
-WordPress 7.0 real-time collaboration compatibility! Block editor exclusion checkbox now uses a native sidebar panel instead of a classic meta box. Classic editor fully unchanged. Recommended update for all users.
-
-= 1.7.1 =
-WordPress 7.0 compatibility! Fixes admin CSS specificity issues with export button icons, promo banner buttons, and type badges. Also works fine with WP 6.9.x.
-
-= 1.7.0 =
-Analytics upgrade! Period comparison (previous, last year, custom), comparison indicators on stat cards, timeline overlay chart with detailed tooltip, export dropdown with timeline summary, paginated tables replacing Load more. Fully backward compatible.
-
-= 1.6.2 =
-Minor CSS change in buttons.
-
-= 1.6.1 =
-Minor fixes: Settings link now points to the correct tab, Mastodon instance and global title fields now use proper placeholders.
-
-= 1.6.0 =
-Visual overhaul! Official brand icons, 5 new platforms (Mastodon, Threads, Pinterest, Qwen, Meta AI), outline style, color picker, drag & drop ordering, 4 button sizes, section titles, and CSS refactoring. Default/Minimal merged. X updated to black. Backward compatible.
-
-= 1.5.3 =
-Analytics tab is now the default view when opening plugin settings.
-
-= 1.5.2 =
-New data retention controls! Configure automatic cleanup of analytics data (1 month to forever) and manually delete all data with one click. Better organized data settings.
-
-= 1.5.1 =
-Full-page caching compatibility fix! Click tracking and analytics now work correctly with SiteGround Speed Optimizer and other caching plugins. Dashboard widget optimized for faster admin loading.
-
-= 1.5.0 =
-New analytics dashboard! Track button clicks by platform and content, with timeline charts, CSV export, and a dashboard widget. VigIA integration for AI crawler cross-referencing. Improved performance with selective asset loading.
-
-= 1.4.1 =
-Minor text changes on the settings page.
-
-= 1.4.0 =
-New features! Individual post/page exclusion and automatic SEO plugin integration. Hide buttons on specific content or automatically exclude noindex pages. Updated LINE icon and improved settings page.
-
-= 1.3.1 =
-Bugfix release! Fixes DeepSeek and Microsoft Copilot buttons that weren't delivering prompts. Both now use copy-to-clipboard method like Gemini. Recommended update for all users.
-
-= 1.3.0 =
-Major update! Added support for Reddit, Bluesky, LINE, DeepSeek, Mistral AI, and Microsoft Copilot. Enhanced tooltip system now works on all buttons. Fixed sizing consistency issues between link and button elements.
-
-= 1.2.0 =
-New Google AI Mode support! Choose between direct Google AI integration or traditional Gemini method. Both options available for maximum flexibility and regional compatibility.
-
-= 1.1.4 =
-Visual improvements update! New button alignment option, uniform button widths, and enhanced mobile responsive behavior for a professional appearance across all devices.
-
-= 1.1.3 =
-Important compatibility fix! Resolves JavaScript conflicts that prevented buttons from working when logged in on some sites. Recommended update for all users.
+= 1.9.0 =
+Optional dark mode support! Enable the new "Dark mode adaptation" setting (off by default) if your theme has a dark mode — buttons adapt with legible colors only when the real background is dark, so light pages are never affected. X, Threads and Grok become readable on dark backgrounds. Section and global titles now also display in the Icons-only style.
 
 == Advanced Usage ==
 
