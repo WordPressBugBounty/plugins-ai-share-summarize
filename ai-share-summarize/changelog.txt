@@ -3,6 +3,9 @@ AI Share & Summarize — Full changelog
 For each release, see the entries below. The latest version is always at the top.
 The current release notes also live in readme.txt under "== Changelog ==".
 
+= 1.9.1 =
+* Fixed: Empty space below the footer on themes that don't clip body overflow — universal tooltips were created at the end of `<body>` with no initial coordinates, extending the document scroll height by their static size
+
 = 1.9.0 =
 * Added: Optional "Dark mode adaptation" setting (Disabled by default / Auto). When set to Auto, a tiny script measures the real background luminance of the buttons container and only adapts colors when it is genuinely dark — so light pages stay untouched even if the visitor's OS prefers dark
 * Added: Light border on X, Threads and Grok buttons over dark backgrounds so they stand out from the page (Auto mode)

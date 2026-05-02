@@ -1,7 +1,7 @@
 /**
  * AI Share & Summarize Plugin - JavaScript
  * Advanced functionality for tooltips, hover effects, responsive behavior and click tracking
- * Version: 1.9.0
+ * Version: 1.9.1
  */
 
 /**

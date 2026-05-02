@@ -1,7 +1,7 @@
 /**
  * AI Share & Summarize Plugin - CSS Styles
  * Refactored with CSS custom properties, no !important overrides.
- * Version: 1.9.0
+ * Version: 1.9.1
  */
 
 /* =============================================
@@ -529,6 +529,8 @@ button.ayudawp-share-btn:focus {
    ============================================= */
 .ayudawp-tooltip {
 	position: absolute;
+	top: -9999px;
+	left: -9999px;
 	background: #333;
 	color: #fff;
 	padding: 6px 12px;

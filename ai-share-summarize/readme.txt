@@ -3,7 +3,7 @@ Contributors: fernandot,ayudawp
 Tags: claude, chatgpt, social share, ai, perplexity
 Requires at least: 5.0
 Tested up to: 7.0
-Stable tag: 1.9.0
+Stable tag: 1.9.1
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -407,6 +407,9 @@ When enabled, buttons will automatically be hidden on content marked as noindex 
 
 == Changelog ==
 
+= 1.9.1 =
+* Fixed: Empty space below the footer on themes that don't clip body overflow — universal tooltips were created at the end of `<body>` with no initial coordinates, extending the document scroll height by their static size
+
 = 1.9.0 =
 * Added: Optional "Dark mode adaptation" setting (Disabled by default / Auto). When set to Auto, a tiny script measures the real background luminance of the buttons container and only adapts colors when it is genuinely dark — so light pages stay untouched even if the visitor's OS prefers dark
 * Added: Light border on X, Threads and Grok buttons over dark backgrounds so they stand out from the page (Auto mode)
@@ -420,27 +423,12 @@ When enabled, buttons will automatically be hidden on content marked as noindex 
 * Added: NoIndexer and Periscope plugins to the promotional banner rotation
 * Improved: SEO integration settings now display all detected noindex providers
 
-= 1.7.4 =
-* Fixed: Block editor sidebar panel translations now load correctly via wp_localize_script() instead of relying on JSON translation files
-
-= 1.7.3 =
-* Improved: Block editor now uses a native sidebar panel (PluginDocumentSettingPanel) instead of a classic meta box for the post exclusion checkbox
-* Improved: Compatible with WordPress 7.0 real-time collaboration (RTC) — the classic meta box no longer disables collaborative editing
-* Improved: Sidebar panel includes plugin dashicon for better visual identification
-* Improved: Fallback to classic meta box in the block editor if the sidebar script is missing
-
-= 1.7.2 =
-* Fixed: Buttons appearing in footer or sidebar on themes that apply the_content filter outside the main loop
-* Fixed: Missing styles when using shortcodes with page builders that process content after asset enqueue (Bricks Builder, etc.)
-* Fixed: Mastodon instance and title text were stored as default values on new installations instead of being placeholder-only
-* Improved: Frontend asset enqueue logic centralised in a single helper function shared by auto-insert and shortcode modes
-
 For older changelog entries, please check the [changelog.txt](https://plugins.svn.wordpress.org/ai-share-summarize/trunk/changelog.txt) file
 
 == Upgrade Notice ==
 
-= 1.9.0 =
-Optional dark mode support! Enable the new "Dark mode adaptation" setting (off by default) if your theme has a dark mode — buttons adapt with legible colors only when the real background is dark, so light pages are never affected. X, Threads and Grok become readable on dark backgrounds. Section and global titles now also display in the Icons-only style.
+= 1.9.1 =
+Bug fix: removes a phantom empty space that could appear below the footer on some themes when the share buttons were displayed.
 
 == Advanced Usage ==
 
