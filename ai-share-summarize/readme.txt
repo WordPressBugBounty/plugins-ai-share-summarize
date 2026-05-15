@@ -3,7 +3,7 @@ Contributors: fernandot,ayudawp
 Tags: claude, chatgpt, social share, ai, perplexity
 Requires at least: 5.0
 Tested up to: 7.0
-Stable tag: 1.9.1
+Stable tag: 1.9.2
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -407,6 +407,9 @@ When enabled, buttons will automatically be hidden on content marked as noindex 
 
 == Changelog ==
 
+= 1.9.2 =
+* Fixed: Share buttons not appearing with Divi Theme Builder (Divi 4 and Divi 5), FSE block templates and Bricks Builder — these render the post content through the `the_content` filter without a standard WP loop, so the previous `in_the_loop()` and `is_main_query()` guards blocked the auto-insertion. The singular-page path now relies on `is_singular()` plus a post-ID match between `get_the_ID()` and `get_queried_object_id()`, with a per-request "already processed" guard so the same post can never receive duplicate button blocks. Archives keep the original main-loop check
+
 = 1.9.1 =
 * Fixed: Empty space below the footer on themes that don't clip body overflow — universal tooltips were created at the end of `<body>` with no initial coordinates, extending the document scroll height by their static size
 
@@ -418,17 +421,12 @@ When enabled, buttons will automatically be hidden on content marked as noindex 
 * Improved: Minimal style text and titles use legible light colors on dark backgrounds — Auto mode
 * Changed: Version history moved to a dedicated changelog.txt file served from the plugin's public SVN, keeping readme.txt focused on the current release
 
-= 1.8.0 =
-* Added: NoIndexer plugin integration for noindex content detection — uses the full priority resolution (individual meta, bulk rules, exclusions)
-* Added: NoIndexer and Periscope plugins to the promotional banner rotation
-* Improved: SEO integration settings now display all detected noindex providers
-
 For older changelog entries, please check the [changelog.txt](https://plugins.svn.wordpress.org/ai-share-summarize/trunk/changelog.txt) file
 
 == Upgrade Notice ==
 
-= 1.9.1 =
-Bug fix: removes a phantom empty space that could appear below the footer on some themes when the share buttons were displayed.
+= 1.9.2 =
+Bug fix: share buttons now appear correctly on sites using Divi Theme Builder (Divi 4 and Divi 5), FSE block templates and Bricks Builder, where they were silently skipped because these builders run the content filter outside a standard WP loop.
 
 == Advanced Usage ==
 

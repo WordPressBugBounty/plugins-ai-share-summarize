@@ -3,6 +3,9 @@ AI Share & Summarize — Full changelog
 For each release, see the entries below. The latest version is always at the top.
 The current release notes also live in readme.txt under "== Changelog ==".
 
+= 1.9.2 =
+* Fixed: Share buttons not appearing with Divi Theme Builder (Divi 4 and Divi 5), FSE block templates and Bricks Builder — these render the post content through the `the_content` filter without a standard WP loop, so the previous `in_the_loop()` and `is_main_query()` guards blocked the auto-insertion. The singular-page path now relies on `is_singular()` plus a post-ID match between `get_the_ID()` and `get_queried_object_id()`, with a per-request "already processed" guard so the same post can never receive duplicate button blocks. Archives keep the original main-loop check
+
 = 1.9.1 =
 * Fixed: Empty space below the footer on themes that don't clip body overflow — universal tooltips were created at the end of `<body>` with no initial coordinates, extending the document scroll height by their static size
 
