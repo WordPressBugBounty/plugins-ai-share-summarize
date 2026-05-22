@@ -472,6 +472,121 @@ button.ayudawp-share-btn:focus {
 }
 
 /* =============================================
+   AI Summary block (v2.0.0)
+   Inline summary rendered before / after the buttons or at the start
+   of the post content. Uses the native <details>/<summary> elements
+   so the collapse/expand behavior works without JavaScript.
+   ============================================= */
+
+.ayudawp-aiss-summary {
+	margin: 24px 0;
+	padding: 12px 16px;
+	border: 1px solid #e0e0e0;
+	border-radius: 6px;
+	background: transparent;
+}
+
+.ayudawp-aiss-summary-details {
+	margin: 0;
+}
+
+.ayudawp-aiss-summary-details > summary {
+	cursor: pointer;
+	font-weight: 600;
+	list-style: none;
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	user-select: none;
+}
+
+/* Hide the native disclosure triangle in WebKit/Blink. */
+.ayudawp-aiss-summary-details > summary::-webkit-details-marker {
+	display: none;
+}
+
+/* CSS caret that rotates when the details element is open. */
+.ayudawp-aiss-summary-details > summary::after {
+	content: "";
+	display: inline-block;
+	width: 0;
+	height: 0;
+	margin-left: auto;
+	border-left: 5px solid transparent;
+	border-right: 5px solid transparent;
+	border-top: 6px solid currentColor;
+	transition: transform 0.2s ease;
+}
+
+.ayudawp-aiss-summary-details[open] > summary::after {
+	transform: rotate(180deg);
+}
+
+.ayudawp-aiss-summary-icon {
+	display: inline-flex;
+	align-items: center;
+}
+
+.ayudawp-aiss-summary-icon svg {
+	width: 16px;
+	height: 16px;
+}
+
+.ayudawp-aiss-summary-content {
+	margin-top: 8px;
+}
+
+.ayudawp-aiss-summary-content p {
+	margin: 0;
+	line-height: 1.5;
+}
+
+.ayudawp-aiss-summary-attribution {
+	display: block;
+	margin-top: 8px;
+	font-size: 11px;
+	color: #6c757d;
+	font-style: italic;
+}
+
+/* Placeholder variant: contains the "Generate AI summary" button shown to
+   visitors when the post has no stored summary yet (v2.0.0 frontend gen). */
+.ayudawp-aiss-summary--placeholder {
+	padding: 0;
+	border: none;
+}
+
+.ayudawp-aiss-summary-generate-btn {
+	display: inline-flex;
+	align-items: center;
+	gap: 8px;
+	padding: 8px 14px;
+	background: transparent;
+	border: 1px solid #e0e0e0;
+	border-radius: 6px;
+	font-weight: 600;
+	font-size: 0.95em;
+	color: inherit;
+	cursor: pointer;
+	transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.ayudawp-aiss-summary-generate-btn:hover:not(:disabled) {
+	background: rgba(0, 0, 0, 0.04);
+	border-color: #c0c0c0;
+}
+
+.ayudawp-aiss-summary-generate-btn:disabled {
+	cursor: wait;
+	opacity: 0.7;
+}
+
+.ayudawp-aiss-summary-generate-btn .ayudawp-aiss-summary-icon svg {
+	width: 16px;
+	height: 16px;
+}
+
+/* =============================================
    Auto adaptation to dark backgrounds
    Triggered by the .is-on-dark class set by the JS background detector
    (added when the container's parent background luminance is below 0.5).
@@ -676,4 +791,27 @@ button.ayudawp-share-btn:focus {
 	color: #dc3232;
 	font-weight: 500;
 	margin-top: 8px;
+}
+
+/* =============================================
+   AI Summary: dark-mode adaptation
+   Mirrors the .is-on-dark token system used by the share buttons.
+   ============================================= */
+
+.ayudawp-aiss-summary.is-on-dark {
+	border-color: var(--ayudawp-on-dark-border-subtle, rgba(255,255,255,0.18));
+	color: var(--ayudawp-on-dark-fg, #e6e6e6);
+}
+
+.ayudawp-aiss-summary.is-on-dark .ayudawp-aiss-summary-attribution {
+	color: var(--ayudawp-on-dark-fg-muted, #b8b8b8);
+}
+
+.ayudawp-aiss-summary--placeholder.is-on-dark .ayudawp-aiss-summary-generate-btn {
+	border-color: var(--ayudawp-on-dark-border-subtle, rgba(255,255,255,0.18));
+	color: var(--ayudawp-on-dark-fg, #e6e6e6);
+}
+
+.ayudawp-aiss-summary--placeholder.is-on-dark .ayudawp-aiss-summary-generate-btn:hover:not(:disabled) {
+	background: rgba(255, 255, 255, 0.08);
 }

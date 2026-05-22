@@ -1,7 +1,8 @@
 /**
  * AI Share & Summarize Plugin - JavaScript
- * Advanced functionality for tooltips, hover effects, responsive behavior and click tracking
- * Version: 1.9.1
+ * Advanced functionality for tooltips, hover effects, responsive behavior, click tracking
+ * and the visitor-facing AI summary generation button (v2.0.0).
+ * Version: 2.0.0
  */
 
 /**
@@ -23,7 +24,7 @@
 
     function detect() {
         var nodes = document.querySelectorAll(
-            '.ayudawp-share-buttons:not(.dark):not(.custom)'
+            '.ayudawp-share-buttons:not(.dark):not(.custom), .ayudawp-aiss-summary'
         );
         for ( var i = 0; i < nodes.length; i++ ) {
             var node = nodes[ i ].parentElement;
@@ -442,6 +443,59 @@ jQuery(document).ready(function($) {
                 handleResponsiveIconsOnly();
             }, 100);
         }
+    });
+
+    /**
+     * AI Summary frontend generation button (v2.0.0)
+     *
+     * Renders the summary on demand for visitors when the post doesn't
+     * have one stored. Delegated handler so it works for shortcode-rendered
+     * placeholders and dynamic content (page builders, ajax loaders).
+     */
+    $(document).on('click', '.ayudawp-aiss-summary-generate-btn', function(e) {
+        e.preventDefault();
+
+        var $btn         = $(this);
+        var $placeholder = $btn.closest('.ayudawp-aiss-summary--placeholder');
+        var postId       = parseInt($placeholder.data('post-id'), 10);
+
+        if (!postId || $btn.prop('disabled')) {
+            return;
+        }
+
+        var L = window.ayudawpAissL10n || {};
+        var originalLabel = $btn.find('.ayudawp-aiss-summary-label').text();
+
+        $btn.prop('disabled', true);
+        $btn.find('.ayudawp-aiss-summary-label').text(L.summaryGenerating || 'Generating…');
+
+        var endpoint = (L.publicGenerateUrl || (window.location.origin + '/wp-json/aiss/v1/summary/generate'));
+
+        $.ajax({
+            url:      endpoint,
+            method:   'POST',
+            dataType: 'json',
+            contentType: 'application/json',
+            data:     JSON.stringify({ post_id: postId })
+        }).done(function(response) {
+            if (response && response.html) {
+                $placeholder.replaceWith(response.html);
+            } else {
+                $btn.find('.ayudawp-aiss-summary-label').text(L.summaryGenerateError || 'Generation failed. Try again.');
+                $btn.prop('disabled', false);
+            }
+        }).fail(function(xhr) {
+            var msg = L.summaryGenerateError || 'Generation failed. Try again.';
+            if (xhr && xhr.responseJSON && xhr.responseJSON.message) {
+                msg = xhr.responseJSON.message;
+            }
+            $btn.find('.ayudawp-aiss-summary-label').text(msg);
+            // Re-enable after a short cooldown so the user can retry.
+            setTimeout(function() {
+                $btn.prop('disabled', false);
+                $btn.find('.ayudawp-aiss-summary-label').text(originalLabel);
+            }, 3000);
+        });
     });
 
 });

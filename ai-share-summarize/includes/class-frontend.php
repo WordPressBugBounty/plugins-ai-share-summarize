@@ -38,12 +38,17 @@ class AyudaWP_AISS_Frontend {
 	public function ayudawp_enqueue_scripts() {
 		$options         = get_option( 'ayudawp_aiss_options' );
 		$insert_position = isset( $options['auto_insert_position'] ) ? $options['auto_insert_position'] : 'after_content';
+		$summary_enabled = ! empty( $options['ai_summary_enabled'] );
+		$summary_pos     = isset( $options['ai_summary_position'] ) ? $options['ai_summary_position'] : 'before_buttons';
 
 		// Determine if assets are needed on this page.
 		$should_load = false;
 
-		if ( 'disabled' !== $insert_position ) {
-			// Auto-insert mode: use the same display logic as button rendering.
+		$buttons_active = ( 'disabled' !== $insert_position );
+		$summary_active = ( $summary_enabled && 'disabled' !== $summary_pos );
+
+		if ( $buttons_active || $summary_active ) {
+			// Auto-insert mode (buttons or summary): use the same display logic.
 			$should_load = ayudawp_aiss_should_display_buttons();
 		} else {
 			// Shortcode-only mode: load on singular and archives
@@ -128,26 +133,102 @@ class AyudaWP_AISS_Frontend {
 
 		$options         = get_option( 'ayudawp_aiss_options' );
 		$insert_position = isset( $options['auto_insert_position'] ) ? $options['auto_insert_position'] : 'after_content';
+		$summary_enabled = ! empty( $options['ai_summary_enabled'] );
+		$frontend_button = ! empty( $options['ai_summary_frontend_button'] );
+		$summary_pos     = isset( $options['ai_summary_position'] ) ? $options['ai_summary_position'] : 'before_buttons';
 
-		if ( 'disabled' === $insert_position ) {
+		// The summary slot is active when its position is not "disabled" AND
+		// either auto-generation is on OR the visitor-driven button is on.
+		// get_summary_html() applies the per-feature gating internally.
+		$buttons_active = ( 'disabled' !== $insert_position );
+		$summary_active = ( 'disabled' !== $summary_pos ) && ( $summary_enabled || $frontend_button );
+
+		// Both pieces disabled: leave content untouched.
+		if ( ! $buttons_active && ! $summary_active ) {
 			return $content;
 		}
 
-		$buttons_html = AyudaWP_AISS_Buttons::ayudawp_generate_buttons_html();
+		$buttons_html = $buttons_active
+			? AyudaWP_AISS_Buttons::ayudawp_generate_buttons_html()
+			: '';
+
+		$summary_html = (
+			$summary_active
+			&& $post_id
+			&& class_exists( 'AyudaWP_AISS_AI_Summary' )
+			&& ayudawp_aiss_should_apply_summary( $post_id )
+		)
+			? AyudaWP_AISS_AI_Summary::get_summary_html( $post_id )
+			: '';
 
 		if ( $post_id ) {
 			$processed[] = $post_id;
 		}
 
+		/*
+		 * Effective summary position falls back to 'before_content' when the
+		 * summary is anchored to the buttons but the buttons are not being
+		 * inserted (auto_insert_position = 'disabled'). Otherwise the summary
+		 * would have nothing to anchor against and would never render.
+		 */
+		$effective_summary_pos = $summary_pos;
+		if ( $summary_active && ! $buttons_active && in_array( $summary_pos, array( 'before_buttons', 'after_buttons' ), true ) ) {
+			$effective_summary_pos = 'before_content';
+		}
+
+		return $this->ayudawp_compose_output( $content, $buttons_html, $summary_html, $insert_position, $effective_summary_pos );
+	}
+
+	/**
+	 * Compose the final post output from content, buttons and summary parts
+	 *
+	 * Implements the position matrix:
+	 * - `ai_summary_position === 'before_content'` → summary always at the start.
+	 * - `ai_summary_position === 'before_buttons'` / `'after_buttons'` → summary
+	 *   is glued to the buttons block (first occurrence when buttons are
+	 *   inserted twice via `auto_insert_position === 'both'`).
+	 *
+	 * Summary is rendered exactly once regardless of `auto_insert_position`,
+	 * because the summary itself is a single piece of per-post data.
+	 *
+	 * @param string $content         Original post content.
+	 * @param string $buttons_html    Pre-built buttons HTML (may be '').
+	 * @param string $summary_html    Pre-built summary HTML (may be '').
+	 * @param string $insert_position Buttons position option.
+	 * @param string $summary_pos     Effective summary position option.
+	 * @return string Composed content.
+	 */
+	private function ayudawp_compose_output( $content, $buttons_html, $summary_html, $insert_position, $summary_pos ) {
+		$has_buttons = '' !== $buttons_html;
+		$has_summary = '' !== $summary_html;
+
+		/*
+		 * Build a single "buttons block with optional inline summary" decided
+		 * by $summary_pos. The buttons-relative position ('before_buttons' /
+		 * 'after_buttons') anchors the summary to the buttons regardless of
+		 * where the buttons themselves get inserted ('before_content',
+		 * 'after_content', 'both').
+		 */
+		if ( $has_buttons && $has_summary && 'before_buttons' === $summary_pos ) {
+			$buttons_block = $summary_html . $buttons_html;
+		} elseif ( $has_buttons && $has_summary && 'after_buttons' === $summary_pos ) {
+			$buttons_block = $buttons_html . $summary_html;
+		} else {
+			$buttons_block = $buttons_html;
+		}
+
+		// Pre-content summary: only rendered separately when the position is before_content.
+		$pre_summary = ( $has_summary && 'before_content' === $summary_pos ) ? $summary_html : '';
+
 		switch ( $insert_position ) {
 			case 'before_content':
-				return $buttons_html . $content;
-			case 'after_content':
-				return $content . $buttons_html;
+				return $pre_summary . $buttons_block . $content;
 			case 'both':
-				return $buttons_html . $content . $buttons_html;
+				// Summary appears once with the first buttons block; the second block stays plain.
+				return $pre_summary . $buttons_block . $content . $buttons_html;
+			case 'after_content':
 			default:
-				return $content . $buttons_html;
+				return $pre_summary . $content . $buttons_block;
 		}
 	}
 }

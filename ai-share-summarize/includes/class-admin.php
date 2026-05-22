@@ -27,6 +27,7 @@ class AyudaWP_AISS_Admin {
 		add_action( 'wp_ajax_ayudawp_dismiss_activation_notice', array( $this, 'ayudawp_dismiss_activation_notice' ) );
 		add_filter( 'plugin_action_links_' . AYUDAWP_AISS_PLUGIN_BASENAME, array( $this, 'ayudawp_add_settings_link' ) );
 		add_action( 'wp_ajax_ayudawp_aiss_delete_all_data', array( $this, 'ayudawp_ajax_delete_all_data' ) );
+		add_action( 'wp_ajax_ayudawp_aiss_dismiss_ai_error', array( $this, 'ayudawp_ajax_dismiss_ai_error' ) );
 	}
 
 	/**
@@ -64,6 +65,36 @@ class AyudaWP_AISS_Admin {
 
 		// Settings page inline styles (form-specific, not needed globally).
 		wp_add_inline_style( 'aiss-admin-styles', '
+			.aiss-settings-subnav {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 4px;
+				margin: 12px 0 18px;
+				padding: 6px;
+				background: #fff;
+				border: 1px solid #dcdcde;
+				border-radius: 4px;
+				box-shadow: 0 1px 0 rgba(0,0,0,0.04);
+			}
+			.aiss-settings-subnav-link {
+				padding: 6px 12px;
+				text-decoration: none;
+				color: #1d2327;
+				border-radius: 3px;
+				font-size: 13px;
+				font-weight: 500;
+				transition: background-color 0.15s ease;
+			}
+			.aiss-settings-subnav-link:hover,
+			.aiss-settings-subnav-link:focus {
+				background: #f0f0f1;
+				color: #135e96;
+			}
+			.aiss-anchor {
+				display: block;
+				/* Offset for the WP admin bar so the target is not hidden. */
+				scroll-margin-top: 50px;
+			}
 			.ayudawp-info-link {
 				font-style: italic;
 				color: #646970;
@@ -209,6 +240,19 @@ class AyudaWP_AISS_Admin {
 						nonce: "' . esc_js( wp_create_nonce( 'ayudawp_dismiss_notice' ) ) . '"
 					});
 				});
+
+				$(document).on("click", ".aiss-dismiss-ai-error", function() {
+					var btn = $(this);
+					var notice = btn.closest(".aiss-ai-error-notice");
+					$.post(ajaxurl, {
+						action: "ayudawp_aiss_dismiss_ai_error",
+						nonce:  btn.data("nonce")
+					}, function(response) {
+						if (response && response.success) {
+							notice.slideUp(180, function() { notice.remove(); });
+						}
+					});
+				});
 			});
 		' );
 	}
@@ -297,6 +341,13 @@ class AyudaWP_AISS_Admin {
 			'ayudawp_aiss_settings'
 		);
 
+		add_settings_section(
+			'ayudawp_aiss_ai_summary',
+			esc_html__( 'AI Summary', 'ai-share-summarize' ),
+			array( $this, 'ayudawp_ai_summary_section_callback' ),
+			'ayudawp_aiss_settings'
+		);
+
 		$this->ayudawp_register_settings_fields();
 	}
 
@@ -335,6 +386,28 @@ class AyudaWP_AISS_Admin {
 				array( $this, 'ayudawp_' . $field_id . '_callback' ),
 				'ayudawp_aiss_settings',
 				'ayudawp_aiss_main'
+			);
+		}
+
+		// AI Summary section fields (v2.0.0).
+		$summary_fields = array(
+			'ai_summary_enabled'                   => esc_html__( 'Enable AI Summary', 'ai-share-summarize' ),
+			'ai_summary_content_types'             => esc_html__( 'Summaries by content type', 'ai-share-summarize' ),
+			'ai_summary_position'                  => esc_html__( 'Summary position', 'ai-share-summarize' ),
+			'ai_summary_collapsed_default'         => esc_html__( 'Collapsed by default', 'ai-share-summarize' ),
+			'ai_summary_sentences'                 => esc_html__( 'Summary sentence count', 'ai-share-summarize' ),
+			'ai_summary_use_extractive_fallback'   => esc_html__( 'Use extractive fallback', 'ai-share-summarize' ),
+			'ai_summary_frontend_button'           => esc_html__( 'Frontend generation button', 'ai-share-summarize' ),
+			'ai_summary_frontend_force_extractive' => esc_html__( 'Frontend uses extractive only', 'ai-share-summarize' ),
+		);
+
+		foreach ( $summary_fields as $field_id => $field_title ) {
+			add_settings_field(
+				$field_id,
+				$field_title,
+				array( $this, 'ayudawp_' . $field_id . '_callback' ),
+				'ayudawp_aiss_settings',
+				'ayudawp_aiss_ai_summary'
 			);
 		}
 	}
@@ -390,6 +463,10 @@ class AyudaWP_AISS_Admin {
 	 */
 	private function ayudawp_render_settings_tab() {
 		?>
+		<nav class="aiss-settings-subnav" aria-label="<?php esc_attr_e( 'Settings sections', 'ai-share-summarize' ); ?>">
+			<a href="#ayudawp-aiss-general" class="aiss-settings-subnav-link"><?php esc_html_e( 'General settings', 'ai-share-summarize' ); ?></a>
+			<a href="#ayudawp-aiss-ai-summary" class="aiss-settings-subnav-link"><?php esc_html_e( 'AI Summary', 'ai-share-summarize' ); ?></a>
+		</nav>
 		<form action="options.php" method="post">
 			<?php
 			settings_fields( 'ayudawp_aiss_settings' );
@@ -402,11 +479,17 @@ class AyudaWP_AISS_Admin {
 
 	/**
 	 * Main section callback
+	 *
+	 * The leading anchor (`#ayudawp-aiss-general`) is the deep-link target
+	 * for the subnav at the top of the settings tab. Stable ID so future
+	 * features (command palette, Abilities API, external docs) can link
+	 * straight to this section.
 	 */
 	public function ayudawp_section_callback() {
 		/* translators: Plugin page URL. Change wordpress.org to your locale if needed (e.g., es.wordpress.org) */
 		$plugin_url = __( 'https://wordpress.org/plugins/ai-share-summarize/', 'ai-share-summarize' );
 
+		echo '<span id="ayudawp-aiss-general" class="aiss-anchor"></span>';
 		echo '<p>' . esc_html__( 'Configure how and where to display share buttons and generate summaries with AI.', 'ai-share-summarize' );
 		echo ' <span class="ayudawp-info-link">(' . esc_html__( 'You can also customize display using shortcodes as described in the', 'ai-share-summarize' ) . ' <a href="' . esc_url( $plugin_url ) . '" target="_blank" rel="noopener">' . esc_html__( 'plugin page', 'ai-share-summarize' ) . '</a>)</span>';
 		echo '</p>';
@@ -1031,5 +1114,261 @@ class AyudaWP_AISS_Admin {
 
 		AyudaWP_AISS_Database::ayudawp_delete_all_data();
 		wp_send_json_success();
+	}
+
+	/**
+	 * AJAX handler: Dismiss the "Last AI generation error" notice on Settings (v2.0.0)
+	 */
+	public function ayudawp_ajax_dismiss_ai_error() {
+		check_ajax_referer( 'aiss_admin_nonce', 'nonce' );
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( array( 'message' => 'Permission denied.' ) );
+		}
+
+		if ( class_exists( 'AyudaWP_AISS_AI_Summary' ) ) {
+			AyudaWP_AISS_AI_Summary::store_last_ai_error( null );
+		} else {
+			delete_option( 'ayudawp_aiss_last_ai_error' );
+		}
+
+		wp_send_json_success();
+	}
+
+	// ==========================================
+	// AI Summary section (v2.0.0)
+	// ==========================================
+
+	/**
+	 * AI Summary section callback — explains the feature and AI client status
+	 *
+	 * Carries a stable anchor ID (#ayudawp-aiss-ai-summary) so the subnav,
+	 * the command palette, the Abilities API and external docs can deep-link
+	 * straight here.
+	 */
+	public function ayudawp_ai_summary_section_callback() {
+		echo '<span id="ayudawp-aiss-ai-summary" class="aiss-anchor"></span>';
+		echo '<p>'
+			. esc_html__( 'Automatically generate a short summary of each post and display it inline alongside the share buttons.', 'ai-share-summarize' )
+			. '</p>';
+
+		echo '<div class="ayudawp-seo-integration" style="background:#f9f9f9;padding:15px;margin:10px 0;border-radius:4px;">';
+
+		if ( function_exists( 'wp_ai_client_prompt' ) ) {
+			$connectors_url = admin_url( 'options-connectors.php' );
+			echo '<p style="margin:0;"><strong style="color:#00a32a;">'
+				. esc_html__( 'WP AI Client is available.', 'ai-share-summarize' )
+				. '</strong> '
+				. sprintf(
+					/* translators: %s is a link to the Connectors settings screen. */
+					esc_html__( 'Configure your AI provider in %s to enable high-quality summaries.', 'ai-share-summarize' ),
+					'<a href="' . esc_url( $connectors_url ) . '">' . esc_html__( 'Settings > Connectors', 'ai-share-summarize' ) . '</a>'
+				)
+				. '</p>';
+
+			// Surface the last AI Client error (if any) so the admin can act on it.
+			// The optional "Possible cause" hint lives inside the same notice
+			// so the dismiss button removes both lines together — keeping a
+			// floating hint visible after the user has dismissed its parent
+			// error would be confusing.
+			if ( class_exists( 'AyudaWP_AISS_AI_Summary' ) ) {
+				$last_error = AyudaWP_AISS_AI_Summary::get_last_ai_error();
+				if ( $last_error ) {
+					$nonce         = wp_create_nonce( 'aiss_admin_nonce' );
+					$show_hint     = ayudawp_aiss_is_canonical_ai_plugin_active();
+					$approvals_url = admin_url( 'tools.php?page=ai-connector-approval' );
+
+					echo '<div class="aiss-ai-error-notice" style="margin:8px 0 0;display:flex;align-items:flex-start;gap:10px;">';
+
+					echo '<div style="flex:1;display:flex;flex-direction:column;gap:8px;">';
+
+					echo '<p style="margin:0;padding:8px 12px;background:#fff;border-left:3px solid #dba617;color:#8a6d11;">'
+						. '<strong>' . esc_html__( 'Last AI generation error:', 'ai-share-summarize' ) . '</strong> '
+						. esc_html( $last_error['message'] )
+						. ' <code style="font-size:11px;">' . esc_html( $last_error['code'] ) . '</code>'
+						. '</p>';
+
+					// Heuristic hint: when the canonical AI plugin is active,
+					// its Connector Approval system can silently block our
+					// calls without a clear error code. Point the admin
+					// straight at the approvals screen so they can unblock
+					// us without us having to ship our own HTTP client.
+					if ( $show_hint ) {
+						echo '<p style="margin:0;padding:8px 12px;background:#fff;border-left:3px solid #2271b1;color:#1d2327;">'
+							. '<strong>' . esc_html__( 'Possible cause:', 'ai-share-summarize' ) . '</strong> '
+							. sprintf(
+								/* translators: %1$s/%2$s wrap a link to Tools > Connector Approvals. */
+								esc_html__( 'The canonical AI plugin is active. Its Connector Approval system can silently block calls from plugins it has not approved yet. Open %1$sTools > Connector Approvals%2$s and enable the toggle next to "AI Share & Summarize".', 'ai-share-summarize' ),
+								'<a href="' . esc_url( $approvals_url ) . '" target="_blank" rel="noopener">',
+								'</a>'
+							)
+							. '</p>';
+					}
+
+					echo '</div>'; // .flex column wrapper
+
+					echo '<button type="button" class="button-link aiss-dismiss-ai-error" data-nonce="' . esc_attr( $nonce ) . '" aria-label="' . esc_attr__( 'Dismiss this error', 'ai-share-summarize' ) . '" style="text-decoration:none;color:#8a6d11;font-size:18px;line-height:1;padding:4px 0 0;cursor:pointer;">&times;</button>';
+
+					echo '</div>'; // .aiss-ai-error-notice
+				}
+			}
+		} else {
+			echo '<p style="margin:0;"><strong>'
+				. esc_html__( 'WP AI Client not detected.', 'ai-share-summarize' )
+				. '</strong> '
+				. esc_html__( 'Requires WordPress 7.0 or later. Without it, only the basic extractive fallback will be used.', 'ai-share-summarize' )
+				. '</p>';
+		}
+
+		echo '</div>';
+
+		echo '<p class="description">'
+			. esc_html__( 'Summaries are generated asynchronously when a post is published or updated, on the post types selected in "Automatic insertion by content type".', 'ai-share-summarize' )
+			. '</p>';
+	}
+
+	/**
+	 * AI summary enabled field
+	 */
+	public function ayudawp_ai_summary_enabled_callback() {
+		$options = get_option( 'ayudawp_aiss_options' );
+		$enabled = isset( $options['ai_summary_enabled'] ) ? (bool) $options['ai_summary_enabled'] : true;
+		?>
+		<label>
+			<input type="checkbox" name="ayudawp_aiss_options[ai_summary_enabled]" value="1" <?php checked( $enabled, true ); ?>>
+			<?php esc_html_e( 'Generate and display AI summaries', 'ai-share-summarize' ); ?>
+		</label>
+		<p class="description"><?php esc_html_e( 'When enabled, a summary is generated after each post is published or updated.', 'ai-share-summarize' ); ?></p>
+		<?php
+	}
+
+	/**
+	 * AI summary position field
+	 */
+	public function ayudawp_ai_summary_position_callback() {
+		$options  = get_option( 'ayudawp_aiss_options' );
+		$position = isset( $options['ai_summary_position'] ) ? $options['ai_summary_position'] : 'before_buttons';
+
+		$positions = array(
+			'before_buttons' => esc_html__( 'Right before the share buttons', 'ai-share-summarize' ),
+			'after_buttons'  => esc_html__( 'Right after the share buttons', 'ai-share-summarize' ),
+			'before_content' => esc_html__( 'Before the content', 'ai-share-summarize' ),
+			'disabled'       => esc_html__( 'Do not display (still generates the summary)', 'ai-share-summarize' ),
+		);
+
+		echo '<p class="description">' . esc_html__( 'Choose where to render the summary in the post:', 'ai-share-summarize' ) . '</p>';
+
+		foreach ( $positions as $key => $label ) {
+			$checked = ( $position === $key ) ? 'checked="checked"' : '';
+			echo '<label style="display: block; margin-bottom: 5px;">
+					<input type="radio" name="ayudawp_aiss_options[ai_summary_position]" value="' . esc_attr( $key ) . '" ' . esc_attr( $checked ) . '>
+					' . esc_html( $label ) . '
+				  </label>';
+		}
+	}
+
+	/**
+	 * AI summary collapsed default field
+	 */
+	public function ayudawp_ai_summary_collapsed_default_callback() {
+		$options   = get_option( 'ayudawp_aiss_options' );
+		$collapsed = isset( $options['ai_summary_collapsed_default'] ) ? (bool) $options['ai_summary_collapsed_default'] : true;
+		?>
+		<label>
+			<input type="checkbox" name="ayudawp_aiss_options[ai_summary_collapsed_default]" value="1" <?php checked( $collapsed, true ); ?>>
+			<?php esc_html_e( 'Show summary collapsed by default (visitor expands it manually)', 'ai-share-summarize' ); ?>
+		</label>
+		<p class="description"><?php esc_html_e( 'When disabled, the summary is shown expanded as soon as the page loads.', 'ai-share-summarize' ); ?></p>
+		<?php
+	}
+
+	/**
+	 * AI summary extractive fallback field
+	 */
+	public function ayudawp_ai_summary_use_extractive_fallback_callback() {
+		$options  = get_option( 'ayudawp_aiss_options' );
+		$fallback = isset( $options['ai_summary_use_extractive_fallback'] ) ? (bool) $options['ai_summary_use_extractive_fallback'] : true;
+		?>
+		<label>
+			<input type="checkbox" name="ayudawp_aiss_options[ai_summary_use_extractive_fallback]" value="1" <?php checked( $fallback, true ); ?>>
+			<?php esc_html_e( 'Use the PHP extractive summarizer when WP AI Client is not available', 'ai-share-summarize' ); ?>
+		</label>
+		<p class="description"><?php esc_html_e( 'The extractive fallback picks the most representative sentences from the content. It works without any AI provider but produces a more basic summary.', 'ai-share-summarize' ); ?></p>
+		<?php
+	}
+
+	/**
+	 * AI summary sentence count field (applies to both AI and extractive)
+	 */
+	public function ayudawp_ai_summary_sentences_callback() {
+		$options   = get_option( 'ayudawp_aiss_options' );
+		$sentences = isset( $options['ai_summary_sentences'] ) ? (int) $options['ai_summary_sentences'] : 3;
+		?>
+		<input type="number" min="1" max="5" step="1" name="ayudawp_aiss_options[ai_summary_sentences]" value="<?php echo esc_attr( $sentences ); ?>" class="small-text">
+		<p class="description"><?php esc_html_e( 'Target sentence count for the summary (1-5). Sent to the AI provider as part of the prompt and used as the cap by the extractive fallback.', 'ai-share-summarize' ); ?></p>
+		<?php
+	}
+
+	/**
+	 * AI summary content types field (v2.0.0)
+	 *
+	 * Independent of the buttons' content-type list so the admin can
+	 * generate summaries on different post types than where the share
+	 * buttons appear (e.g. summaries on posts + products, buttons on
+	 * posts only).
+	 */
+	public function ayudawp_ai_summary_content_types_callback() {
+		$options       = get_option( 'ayudawp_aiss_options' );
+		$selected      = ayudawp_aiss_get_summary_post_types();
+		$post_types    = get_post_types( array( 'public' => true ), 'objects' );
+
+		echo '<p class="description">' . esc_html__( 'Select the post types where summaries should be generated and displayed:', 'ai-share-summarize' ) . '</p>';
+
+		echo '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 6px; margin-top: 8px;">';
+		foreach ( $post_types as $post_type ) {
+			if ( 'attachment' === $post_type->name ) {
+				continue;
+			}
+			$checked = in_array( $post_type->name, $selected, true ) ? 'checked="checked"' : '';
+			echo '<label style="display: flex; align-items: center; gap: 6px;">
+					<input type="checkbox" name="ayudawp_aiss_options[ai_summary_content_types][]" value="' . esc_attr( $post_type->name ) . '" ' . esc_attr( $checked ) . '>
+					<span>' . esc_html( $post_type->label ) . ' <code style="font-size:10px;color:#646970;">' . esc_html( $post_type->name ) . '</code></span>
+				  </label>';
+		}
+		echo '</div>';
+
+		echo '<p class="description" style="margin-top: 10px;">'
+			. esc_html__( 'Independent from the share buttons content-type list. Lets you generate summaries on content where buttons are hidden, and vice versa.', 'ai-share-summarize' )
+			. '</p>';
+	}
+
+	/**
+	 * Frontend generation button field (v2.0.0)
+	 */
+	public function ayudawp_ai_summary_frontend_button_callback() {
+		$options = get_option( 'ayudawp_aiss_options' );
+		$enabled = isset( $options['ai_summary_frontend_button'] ) ? (bool) $options['ai_summary_frontend_button'] : false;
+		?>
+		<label>
+			<input type="checkbox" name="ayudawp_aiss_options[ai_summary_frontend_button]" value="1" <?php checked( $enabled, true ); ?>>
+			<?php esc_html_e( 'Show a "Generate summary" button to visitors when a post has no summary yet', 'ai-share-summarize' ); ?>
+		</label>
+		<p class="description"><?php esc_html_e( 'Useful for old posts that were published before this feature existed. Each visitor can trigger one generation per minute per post (rate-limited by IP).', 'ai-share-summarize' ); ?></p>
+		<?php
+	}
+
+	/**
+	 * Frontend force-extractive field (v2.0.0)
+	 */
+	public function ayudawp_ai_summary_frontend_force_extractive_callback() {
+		$options = get_option( 'ayudawp_aiss_options' );
+		$forced  = isset( $options['ai_summary_frontend_force_extractive'] ) ? (bool) $options['ai_summary_frontend_force_extractive'] : true;
+		?>
+		<label>
+			<input type="checkbox" name="ayudawp_aiss_options[ai_summary_frontend_force_extractive]" value="1" <?php checked( $forced, true ); ?>>
+			<?php esc_html_e( 'Restrict visitor-triggered generation to the PHP extractive summarizer (zero cost)', 'ai-share-summarize' ); ?>
+		</label>
+		<p class="description"><?php esc_html_e( 'When disabled, visitor clicks can call the WP AI Client, which consumes credits from your configured provider. Leave enabled to keep costs predictable.', 'ai-share-summarize' ); ?></p>
+		<?php
 	}
 }

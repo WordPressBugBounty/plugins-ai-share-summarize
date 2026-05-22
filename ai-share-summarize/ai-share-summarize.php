@@ -2,12 +2,12 @@
 /**
  * Plugin Name: AI Share & Summarize
  * Plugin URI: https://servicios.ayudawp.com/
- * Description: Share on social media and also generate summaries with citations from the top AIs (Claude, ChatGPT, Google AI, Gemini, Grok, Perplexity, DeepSeek, Mistral, Copilot, Qwen, Meta AI).
- * Version: 1.9.2
+ * Description: Inline AI summary on every post + one-click sharing to social networks and 11 AI assistants (Claude, ChatGPT, Gemini, Grok, Perplexity, DeepSeek, Mistral, Copilot, Qwen, Meta AI). Powered by the new WordPress 7.0 AI Connectors.
+ * Version: 2.0.0
  * Author: Fernando Tellado
  * Author URI: https://ayudawp.com/
  * Text Domain: ai-share-summarize
- * Requires at least: 5.0
+ * Requires at least: 5.6
  * Tested up to: 7.0
  * Requires PHP: 7.4
  * License: GPL v2 or later
@@ -22,7 +22,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Define plugin constants.
-define( 'AYUDAWP_AISS_VERSION', '1.9.2' );
+define( 'AYUDAWP_AISS_VERSION', '2.0.0' );
 define( 'AYUDAWP_AISS_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'AYUDAWP_AISS_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'AYUDAWP_AISS_PLUGIN_BASENAME', plugin_basename( __FILE__ ) );
@@ -71,6 +71,7 @@ class AyudaWP_AI_Share_Summarize {
 		require_once AYUDAWP_AISS_PLUGIN_DIR . 'includes/class-admin.php';
 		require_once AYUDAWP_AISS_PLUGIN_DIR . 'includes/class-seo-integration.php';
 		require_once AYUDAWP_AISS_PLUGIN_DIR . 'includes/class-meta-box.php';
+		require_once AYUDAWP_AISS_PLUGIN_DIR . 'includes/class-ai-summary.php';
 
 		// Analytics system (v1.5.0).
 		require_once AYUDAWP_AISS_PLUGIN_DIR . 'includes/class-database.php';
@@ -98,6 +99,7 @@ class AyudaWP_AI_Share_Summarize {
 		new AyudaWP_AISS_Frontend();
 		new AyudaWP_AISS_Shortcode();
 		new AyudaWP_AISS_Meta_Box();
+		new AyudaWP_AISS_AI_Summary();
 
 		// REST API endpoints.
 		add_action( 'rest_api_init', array( 'AyudaWP_AISS_REST_API', 'ayudawp_register_routes' ) );
@@ -194,6 +196,32 @@ class AyudaWP_AI_Share_Summarize {
 			}
 		}
 
+		// Migration for v2.0.0: AI Summary feature defaults.
+		if ( version_compare( $from_version, '2.0.0', '<' ) ) {
+			$summary_defaults = array(
+				'ai_summary_enabled'                 => true,
+				'ai_summary_use_extractive_fallback' => true,
+				'ai_summary_sentences'               => 3,
+				'ai_summary_position'                => 'before_buttons',
+				'ai_summary_collapsed_default'       => true,
+				'ai_summary_frontend_button'         => false,
+				'ai_summary_frontend_force_extractive' => true,
+			);
+			foreach ( $summary_defaults as $key => $value ) {
+				if ( ! isset( $options[ $key ] ) ) {
+					$options[ $key ] = $value;
+				}
+			}
+			// Seed the summary post-type list from the buttons list so the
+			// feature works out of the box on the same content where buttons
+			// are already enabled, without forcing the admin to re-pick.
+			if ( ! isset( $options['ai_summary_content_types'] ) ) {
+				$options['ai_summary_content_types'] = isset( $options['auto_insert_content_types'] ) && is_array( $options['auto_insert_content_types'] )
+					? $options['auto_insert_content_types']
+					: array( 'post' );
+			}
+		}
+
 		update_option( 'ayudawp_aiss_options', $options );
 	}
 
@@ -228,6 +256,14 @@ class AyudaWP_AI_Share_Summarize {
 			'seo_button_type'            => 'link',
 			'exclude_noindex'            => true,
 			'button_custom_order'        => array(),
+			'ai_summary_enabled'                 => true,
+			'ai_summary_use_extractive_fallback' => true,
+			'ai_summary_sentences'               => 3,
+			'ai_summary_position'                => 'before_buttons',
+			'ai_summary_collapsed_default'       => true,
+			'ai_summary_frontend_button'         => false,
+			'ai_summary_frontend_force_extractive' => true,
+			'ai_summary_content_types'           => array( 'post' ),
 		);
 
 		add_option( 'ayudawp_aiss_options', $default_options );
@@ -251,6 +287,9 @@ class AyudaWP_AI_Share_Summarize {
 		if ( $timestamp ) {
 			wp_unschedule_event( $timestamp, 'ayudawp_aiss_daily_purge' );
 		}
+
+		// Clear any pending async summary generation events.
+		wp_clear_scheduled_hook( 'ayudawp_aiss_generate_summary_async' );
 	}
 
 	/**
@@ -279,12 +318,19 @@ class AyudaWP_AI_Share_Summarize {
 			delete_option( 'ayudawp_aiss_db_version' );
 			delete_option( 'ayudawp_aiss_activation_notice_dismissed' );
 			delete_option( 'ayudawp_aiss_vigia_tip_dismissed' );
+			delete_option( 'ayudawp_aiss_last_ai_error' );
 			delete_transient( 'ayudawp_aiss_just_activated' );
 
 			// Clean up post meta.
 			global $wpdb;
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- postmeta cleanup on uninstall, not cached by design.
 			$wpdb->delete( $wpdb->postmeta, array( 'meta_key' => '_ayudawp_aiss_exclude' ) );
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- postmeta cleanup on uninstall, not cached by design.
+			$wpdb->delete( $wpdb->postmeta, array( 'meta_key' => '_ayudawp_aiss_summary' ) );
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- postmeta cleanup on uninstall, not cached by design.
+			$wpdb->delete( $wpdb->postmeta, array( 'meta_key' => '_ayudawp_aiss_summary_provider' ) );
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- postmeta cleanup on uninstall, not cached by design.
+			$wpdb->delete( $wpdb->postmeta, array( 'meta_key' => '_ayudawp_aiss_summary_hash' ) );
 
 			// Drop analytics table.
 			$table_name      = $wpdb->prefix . 'aiss_clicks';

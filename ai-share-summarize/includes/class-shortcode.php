@@ -21,6 +21,7 @@ class AyudaWP_AISS_Shortcode {
 	 */
 	public function __construct() {
 		add_shortcode( 'ayudawp_share_buttons', array( $this, 'ayudawp_shortcode_share_buttons' ) );
+		add_shortcode( 'ayudawp_aiss_summary', array( $this, 'ayudawp_shortcode_summary' ) );
 	}
 
 	/**
@@ -126,5 +127,43 @@ class AyudaWP_AISS_Shortcode {
 		$html = str_replace( 'class="ayudawp-share-buttons', 'class="ayudawp-share-buttons shortcode-buttons', $html );
 
 		return $html;
+	}
+
+	/**
+	 * Shortcode to display the AI summary for a post (v2.0.0)
+	 *
+	 * Usage: [ayudawp_aiss_summary]
+	 * or:    [ayudawp_aiss_summary post_id="123"]
+	 *
+	 * Outputs nothing when the post has no stored summary, so it is safe
+	 * to drop into templates without conditional wrappers.
+	 *
+	 * @since 2.0.0
+	 * @param array $atts Shortcode attributes.
+	 * @return string Summary HTML or empty string.
+	 */
+	public function ayudawp_shortcode_summary( $atts ) {
+		if ( ! class_exists( 'AyudaWP_AISS_AI_Summary' ) ) {
+			return '';
+		}
+
+		$atts = shortcode_atts(
+			array(
+				'post_id' => get_the_ID(),
+			),
+			$atts,
+			'ayudawp_aiss_summary'
+		);
+
+		$post_id = (int) $atts['post_id'];
+		if ( ! $post_id ) {
+			return '';
+		}
+
+		// Ensure assets are loaded when shortcode is processed late
+		// (page builders may render after wp_enqueue_scripts).
+		ayudawp_aiss_enqueue_frontend_assets();
+
+		return AyudaWP_AISS_AI_Summary::get_summary_html( $post_id );
 	}
 }

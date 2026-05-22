@@ -3,6 +3,24 @@ AI Share & Summarize — Full changelog
 For each release, see the entries below. The latest version is always at the top.
 The current release notes also live in readme.txt under "== Changelog ==".
 
+= 2.0.0 =
+* New: Inline AI summary feature — the plugin's namesake "Summarize" capability now generates a short summary of each post and shows it inline in a collapsible block alongside the share buttons
+* New: Two-tier provider cascade — Level A uses the WordPress 7.0 AI Client (`wp_ai_client_prompt()`) with credentials managed centrally in Settings > Connectors (OpenAI, Anthropic, Google), so no API keys are configured in this plugin
+* New: Level C PHP extractive fallback for sites on WP < 7.0 or without an AI Connector — picks the most representative sentences using token-frequency scoring with a Jaccard-similarity filter to avoid redundant sentences
+* New: Dedicated "AI Summary" settings section with independent post-type selection, position, default collapsed state, sentence count (also used by the AI prompt), extractive fallback opt-out and per-feature controls
+* New: Block editor sidebar panel to view the current summary, edit it manually (which locks it against auto-regeneration) and trigger a synchronous regeneration on demand
+* New: Classic editor meta box equivalent — view, edit and force regeneration on next save, with admin notice showing the result or the underlying AI error
+* New: Visitor-facing "Generate AI summary" button for posts without a stored summary, with admin setting to keep generation extractive-only (zero cost) or allow the AI Client (rate-limited to 1 generation per IP per minute)
+* New: `[ayudawp_aiss_summary]` shortcode to render the summary outside the auto-insert flow (accepts a `post_id` attribute)
+* New: REST endpoints `POST /aiss/v1/summary/regenerate` (capability `edit_post`) and `POST /aiss/v1/summary/generate` (public, rate-limited)
+* New: Schema.org microdata on the summary block (`CreativeWork` + `abstract`) plus `data-nosnippet` so search engines understand it's a derived summary and don't compete it as a featured snippet against the original content
+* New: Last AI Client error is persisted and surfaced in the settings page, so configuration issues are visible without enabling `WP_DEBUG`
+* New: `aiss_summary` icon in `AyudaWP_AISS_Icons` for the collapsible block header
+* New: Filter `ayudawp_aiss_extractive_stopwords` to extend the extractive summarizer with additional languages (ships with English and Spanish)
+* New: Filter `ayudawp_aiss_extractive_weights` to tune lead bonus, title-word weight, minimum sentence length and similarity threshold of the extractive summarizer
+* Changed: Auto generation runs asynchronously via WP-Cron (`wp_schedule_single_event`) to avoid blocking the editor save; explicit user actions (sidebar "Regenerate now", classic-editor "Regenerate on next save") run synchronously for immediate feedback
+* Changed: Bumped minimum WordPress version to 5.6 to use `wp_after_insert_post` (which fires after meta updates and avoids redundant regenerations)
+
 = 1.9.2 =
 * Fixed: Share buttons not appearing with Divi Theme Builder (Divi 4 and Divi 5), FSE block templates and Bricks Builder — these render the post content through the `the_content` filter without a standard WP loop, so the previous `in_the_loop()` and `is_main_query()` guards blocked the auto-insertion. The singular-page path now relies on `is_singular()` plus a post-ID match between `get_the_ID()` and `get_queried_object_id()`, with a per-request "already processed" guard so the same post can never receive duplicate button blocks. Archives keep the original main-loop check
 

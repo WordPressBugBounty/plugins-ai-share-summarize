@@ -182,6 +182,46 @@ class AyudaWP_AISS_Rest_API {
 				),
 			)
 		);
+
+		// AI Summary regeneration (v2.0.0) — editor-triggered, sync.
+		register_rest_route(
+			self::API_NAMESPACE,
+			'/summary/regenerate',
+			array(
+				'methods'             => 'POST',
+				'callback'            => array( __CLASS__, 'ayudawp_regenerate_summary' ),
+				'permission_callback' => function ( $request ) {
+					$post_id = (int) $request->get_param( 'post_id' );
+					return $post_id && current_user_can( 'edit_post', $post_id );
+				},
+				'args'                => array(
+					'post_id' => array(
+						'type'              => 'integer',
+						'required'          => true,
+						'sanitize_callback' => 'absint',
+					),
+				),
+			)
+		);
+
+		// Public-facing summary generation (v2.0.0) — triggered by the
+		// "Generate summary" button in the post for visitors.
+		register_rest_route(
+			self::API_NAMESPACE,
+			'/summary/generate',
+			array(
+				'methods'             => 'POST',
+				'callback'            => array( __CLASS__, 'ayudawp_public_generate_summary' ),
+				'permission_callback' => '__return_true',
+				'args'                => array(
+					'post_id' => array(
+						'type'              => 'integer',
+						'required'          => true,
+						'sanitize_callback' => 'absint',
+					),
+				),
+			)
+		);
 	}
 
 	/**
@@ -706,5 +746,152 @@ class AyudaWP_AISS_Rest_API {
 			'filename' => $filename,
 			'content'  => $content,
 		) );
+	}
+
+	/**
+	 * Regenerate the AI summary for a post (v2.0.0)
+	 *
+	 * Synchronous on purpose — the editor user clicked "Regenerate now"
+	 * and is actively waiting for the response, so we run the cascade in
+	 * the request itself instead of scheduling cron.
+	 *
+	 * @param WP_REST_Request $request Request object with post_id.
+	 * @return WP_REST_Response
+	 */
+	public static function ayudawp_regenerate_summary( $request ) {
+		$post_id = (int) $request->get_param( 'post_id' );
+
+		if ( ! class_exists( 'AyudaWP_AISS_AI_Summary' ) ) {
+			return self::ayudawp_nocache_response( array( 'error' => 'AI Summary class missing' ), 500 );
+		}
+
+		$result = AyudaWP_AISS_AI_Summary::run( $post_id, true );
+
+		if ( is_wp_error( $result ) ) {
+			return self::ayudawp_nocache_response(
+				array(
+					'error'   => $result->get_error_code(),
+					'message' => $result->get_error_message(),
+				),
+				500
+			);
+		}
+
+		return self::ayudawp_nocache_response( array(
+			'summary'  => $result,
+			'provider' => (string) get_post_meta( $post_id, AyudaWP_AISS_AI_Summary::META_PROVIDER, true ),
+			'hash'     => (string) get_post_meta( $post_id, AyudaWP_AISS_AI_Summary::META_HASH, true ),
+		) );
+	}
+
+	/**
+	 * Public generation endpoint for visitors (v2.0.0)
+	 *
+	 * Triggered by the "Generate AI summary" button rendered on posts that
+	 * don't have a stored summary yet. Rate-limited per IP+post to one
+	 * generation per minute to prevent abuse. Returns the rendered summary
+	 * HTML ready to swap into the DOM.
+	 *
+	 * Honors three admin settings:
+	 * - ai_summary_frontend_button must be on (otherwise we 403)
+	 * - ai_summary_frontend_force_extractive (when on) skips the AI Client
+	 *   path and uses the PHP extractive summarizer only — zero cost
+	 * - exclusion (per-post meta box + SEO noindex) is respected
+	 *
+	 * No nonce is enforced because the button is public and page caches
+	 * (SiteGround, WP Rocket, etc.) would bake stale nonces into the HTML.
+	 * Rate limiting + post-exclusion checks provide the protection layer.
+	 *
+	 * @param WP_REST_Request $request Request object with post_id.
+	 * @return WP_REST_Response
+	 */
+	public static function ayudawp_public_generate_summary( $request ) {
+		$post_id = (int) $request->get_param( 'post_id' );
+
+		if ( ! $post_id || ! get_post( $post_id ) ) {
+			return self::ayudawp_nocache_response( array( 'error' => 'invalid_post' ), 400 );
+		}
+
+		if ( ! class_exists( 'AyudaWP_AISS_AI_Summary' ) ) {
+			return self::ayudawp_nocache_response( array( 'error' => 'class_missing' ), 500 );
+		}
+
+		$options = get_option( 'ayudawp_aiss_options', array() );
+
+		if ( empty( $options['ai_summary_frontend_button'] ) ) {
+			return self::ayudawp_nocache_response( array( 'error' => 'frontend_disabled' ), 403 );
+		}
+
+		if ( ayudawp_aiss_is_post_excluded( $post_id ) ) {
+			return self::ayudawp_nocache_response( array( 'error' => 'post_excluded' ), 403 );
+		}
+
+		// If a summary already exists, just return it — avoids duplicate work
+		// when two visitors click around the same time, and means cached
+		// responses degrade gracefully.
+		$existing = (string) get_post_meta( $post_id, AyudaWP_AISS_AI_Summary::META_SUMMARY, true );
+		if ( '' !== $existing ) {
+			return self::ayudawp_nocache_response( array(
+				'html'     => AyudaWP_AISS_AI_Summary::get_summary_html( $post_id ),
+				'provider' => (string) get_post_meta( $post_id, AyudaWP_AISS_AI_Summary::META_PROVIDER, true ),
+			) );
+		}
+
+		// Rate limit: 1 generation per IP per post per minute.
+		$ip       = self::ayudawp_visitor_ip();
+		$rate_key = 'ayudawp_aiss_pub_' . md5( $ip . '|' . $post_id );
+
+		if ( get_transient( $rate_key ) ) {
+			return self::ayudawp_nocache_response(
+				array(
+					'error'   => 'rate_limited',
+					'message' => __( 'Please wait a moment before trying again.', 'ai-share-summarize' ),
+				),
+				429
+			);
+		}
+		set_transient( $rate_key, 1, MINUTE_IN_SECONDS );
+
+		$force_extractive = ! empty( $options['ai_summary_frontend_force_extractive'] );
+
+		$result = AyudaWP_AISS_AI_Summary::run( $post_id, true, $force_extractive );
+
+		if ( is_wp_error( $result ) ) {
+			return self::ayudawp_nocache_response(
+				array(
+					'error'   => $result->get_error_code(),
+					'message' => $result->get_error_message(),
+				),
+				500
+			);
+		}
+
+		return self::ayudawp_nocache_response( array(
+			'html'     => AyudaWP_AISS_AI_Summary::get_summary_html( $post_id ),
+			'provider' => (string) get_post_meta( $post_id, AyudaWP_AISS_AI_Summary::META_PROVIDER, true ),
+		) );
+	}
+
+	/**
+	 * Best-effort visitor IP detection for rate limiting (v2.0.0)
+	 *
+	 * Not used for authentication or anything security-sensitive — only as
+	 * a rate-limit bucket key, so accuracy under reverse proxies is enough.
+	 *
+	 * @return string IP address, or '0.0.0.0' as fallback.
+	 */
+	private static function ayudawp_visitor_ip() {
+		$candidates = array( 'HTTP_CF_CONNECTING_IP', 'HTTP_X_FORWARDED_FOR', 'HTTP_X_REAL_IP', 'REMOTE_ADDR' );
+		foreach ( $candidates as $key ) {
+			if ( empty( $_SERVER[ $key ] ) ) {
+				continue;
+			}
+			$raw   = sanitize_text_field( wp_unslash( $_SERVER[ $key ] ) );
+			$first = trim( explode( ',', $raw )[0] );
+			if ( filter_var( $first, FILTER_VALIDATE_IP ) ) {
+				return $first;
+			}
+		}
+		return '0.0.0.0';
 	}
 }

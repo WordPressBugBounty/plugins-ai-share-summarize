@@ -1,153 +1,45 @@
 === AI Share & Summarize ===
 Contributors: fernandot,ayudawp
 Tags: claude, chatgpt, social share, ai, perplexity
-Requires at least: 5.0
+Requires at least: 5.6
 Tested up to: 7.0
-Stable tag: 1.9.2
+Stable tag: 2.0.0
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Share on social media and generate summaries with citations from leading AIs (Claude, ChatGPT, Gemini, Grok, Perplexity, DeepSeek, Copilot, Qwen)
+Inline AI summary on every post + one-click sharing to social networks and 11 AI assistants. Powered by the new WordPress 7.0 AI Connectors.
 
 == Description ==
 
-**AI Share & Summarize** is the first free plugin published in WordPress.org that combines traditional social media sharing with the innovative functionality of generating summaries while citing the source in the top artificial intelligences.
+**AI Share & Summarize** turns every post into an AI-aware destination. It generates an **inline AI summary** readers can expand next to the share buttons, and offers one-click sharing to every major social network and the leading AI assistants.
 
-= Main features =
+Among the **first plugins to integrate the native WordPress 7.0 AI Connectors API**: configure your AI provider once in **Settings > Connectors** (OpenAI, Anthropic, Google) and the plugin reuses those credentials — no API keys to manage, no extra accounts.
 
-* **Social networks**: X (Twitter), LinkedIn, Facebook, Telegram, WhatsApp, Email, Raindrop, Reddit, Bluesky, LINE, Mastodon, Threads, Pinterest
-* **Artificial intelligences**: Claude, ChatGPT, Google AI, Gemini, Grok, Perplexity, DeepSeek, Mistral AI, Microsoft Copilot, Qwen, Meta AI
-* **Official brand icons**: High-quality SVG icons sourced from Simple Icons for accurate brand representation
-* **Visual customization**: 6 button styles, 4 sizes, custom colors via color picker, and configurable button order
-* **Section titles**: Optional separate headings for AI and Social button groups
-* **Individual exclusion**: Hide buttons on specific posts or pages using a simple meta box
-* **Click analytics dashboard**: Track button clicks by platform and content with timeline charts
-* **Period comparison**: Compare analytics with previous period, same period last year, or custom dates
-* **CSV export**: Download analytics data or timeline summaries as CSV files for analysis in Excel or Google Sheets
-* **Dashboard widget**: Quick stats overview with 7-day sparkline directly on the WordPress dashboard
-* **[VigIA](https://wordpress.org/plugins/vigia/) integration**: Cross-reference click data with AI crawler visits when VigIA plugin is active
-* **SEO plugin integration**: Automatically exclude noindex content (Yoast, Rank Math, All in One SEO, SEOPress, The SEO Framework, NoIndexer)
-* **SEO optimization options**: Choose between `<a>` links with nofollow or `<button>` elements to optimize your link profile
-* **Universal tooltips**: Helpful tooltips on ALL buttons for better user experience
-* **Smart automatic insertion**: Configure exactly where and on which content types to display buttons
-* **Detailed control by content type**: Choose specific post types (posts, pages, products, etc.)
-* **Customizable AI prompt**: Configure the message sent to AIs for better summaries
-* **Customizable title**: Change the text before buttons and choose heading style (h3-h6 or span)
-* **Multiple insertion modes**: Before content, after content, both positions, or shortcode only
-* **6 visual styles**: Minimal, brand colors, outline, dark backgrounds, custom colors, and icons-only
-* **4 button sizes**: Compact, normal, large, and fluid (fills available width)
-* **Flexible icon options**: Add icons to any style or use pure icons-only mode with circular/square shapes
-* **Button ordering**: Social first, AI first, or mixed arrangement with drag & drop reordering within each group
-* **Button alignment**: Choose between left-aligned (default) or centered layout for title and buttons
-* **Data retention control**: Configurable retention period with automatic daily purge and manual data deletion
-* **Mastodon support**: Configurable instance field for federated sharing
-* **Fully responsive**: Adapts to any device and theme with smart mobile layouts
-* **SEO optimized**: Nofollow links and target="_blank" by default, or use button elements
-* **Lightweight**: Optimized modular structure with ultra-fast loading SVG icons
-* **Accessible**: Complies with web accessibility standards with enhanced tooltips
-* **Consistent design**: Same size and behavior for both link and button elements
+= Inline AI Summary (New from 2.0.0) =
 
+* **Two-tier cascade**: Level A uses the WordPress 7.0 AI Client; Level C is a built-in PHP extractive fallback with zero API cost on any WP 5.6+ install.
+* **Collapsible inline block** with native `<details>`, `data-nosnippet` and Schema.org `CreativeWork` microdata so search engines treat it as derived content, not competition.
+* **Editor controls** in the block sidebar and the classic meta box: view, edit manually, regenerate on demand.
+* **Visitor-facing "Generate AI summary" button** for posts without a stored summary, restrictable to extractive-only or open to the AI Client.
+* **Async generation via WP-Cron**. `[ayudawp_aiss_summary]` shortcode also available.
 
-= Why use this plugin? =
+= Sharing =
 
-This plugin helps you:
+* **Social networks**: X (Twitter), LinkedIn, Facebook, Telegram, WhatsApp, Email, Raindrop, Reddit, Bluesky, LINE, Mastodon, Threads, Pinterest.
+* **AI assistants**: Claude, ChatGPT, Google AI, Gemini, Grok, Perplexity, DeepSeek, Mistral, Copilot, Qwen, Meta AI — each opens with a citation-ready prompt linking back to your URL.
+* 6 visual styles, 4 sizes, custom colors, brand SVG icons, dark-mode auto-adaptation, drag-and-drop ordering. SEO-friendly (`<a rel="nofollow">` or `<button>`, auto-exclusion on noindex content for all major SEO plugins).
 
-1. **Generate natural backlinks**: When users summarize your content with AI, they cite your source
-2. **Increase your reach**: Combine traditional social sharing with AI power
-3. **Build authority**: Your content becomes a reference source for future queries
-4. **Boost engagement**: Users can interact with your content in multiple ways
-5. **Optimize SEO**: Choose the HTML element type that best fits your SEO strategy
-6. **Stay ahead**: Be among the first to leverage AI for content distribution
-7. **Modern appearance**: Icons-only mode provides a sleek, professional look
-8. **Global reach**: Support for LINE, Mastodon, and Threads brings access to diverse communities
-9. **Fine control**: Exclude specific pages or noindex content automatically
-10. **Brand consistency**: Custom colors and official brand icons match any site design
+= Analytics =
 
-= Advanced configuration =
+* Click tracking per platform and per post, timeline chart with per-platform breakdown, period comparison (previous period, same period last year, custom range), CSV export.
+* Dashboard widget with 7-day sparkline. [VigIA](https://wordpress.org/plugins/vigia/) cross-reference (clicks vs. AI crawler visits) when active. Redis/Memcached compatible.
 
-* **Smart automatic insertion**: Choose exactly where to insert buttons (before, after, both, or disabled)
-* **Content type control**: Select specific post types from all registered in your WordPress
-* **Individual exclusion**: Hide buttons on any post or page using a meta box checkbox
-* **SEO integration**: Automatically hide buttons on noindex content
-* **Custom AI prompt**: Optimize the message sent to AIs for better summaries with citation
-* **Custom title text**: Configure the text shown before buttons or hide it completely
-* **Section titles**: Set separate headings for AI and Social button groups
-* **Title style control**: Choose between h3, h4, h5, h6 or span for the title element
-* **SEO optimization**: Choose between traditional links or button elements for better link profile control
-* **X (Twitter) mentions**: Configure your profile for automatic mentions in shares
-* **Mastodon instance**: Set your Mastodon server for federated sharing
-* **Custom additional text**: Add personalized text to AI prompts
-* **Visual styles**: 6 predefined styles including outline and custom colors
-* **Button sizes**: Compact, normal, large, or fluid width
-* **Custom colors**: Background and text color picker for full brand control
-* **Advanced icon system**: Show icons with text, icons-only mode, circular or square icons
-* **Button ordering**: Organize buttons as social first, AI first, or mixed, with drag & drop reordering within each group
-* **Button alignment**: Choose left or centered alignment for a cleaner design
-* **Data management**: Configure retention period (1 month to forever), manual data deletion, and optional cleanup on uninstall
-* **Shortcode flexibility**: Use `[ayudawp_share_buttons]` anywhere with extensive parameters
+= Why use it? =
 
-= SEO features =
-
-* **Link element control**: Choose between `<a>` links with nofollow or `<button>` elements
-* **No PageRank leakage**: All links include rel="nofollow noopener" by default
-* **Crawl budget optimization**: Button elements are not crawled by search engines
-* **Clean link profile**: Reduce the total number of outbound links on your pages
-* **Semantic markup**: Button elements are semantically correct for action triggers
-* **Flexible configuration**: Set different options for different pages using shortcodes
-* **Noindex exclusion**: Automatically hide buttons on content marked as noindex
-
-= Analytics features =
-
-* **Click tracking**: Every button click is recorded with platform, post, and date
-* **Timeline chart**: Visualize total clicks over time with a daily breakdown
-* **Per-platform timeline**: See each platform's performance in the same chart with brand colors and interactive legend
-* **Period comparison**: Compare current data with the previous period, same period last year, or a custom date range
-* **Comparison indicators**: Stat cards show percentage change with color-coded arrows when comparison is active
-* **Comparison chart**: Timeline switches to total view with a dashed overlay line and a detailed two-column tooltip
-* **Platform breakdown table**: Ranked list of platforms by total clicks with paginated navigation
-* **Content performance table**: Ranked list of posts and pages by total clicks with direct links and paginated navigation
-* **Platform type badges**: Visual distinction between Social and AI platforms in all tables
-* **Date range filters**: Filter data by 7, 15, 30, 90, 180, 365 days or a custom date range
-* **CSV export dropdown**: Export the full dataset (current period) or a daily timeline summary, with comparison columns when active
-* **Dashboard widget**: 7-day sparkline chart and top platforms summary on the WordPress admin homepage
-* **VigIA integration**: When VigIA plugin is active, cross-reference your share clicks with AI crawler visits
-* **Cached queries**: Analytics queries are cached for 5 minutes and compatible with Redis and Memcached
-* **REST API**: Lightweight endpoints power all analytics views without full page reloads
-
-= Icon system features =
-
-* **Official brand icons**: Accurate SVG paths from Simple Icons for recognizable platform representation
-* **Icons-only style**: Modern button design showing only platform icons
-* **Icons with text**: Add recognizable icons to the left of button text in any style
-* **Responsive design**: Icons automatically adapt size and layout for mobile devices
-* **Lightweight SVG**: Ultra-optimized icons for minimal performance impact
-* **Smart tooltips**: Platform names appear on hover for ALL buttons
-* **Flexible shapes**: Choose between circular or square corners for icons-only buttons
-* **Consistent sizing**: Same dimensions for both link and button elements
-
-= Special AI features =
-
-* **Multiple AI platforms**: Support for 11 different AI services
-* **Gemini integration**: Automatically copies prompt to clipboard and opens Gemini
-* **DeepSeek integration**: Automatically copies prompt to clipboard and opens DeepSeek
-* **Copilot integration**: Automatically copies prompt to clipboard and opens Copilot
-* **Qwen integration**: Copies prompt to clipboard and opens Alibaba's AI assistant
-* **Meta AI integration**: Copies prompt to clipboard and opens Meta's AI assistant
-* **Optimized prompts**: Pre-configured messages for best summary results with citation
-* **Direct links**: Each AI opens with the complete prompt ready to process
-* **Source citation**: All prompts automatically include your content URL as source
-* **Language support**: Configure prompts to request responses in any language
-
-= Compatibility =
-
-* Supports any WordPress theme following standards
-* Works with Custom Post Types automatically  
-* Optimized for WooCommerce products
-* Compatible with page builders (Elementor, Gutenberg, etc.)
-* Multi-language ready with automatic translations
-* No external dependencies or conflicts
-* Compatible with major SEO plugins
+1. **Cite your source naturally**: when readers expand the summary or share to an AI assistant, your URL travels with the content.
+2. **Reach every audience**: full social spectrum plus 11 AI assistants in one place.
+3. **Future-proof**: built on WP 7.0 Connectors and a REST API ready for agentic clients.
 
 == Installation ==
 
@@ -187,10 +79,17 @@ This plugin helps you:
 15. **Set button order**: Social first, AI first, or mixed — drag & drop to reorder within each group
 16. **Configure SEO settings**: Choose between links with nofollow or button elements
 17. **Configure data retention**: Set retention period and optionally delete all data when plugin is uninstalled
-18. **Save changes**
+18. **Configure AI Summary** (new from 2.0.0):
+    - Enable the inline AI summary feature
+    - Choose position (before / after the buttons, before the content, or disabled)
+    - Pick the post types where summaries should be generated (independent from the buttons' list)
+    - Optionally enable the visitor-facing "Generate AI summary" button for posts without a stored summary
+    - On WordPress 7.0+, configure your AI provider in **Settings > Connectors** (the plugin reuses those credentials — no API keys to manage here)
+19. **Save changes**
 
 **Manual insertion with shortcode:**
-- Basic: `[ayudawp_share_buttons]`
+- Share buttons: `[ayudawp_share_buttons]`
+- AI summary block: `[ayudawp_aiss_summary]` or `[ayudawp_aiss_summary post_id="123"]`
 - Specific buttons: `[ayudawp_share_buttons buttons="claude,twitter,linkedin,deepseek,mastodon"]`
 - Custom style: `[ayudawp_share_buttons style="minimal" show_title="false"]`
 - With icons: `[ayudawp_share_buttons show_icons="true" style="brand"]`
@@ -201,16 +100,40 @@ This plugin helps you:
 - Button size: `[ayudawp_share_buttons size="compact"]`
 - Outline style: `[ayudawp_share_buttons style="outline" show_icons="true"]`
 
-**Individual exclusion:**
-- Edit any post or page
-- Find the "AI Share & Summarize" meta box in the sidebar
-- Check "Hide share buttons on this content" to exclude that specific content
+**Per-post controls (block editor sidebar / classic meta box):**
+- Hide share buttons on this specific post
+- View, edit and regenerate the AI summary on demand
+- Manually-edited summaries are locked against auto-regeneration
 
 == Frequently Asked Questions ==
 
 = Is this plugin completely free? =
 
 Yes, AI Share & Summarize is 100% free with all features included, including support for all social networks, AI platforms, and the full analytics dashboard with CSV export.
+
+= How does the inline AI summary work? =
+
+When you publish or update a post, the plugin generates a short summary asynchronously (in a background WP-Cron event, to avoid blocking the editor save). The summary then appears inline next to the share buttons, inside a collapsible block. Visitors can expand it without leaving the page. You can disable the feature globally in **Settings > AI Share & Summarize > AI Summary**, choose where the summary is placed (before/after the buttons, or before the content), and override or edit the text per post from the editor sidebar.
+
+= Where do I configure API keys for the AI summary? =
+
+You don't configure keys in this plugin. The summary feature relies on the WordPress 7.0 **AI Client** introduced in core, which manages credentials centrally in **Settings > Connectors**. Configure your preferred provider (OpenAI, Anthropic, Google) there once and every plugin on the site — including this one — uses those credentials.
+
+= What happens on WordPress versions older than 7.0? =
+
+On WP < 7.0 (or 7.0+ without a Connector configured), the plugin falls back to a PHP extractive summarizer: it picks the most representative sentences from your content based on word frequency. The result is labelled "Basic summary" in the frontend so readers know it isn't AI-generated. You can disable the fallback if you only want AI-quality summaries.
+
+= Why does my AI summary say "Basic summary"? =
+
+That tag appears when the summary was produced by the PHP extractive fallback instead of the WP AI Client. This happens when WordPress 7.0 is not installed, when no AI Connector is configured in **Settings > Connectors**, or when the AI provider call returned an error. Configure a Connector and republish the post to get an AI-generated summary; the "Basic summary" label disappears automatically.
+
+= Is the post content sent to a third-party AI service? =
+
+Only when the WP AI Client integration is active. In that case, the post content (title plus up to ~3000 characters of body text) is sent to whatever provider you configured in **Settings > Connectors** (OpenAI, Anthropic or Google). The PHP extractive fallback runs entirely on your server and never sends data anywhere. You can disable AI generation completely in the plugin settings to keep everything local.
+
+= AI generation worked before, now everything falls back to "Basic summary". What changed? =
+
+If you have the canonical **AI** plugin from wordpress.org installed, go to **Tools > Connector Approvals** and make sure the toggle next to "AI Share & Summarize" is enabled for your provider. That plugin's approval system intercepts outbound AI requests and silently blocks any plugin it hasn't approved yet. When this is the likely cause, the plugin's settings page surfaces a direct link to the approvals screen alongside the standard error message.
 
 = How does the analytics dashboard work? =
 
@@ -393,6 +316,40 @@ The plugin detects and integrates with:
 
 When enabled, buttons will automatically be hidden on content marked as noindex in any of these plugins.
 
+== External services ==
+
+This plugin connects to third-party AI providers **only when the inline AI Summary feature is enabled** and an AI Connector is configured (or the WP AI Client is available). All other features — social and AI share buttons, click analytics, the extractive PHP fallback summary — run entirely on your own server and do not contact any external service.
+
+= AI Summary generation =
+
+When a post is saved (or when the editor / a visitor explicitly clicks "Regenerate" or "Generate AI summary"), the plugin uses the WordPress 7.0 AI Client (`wp_ai_client_prompt()`) to request a short summary from whichever provider you configured in **Settings > Connectors**. The plugin never stores your API keys — they are managed centrally by WordPress core.
+
+What is sent:
+
+- Post title (plain text)
+- Post content (HTML stripped, up to ~3000 characters of plain text)
+- A short instruction asking the provider to return a summary
+
+What is **not** sent: API keys (managed by core Connectors), visitor IP addresses, user accounts, analytics data, or any other personal data of your readers.
+
+Possible destinations (depending on which Connector your administrator activates):
+
+- **OpenAI** — [Terms of use](https://openai.com/policies/terms-of-use) · [Privacy policy](https://openai.com/policies/privacy-policy)
+- **Anthropic** — [Terms of service](https://www.anthropic.com/legal/consumer-terms) · [Privacy policy](https://www.anthropic.com/legal/privacy)
+- **Google AI** — [Terms of service](https://policies.google.com/terms) · [Privacy policy](https://policies.google.com/privacy)
+
+If you do not configure any Connector, or your WordPress version is below 7.0, the plugin falls back to the local PHP extractive summarizer and no external request is made.
+
+= How to opt out =
+
+- Disable the feature in **Settings > AI Share & Summarize > AI Summary** (uncheck "Enable AI Summary").
+- Or keep AI Summary enabled but uncheck "Use extractive fallback" while leaving no Connector configured — no requests will be sent, and summaries simply won't be generated.
+- The visitor-facing "Generate AI summary" button is off by default; if enabled, you can additionally restrict it to the extractive PHP path so visitor clicks never reach an external provider.
+
+= Sharing buttons =
+
+The social and AI sharing buttons render as `<a>` / `<button>` elements that open the respective destination only when the **visitor** clicks them — your server does not contact those services. The plugin's analytics endpoint that records button clicks runs locally on your own site.
+
 == Screenshots ==
 
 1. Share and AI summarize buttons in action on a post
@@ -407,26 +364,27 @@ When enabled, buttons will automatically be hidden on content marked as noindex 
 
 == Changelog ==
 
-= 1.9.2 =
-* Fixed: Share buttons not appearing with Divi Theme Builder (Divi 4 and Divi 5), FSE block templates and Bricks Builder — these render the post content through the `the_content` filter without a standard WP loop, so the previous `in_the_loop()` and `is_main_query()` guards blocked the auto-insertion. The singular-page path now relies on `is_singular()` plus a post-ID match between `get_the_ID()` and `get_queried_object_id()`, with a per-request "already processed" guard so the same post can never receive duplicate button blocks. Archives keep the original main-loop check
-
-= 1.9.1 =
-* Fixed: Empty space below the footer on themes that don't clip body overflow — universal tooltips were created at the end of `<body>` with no initial coordinates, extending the document scroll height by their static size
-
-= 1.9.0 =
-* Added: Optional "Dark mode adaptation" setting (Disabled by default / Auto). When set to Auto, a tiny script measures the real background luminance of the buttons container and only adapts colors when it is genuinely dark — so light pages stay untouched even if the visitor's OS prefers dark
-* Added: Light border on X, Threads and Grok buttons over dark backgrounds so they stand out from the page (Auto mode)
-* Added: Section and global titles now also display when using the "Icons only" button style
-* Improved: Outline style shows X, Threads and Grok in white over dark backgrounds (instead of unreadable black) — Auto mode
-* Improved: Minimal style text and titles use legible light colors on dark backgrounds — Auto mode
-* Changed: Version history moved to a dedicated changelog.txt file served from the plugin's public SVN, keeping readme.txt focused on the current release
+= 2.0.0 =
+* New: Inline AI summary feature — the plugin's namesake "Summarize" capability now generates a short summary of each post and shows it inline in a collapsible block alongside the share buttons
+* New: Two-tier provider cascade — Level A uses the WordPress 7.0 AI Client (`wp_ai_client_prompt()`) with credentials managed centrally in Settings > Connectors (OpenAI, Anthropic, Google), so no API keys are configured in this plugin
+* New: Level C PHP extractive fallback for sites on WP < 7.0 or without an AI Connector — picks the most representative sentences using token-frequency scoring with a Jaccard-similarity filter to avoid redundant sentences in the output
+* New: Dedicated "AI Summary" settings section with independent post-type selection, position, default collapsed state, sentence count (also used by the AI prompt), extractive fallback opt-out and per-feature controls
+* New: Block editor sidebar panel to view the current summary, edit it manually (which locks it against auto-regeneration) and trigger a synchronous regeneration on demand
+* New: Classic editor meta box equivalent — view, edit and force regeneration on next save, with admin notice showing the result or the underlying AI error
+* New: Visitor-facing "Generate AI summary" button for posts without a stored summary, with admin setting to keep generation extractive-only (zero cost) or allow the AI Client (rate-limited to 1 generation per IP per minute)
+* New: `[ayudawp_aiss_summary]` shortcode to render the summary outside the auto-insert flow (accepts a `post_id` attribute)
+* New: REST endpoints `POST /aiss/v1/summary/regenerate` (capability `edit_post`) and `POST /aiss/v1/summary/generate` (public, rate-limited)
+* New: Schema.org microdata on the summary block (`CreativeWork` + `abstract`) plus `data-nosnippet` so search engines understand it's a derived summary and don't compete it as a featured snippet against the original content
+* New: Last AI Client error is persisted and surfaced in the settings page, so configuration issues are visible without enabling `WP_DEBUG`
+* Changed: Auto generation runs asynchronously via WP-Cron (`wp_schedule_single_event`) to avoid blocking the editor save; explicit user actions (sidebar "Regenerate now", classic-editor "Regenerate on next save") run synchronously for immediate feedback
+* Changed: Bumped minimum WordPress version to 5.6 to use `wp_after_insert_post` (which fires after meta updates and avoids redundant regenerations)
 
 For older changelog entries, please check the [changelog.txt](https://plugins.svn.wordpress.org/ai-share-summarize/trunk/changelog.txt) file
 
 == Upgrade Notice ==
 
-= 1.9.2 =
-Bug fix: share buttons now appear correctly on sites using Divi Theme Builder (Divi 4 and Divi 5), FSE block templates and Bricks Builder, where they were silently skipped because these builders run the content filter outside a standard WP loop.
+= 2.0.0 =
+New feature: inline AI summary block, generated automatically with the WP 7.0 AI Client and a PHP extractive fallback for older sites. Configure under Settings > AI Share & Summarize > AI Summary. Minimum WordPress version is now 5.6.
 
 == Advanced Usage ==
 
@@ -490,6 +448,16 @@ The `[ayudawp_share_buttons]` shortcode accepts several parameters:
 `[ayudawp_share_buttons style="icons-only" icon_style="square" size="large"]`
 
 `[ayudawp_share_buttons size="fluid" style="outline" show_icons="true"]`
+
+= AI summary shortcode (v2.0.0) =
+
+The `[ayudawp_aiss_summary]` shortcode renders the AI-generated summary as a standalone collapsible block. Useful when you want to place the summary somewhere other than where the share buttons are auto-inserted, or when you have buttons disabled but still want to surface the summary.
+
+**post_id**: Render the summary of a specific post
+- Example: `[ayudawp_aiss_summary post_id="123"]`
+- Defaults to the current post in the loop when omitted
+
+The shortcode outputs nothing when the post has no stored summary, so it is safe to drop into templates without conditional wrappers.
 
 = CSS Customization Guide =
 
