@@ -3,6 +3,9 @@ AI Share & Summarize — Full changelog
 For each release, see the entries below. The latest version is always at the top.
 The current release notes also live in readme.txt under "== Changelog ==".
 
+= 2.0.1 =
+* Fix: Visitor-facing "Generate AI summary" click made the summary box look empty until the page was reloaded — the placeholder element was being replaced by the inline critical CSS `<style>` block instead of the actual `<aside>` summary. The replacement now targets the `<aside>` element explicitly.
+
 = 2.0.0 =
 * New: Inline AI summary feature — the plugin's namesake "Summarize" capability now generates a short summary of each post and shows it inline in a collapsible block alongside the share buttons
 * New: Two-tier provider cascade — Level A uses the WordPress 7.0 AI Client (`wp_ai_client_prompt()`) with credentials managed centrally in Settings > Connectors (OpenAI, Anthropic, Google), so no API keys are configured in this plugin
@@ -18,8 +21,11 @@ The current release notes also live in readme.txt under "== Changelog ==".
 * New: `aiss_summary` icon in `AyudaWP_AISS_Icons` for the collapsible block header
 * New: Filter `ayudawp_aiss_extractive_stopwords` to extend the extractive summarizer with additional languages (ships with English and Spanish)
 * New: Filter `ayudawp_aiss_extractive_weights` to tune lead bonus, title-word weight, minimum sentence length and similarity threshold of the extractive summarizer
-* Changed: Auto generation runs asynchronously via WP-Cron (`wp_schedule_single_event`) to avoid blocking the editor save; explicit user actions (sidebar "Regenerate now", classic-editor "Regenerate on next save") run synchronously for immediate feedback
-* Changed: Bumped minimum WordPress version to 5.6 to use `wp_after_insert_post` (which fires after meta updates and avoids redundant regenerations)
+* New: Async generation via WP-Cron (`wp_schedule_single_event`) so the editor save never blocks waiting for the AI provider; explicit user actions (sidebar "Regenerate now", classic-editor "Regenerate on next save") run synchronously for immediate feedback
+* Improved: Frontend "Generate AI summary" button rewritten in vanilla JS (outside the jQuery ready cycle) so it survives aggressive defer/async optimizations from caching and performance plugins
+* Improved: Critical inline CSS is now printed alongside the summary HTML so the collapsible block stays visually correct even when the main stylesheet is deferred with `rel="preload"`
+* Improved: Shortcodes (`[gallery]`, `[caption]`, plugin-defined ones, etc.) are now stripped from post content before summarization so the resulting summary no longer includes raw shortcode markup
+* Improved: Minimum WordPress version raised to 5.6 to use `wp_after_insert_post`, which fires after meta updates and avoids redundant regenerations
 
 = 1.9.2 =
 * Fixed: Share buttons not appearing with Divi Theme Builder (Divi 4 and Divi 5), FSE block templates and Bricks Builder — these render the post content through the `the_content` filter without a standard WP loop, so the previous `in_the_loop()` and `is_main_query()` guards blocked the auto-insertion. The singular-page path now relies on `is_singular()` plus a post-ID match between `get_the_ID()` and `get_queried_object_id()`, with a per-request "already processed" guard so the same post can never receive duplicate button blocks. Archives keep the original main-loop check

@@ -2,7 +2,7 @@
  * AI Share & Summarize Plugin - JavaScript
  * Advanced functionality for tooltips, hover effects, responsive behavior, click tracking
  * and the visitor-facing AI summary generation button (v2.0.0).
- * Version: 2.0.0
+ * Version: 2.0.1
  */
 
 /**
@@ -445,57 +445,104 @@ jQuery(document).ready(function($) {
         }
     });
 
-    /**
-     * AI Summary frontend generation button (v2.0.0)
-     *
-     * Renders the summary on demand for visitors when the post doesn't
-     * have one stored. Delegated handler so it works for shortcode-rendered
-     * placeholders and dynamic content (page builders, ajax loaders).
-     */
-    $(document).on('click', '.ayudawp-aiss-summary-generate-btn', function(e) {
-        e.preventDefault();
+});
 
-        var $btn         = $(this);
-        var $placeholder = $btn.closest('.ayudawp-aiss-summary--placeholder');
-        var postId       = parseInt($placeholder.data('post-id'), 10);
+/**
+ * AI Summary frontend generation button (v2.0.0)
+ *
+ * Vanilla JS — runs outside jQuery so the handler survives aggressive
+ * defer/async optimizations from caching/perf plugins (e.g. wpo-tweaks,
+ * WP Rocket, LiteSpeed). Event delegation on document so it picks up
+ * placeholders rendered by shortcodes, page builders or AJAX-loaded
+ * content. Uses fetch() with credentials so it works for logged-in and
+ * anonymous visitors alike.
+ *
+ * @since 2.0.0
+ */
+(function () {
+    'use strict';
 
-        if (!postId || $btn.prop('disabled')) {
+    function ayudawpAissInitSummaryButton() {
+        if (document.body && document.body.__aissSummaryBtnBound) {
             return;
         }
+        if (document.body) {
+            document.body.__aissSummaryBtnBound = true;
+        }
 
-        var L = window.ayudawpAissL10n || {};
-        var originalLabel = $btn.find('.ayudawp-aiss-summary-label').text();
-
-        $btn.prop('disabled', true);
-        $btn.find('.ayudawp-aiss-summary-label').text(L.summaryGenerating || 'Generating…');
-
-        var endpoint = (L.publicGenerateUrl || (window.location.origin + '/wp-json/aiss/v1/summary/generate'));
-
-        $.ajax({
-            url:      endpoint,
-            method:   'POST',
-            dataType: 'json',
-            contentType: 'application/json',
-            data:     JSON.stringify({ post_id: postId })
-        }).done(function(response) {
-            if (response && response.html) {
-                $placeholder.replaceWith(response.html);
-            } else {
-                $btn.find('.ayudawp-aiss-summary-label').text(L.summaryGenerateError || 'Generation failed. Try again.');
-                $btn.prop('disabled', false);
+        document.addEventListener('click', function (e) {
+            var btn = e.target && e.target.closest ? e.target.closest('.ayudawp-aiss-summary-generate-btn') : null;
+            if (!btn) {
+                return;
             }
-        }).fail(function(xhr) {
-            var msg = L.summaryGenerateError || 'Generation failed. Try again.';
-            if (xhr && xhr.responseJSON && xhr.responseJSON.message) {
-                msg = xhr.responseJSON.message;
-            }
-            $btn.find('.ayudawp-aiss-summary-label').text(msg);
-            // Re-enable after a short cooldown so the user can retry.
-            setTimeout(function() {
-                $btn.prop('disabled', false);
-                $btn.find('.ayudawp-aiss-summary-label').text(originalLabel);
-            }, 3000);
-        });
-    });
+            e.preventDefault();
 
-});
+            var placeholder = btn.closest('.ayudawp-aiss-summary--placeholder');
+            if (!placeholder) {
+                return;
+            }
+            var postId = parseInt(placeholder.getAttribute('data-post-id'), 10);
+            if (!postId || btn.disabled) {
+                return;
+            }
+
+            var L = window.ayudawpAissL10n || {};
+            var labelEl = btn.querySelector('.ayudawp-aiss-summary-label');
+            var originalLabel = labelEl ? labelEl.textContent : '';
+
+            btn.disabled = true;
+            if (labelEl) {
+                labelEl.textContent = L.summaryGenerating || 'Generating…';
+            }
+
+            var endpoint = L.publicGenerateUrl || (window.location.origin + '/wp-json/aiss/v1/summary/generate');
+
+            fetch(endpoint, {
+                method:      'POST',
+                credentials: 'same-origin',
+                headers:     { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+                body:        JSON.stringify({ post_id: postId })
+            }).then(function (response) {
+                return response.json().then(function (data) {
+                    return { ok: response.ok, data: data };
+                });
+            }).then(function (result) {
+                if (result.ok && result.data && result.data.html) {
+                    var wrapper = document.createElement('div');
+                    wrapper.innerHTML = result.data.html.trim();
+                    // The server response includes an inline <style> for the
+                    // critical CSS plus the actual <aside> summary block.
+                    // Picking firstChild would replace the placeholder with
+                    // the invisible <style>, making the box disappear. Pick
+                    // the real summary node instead (the .ayudawp-aiss-summary
+                    // that is NOT the placeholder we're replacing).
+                    var node = wrapper.querySelector('.ayudawp-aiss-summary:not(.ayudawp-aiss-summary--placeholder)');
+                    if (node && placeholder.parentNode) {
+                        placeholder.parentNode.replaceChild(node, placeholder);
+                    }
+                    return;
+                }
+                var msg = (result.data && result.data.message) ? result.data.message : (L.summaryGenerateError || 'Generation failed. Try again.');
+                if (labelEl) { labelEl.textContent = msg; }
+                window.setTimeout(function () {
+                    btn.disabled = false;
+                    if (labelEl) { labelEl.textContent = originalLabel; }
+                }, 3000);
+            }).catch(function () {
+                if (labelEl) { labelEl.textContent = L.summaryGenerateError || 'Generation failed. Try again.'; }
+                window.setTimeout(function () {
+                    btn.disabled = false;
+                    if (labelEl) { labelEl.textContent = originalLabel; }
+                }, 3000);
+            });
+        }, false);
+    }
+
+    // Bind whenever the DOM is ready — works whether this script runs
+    // before or after DOMContentLoaded (covers defer/async loading).
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', ayudawpAissInitSummaryButton);
+    } else {
+        ayudawpAissInitSummaryButton();
+    }
+})();

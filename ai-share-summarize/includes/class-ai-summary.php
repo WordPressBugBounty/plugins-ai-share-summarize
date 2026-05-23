@@ -394,6 +394,45 @@ class AyudaWP_AISS_AI_Summary {
 	}
 
 	/**
+	 * Critical inline CSS for the summary block (v2.0.0)
+	 *
+	 * Printed once per page right before the first summary or placeholder
+	 * is rendered. Performance plugins (wpo-tweaks, WP Rocket, LiteSpeed,
+	 * etc.) often defer the main stylesheet with `rel="preload"`, which
+	 * can leave the block visually broken until the deferred CSS finishes
+	 * loading — or fail entirely on browsers/CSPs that block onload
+	 * handlers. These few rules guarantee the summary looks acceptable
+	 * even when the external stylesheet never applies.
+	 *
+	 * The full stylesheet still wins because it ships richer rules
+	 * (dark-mode adaptation, caret rotation, attribution color), but the
+	 * baseline survives without it.
+	 *
+	 * @return string `<style>` tag, or empty when already printed this request.
+	 */
+	public static function get_critical_inline_style() {
+		static $printed = false;
+		if ( $printed ) {
+			return '';
+		}
+		$printed = true;
+		// phpcs:disable Generic.WhiteSpace.ScopeIndent.IncorrectExact -- one-liner CSS for minimal payload.
+		return '<style id="ayudawp-aiss-critical-inline">'
+			. '.ayudawp-aiss-summary{margin:24px 0;padding:12px 16px;border:1px solid #e0e0e0;border-radius:6px}'
+			. '.ayudawp-aiss-summary-details{margin:0}'
+			. '.ayudawp-aiss-summary-details>summary{cursor:pointer;font-weight:600;list-style:none;display:inline-flex;align-items:center;gap:8px}'
+			. '.ayudawp-aiss-summary-details>summary::-webkit-details-marker{display:none}'
+			. '.ayudawp-aiss-summary-content{margin-top:8px}'
+			. '.ayudawp-aiss-summary-content p{margin:0;line-height:1.5}'
+			. '.ayudawp-aiss-summary--placeholder{padding:0;border:none;background:transparent}'
+			. '.ayudawp-aiss-summary-generate-btn{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;background:transparent;border:1px solid #e0e0e0;border-radius:6px;font-weight:600;font-size:.95em;color:inherit;cursor:pointer}'
+			. '.ayudawp-aiss-summary-icon{display:inline-flex;align-items:center}'
+			. '.ayudawp-aiss-summary-icon svg{width:16px;height:16px}'
+			. '</style>';
+		// phpcs:enable
+	}
+
+	/**
 	 * Get the summary HTML to render in the frontend or shortcode
 	 *
 	 * Returns an empty string when there is no stored summary so callers
@@ -428,6 +467,8 @@ class AyudaWP_AISS_AI_Summary {
 		$label = __( 'AI Summary', 'ai-share-summarize' );
 
 		ob_start();
+		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static built-in critical CSS, no user input.
+		echo self::get_critical_inline_style();
 		?>
 		<aside class="ayudawp-aiss-summary"
 		       role="complementary"
@@ -482,6 +523,8 @@ class AyudaWP_AISS_AI_Summary {
 		$label = __( 'Generate AI summary', 'ai-share-summarize' );
 
 		ob_start();
+		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static built-in critical CSS, no user input.
+		echo self::get_critical_inline_style();
 		?>
 		<aside class="ayudawp-aiss-summary ayudawp-aiss-summary--placeholder"
 		       role="complementary"

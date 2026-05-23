@@ -498,6 +498,13 @@ function ayudawp_aiss_clean_html_for_summary( $html ) {
 		return '';
 	}
 
+	// 0. Remove shortcodes wholesale BEFORE anything else, so the summary
+	//    never includes raw shortcode markup like `[gallery ids="1,2,3"]`,
+	//    `[caption ...]...[/caption]` or any plugin-defined shortcode. We
+	//    cannot `do_shortcode()` here because that would inject the whole
+	//    rendered gallery/embed back into the prose we want to summarize.
+	$html = strip_shortcodes( $html );
+
 	// 1. Strip block comments (Gutenberg leaves them in post_content).
 	$html = preg_replace( '#<!--.*?-->#s', '', $html );
 

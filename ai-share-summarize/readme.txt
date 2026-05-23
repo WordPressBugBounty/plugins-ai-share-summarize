@@ -3,7 +3,7 @@ Contributors: fernandot,ayudawp
 Tags: claude, chatgpt, social share, ai, perplexity
 Requires at least: 5.6
 Tested up to: 7.0
-Stable tag: 2.0.0
+Stable tag: 2.0.1
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -352,17 +352,22 @@ The social and AI sharing buttons render as `<a>` / `<button>` elements that ope
 
 == Screenshots ==
 
-1. Share and AI summarize buttons in action on a post
+1. Inline AI summary collapsible block above the share and AI buttons on a post
 2. Mobile responsive view
-3. Complete plugin settings page
+3. Plugin settings for social and AI sharing buttons
 4. Prompt opened on ChatGPT
-5. Meta box for individual exclusion
+5. Editor controls box: hide buttons or manage the AI summary
 6. SEO integration setting with detected SEO plugin
 7. Analytics dashboard with timeline chart and platform breakdown
 8. Period comparison with timeline overlay and stat card indicators
 9. Dashboard widget with sparkline and top platforms
+10. AI Summary settings with WP 7.0 AI Client status and Connectors link
+11. Visitor-facing "Generate AI summary" button for posts without a stored summary
 
 == Changelog ==
+
+= 2.0.1 =
+* Fix: Visitor-facing "Generate AI summary" click made the summary box look empty until the page was reloaded — the placeholder element was being replaced by the inline critical CSS `<style>` block instead of the actual `<aside>` summary. The replacement now targets the `<aside>` element explicitly.
 
 = 2.0.0 =
 * New: Inline AI summary feature — the plugin's namesake "Summarize" capability now generates a short summary of each post and shows it inline in a collapsible block alongside the share buttons
@@ -376,15 +381,18 @@ The social and AI sharing buttons render as `<a>` / `<button>` elements that ope
 * New: REST endpoints `POST /aiss/v1/summary/regenerate` (capability `edit_post`) and `POST /aiss/v1/summary/generate` (public, rate-limited)
 * New: Schema.org microdata on the summary block (`CreativeWork` + `abstract`) plus `data-nosnippet` so search engines understand it's a derived summary and don't compete it as a featured snippet against the original content
 * New: Last AI Client error is persisted and surfaced in the settings page, so configuration issues are visible without enabling `WP_DEBUG`
-* Changed: Auto generation runs asynchronously via WP-Cron (`wp_schedule_single_event`) to avoid blocking the editor save; explicit user actions (sidebar "Regenerate now", classic-editor "Regenerate on next save") run synchronously for immediate feedback
-* Changed: Bumped minimum WordPress version to 5.6 to use `wp_after_insert_post` (which fires after meta updates and avoids redundant regenerations)
+* New: Async generation via WP-Cron (`wp_schedule_single_event`) so the editor save never blocks waiting for the AI provider; explicit user actions (sidebar "Regenerate now", classic-editor "Regenerate on next save") run synchronously for immediate feedback
+* Improved: Frontend "Generate AI summary" button rewritten in vanilla JS so it survives aggressive defer/async optimizations from caching and performance plugins
+* Improved: Critical inline CSS printed alongside the summary HTML so the collapsible block stays visually correct even when the main stylesheet is deferred with `rel="preload"`
+* Improved: Shortcodes (`[gallery]`, `[caption]`, plugin-defined ones) are stripped from post content before summarization so the resulting summary no longer includes raw shortcode markup
+* Improved: Minimum WordPress version raised to 5.6 to use `wp_after_insert_post`, which fires after meta updates and avoids redundant regenerations
 
 For older changelog entries, please check the [changelog.txt](https://plugins.svn.wordpress.org/ai-share-summarize/trunk/changelog.txt) file
 
 == Upgrade Notice ==
 
-= 2.0.0 =
-New feature: inline AI summary block, generated automatically with the WP 7.0 AI Client and a PHP extractive fallback for older sites. Configure under Settings > AI Share & Summarize > AI Summary. Minimum WordPress version is now 5.6.
+= 2.0.1 =
+Hotfix for the visitor-facing "Generate AI summary" button: the summary box no longer goes blank after clicking. No other behavior changes vs 2.0.0.
 
 == Advanced Usage ==
 
@@ -591,4 +599,4 @@ Replace with your own style:
 
 == About AyudaWP ==
 
-We are specialists in WordPress security, SEO, and performance optimization plugins. We create tools that solve real problems for WordPress site owners while maintaining the highest coding standards and accessibility requirements.
+We are specialists in WordPress security, SEO, AI and performance optimization plugins. We create tools that solve real problems for WordPress site owners while maintaining the highest coding standards and accessibility requirements.
