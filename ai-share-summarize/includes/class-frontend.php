@@ -95,7 +95,7 @@ class AyudaWP_AISS_Frontend {
 			return $content;
 		}
 
-		$post_id = get_the_ID();
+		$post_id = null;
 
 		if ( is_singular() ) {
 			// On singular pages the only valid target is the queried post.
@@ -104,11 +104,68 @@ class AyudaWP_AISS_Frontend {
 			// Bricks Builder render the post content via the_content filter
 			// WITHOUT setting up a standard WP loop, so in_the_loop() is
 			// false even when the singular post is being rendered legitimately.
-			// Comparing IDs + the $processed guard below is enough to keep
-			// the buttons out of widgets and footer content.
 			$queried_id = get_queried_object_id();
-			if ( ! $post_id || ! $queried_id || $post_id !== $queried_id ) {
+			if ( ! $queried_id ) {
 				return $content;
+			}
+
+			$current_id = get_the_ID();
+
+			if ( $current_id && $current_id === $queried_id ) {
+				/*
+				 * Fast path: sane globals. Either standard WP loop or a
+				 * modern builder (Divi / Bricks / FSE) rendering the
+				 * queried post with the global $post properly set up.
+				 * This is the 1.9.2 behaviour.
+				 */
+				$post_id = $queried_id;
+			} else {
+				/*
+				 * Slow path: tainted globals. Typically a theme/plugin
+				 * calling setup_postdata() from a header/sidebar/widget
+				 * without a matching wp_reset_postdata(), which makes
+				 * get_the_ID() return the wrong id everywhere. The strict
+				 * 1.9.2 guard would then block the buttons on every entry
+				 * except the one that happens to coincide with the tainted
+				 * id (the typical "buttons only show on the latest post"
+				 * symptom).
+				 *
+				 * We verify that the $content this filter received actually
+				 * belongs to the queried post by matching a short stripped
+				 * fragment of its post_content against the (already
+				 * processed) $content. If it matches, trust the queried id.
+				 * If it doesn't, this is genuine widget/footer content with
+				 * arbitrary text and we skip — preserving the original
+				 * 1.9.2 intent.
+				 */
+				static $queried_samples = array();
+				if ( ! isset( $queried_samples[ $queried_id ] ) ) {
+					$queried_post = get_post( $queried_id );
+					$raw          = $queried_post ? strip_shortcodes( (string) $queried_post->post_content ) : '';
+					$clean        = trim( wp_strip_all_tags( $raw ) );
+					$queried_samples[ $queried_id ] = function_exists( 'mb_substr' )
+						? mb_substr( $clean, 0, 50 )
+						: substr( $clean, 0, 50 );
+				}
+				$sample = $queried_samples[ $queried_id ];
+
+				// Sample too short to be reliable (very short or
+				// image-only post): fall back to the strict behaviour
+				// rather than risk a false positive on widget content.
+				if ( strlen( $sample ) < 20 ) {
+					return $content;
+				}
+
+				$haystack = wp_strip_all_tags( $content );
+				$found    = function_exists( 'mb_strpos' )
+					? mb_strpos( $haystack, $sample )
+					: strpos( $haystack, $sample );
+
+				if ( false === $found ) {
+					return $content;
+				}
+
+				$post_id = $queried_id;
 			}
 		} else {
 			// On archives/home, require the main loop so secondary loops and
@@ -116,9 +173,10 @@ class AyudaWP_AISS_Frontend {
 			if ( ! in_the_loop() || ! is_main_query() ) {
 				return $content;
 			}
+			$post_id = get_the_ID();
 		}
 
-		if ( $post_id && in_array( $post_id, $processed, true ) ) {
+		if ( ! $post_id || in_array( $post_id, $processed, true ) ) {
 			return $content;
 		}
 

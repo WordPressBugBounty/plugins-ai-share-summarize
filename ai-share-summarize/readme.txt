@@ -3,7 +3,7 @@ Contributors: fernandot,ayudawp
 Tags: claude, chatgpt, social share, ai, perplexity
 Requires at least: 5.6
 Tested up to: 7.0
-Stable tag: 2.0.1
+Stable tag: 2.0.2
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -114,6 +114,22 @@ Yes, AI Share & Summarize is 100% free with all features included, including sup
 = How does the inline AI summary work? =
 
 When you publish or update a post, the plugin generates a short summary asynchronously (in a background WP-Cron event, to avoid blocking the editor save). The summary then appears inline next to the share buttons, inside a collapsible block. Visitors can expand it without leaving the page. You can disable the feature globally in **Settings > AI Share & Summarize > AI Summary**, choose where the summary is placed (before/after the buttons, or before the content), and override or edit the text per post from the editor sidebar.
+
+= How do the "Enable AI Summary" and "Use extractive fallback" settings relate? =
+
+The two checkboxes in the AI Summary section work as a cascade, not as independent toggles:
+
+* **Enable AI Summary** is the master switch. Off means nothing is generated, ever.
+* **Use extractive fallback** controls what happens *if* the AI Client cannot return a summary — no Connector configured, API error, the canonical AI plugin's approval system blocking the request, an older WordPress version, etc.
+
+The real behaviors today:
+
+* **Enable off** → no summary at all.
+* **Enable on + fallback on** (recommended default) → tries the WP AI Client first; if it fails, falls back to the built-in PHP extractive summarizer so the post still gets a basic summary at zero cost.
+* **Enable on + fallback off** → AI only. If the AI call fails, the post has no summary.
+* **Enable on + fallback on, with no Connector configured** → de facto "extractive only", because the AI step always fails and the fallback always kicks in.
+
+There is no explicit "extractive only by choice" toggle yet: with a Connector configured, the AI Client is always attempted first. If you want zero AI calls on purpose (privacy, cost…), do not configure any AI Connector for now. A future release will replace these two checkboxes with a single explicit selector (AI + fallback / AI only / Extractive only / Disabled) — this FAQ will be removed at that point.
 
 = Where do I configure API keys for the AI summary? =
 
@@ -366,6 +382,9 @@ The social and AI sharing buttons render as `<a>` / `<button>` elements that ope
 
 == Changelog ==
 
+= 2.0.2 =
+* Fix: Buttons not appearing on entries other than the latest published post on themes/plugins that call `setup_postdata()` from a header/sidebar without a matching `wp_reset_postdata()`. The strict id-match guard added in 1.9.2 (for Divi Theme Builder, FSE and Bricks) now falls back to verifying that the filtered content belongs to the queried post when `get_the_ID()` and `get_queried_object_id()` disagree, so legitimate singular content still gets the buttons while widgets and footers running `the_content` on arbitrary text remain protected.
+
 = 2.0.1 =
 * Fix: Visitor-facing "Generate AI summary" click made the summary box look empty until the page was reloaded — the placeholder element was being replaced by the inline critical CSS `<style>` block instead of the actual `<aside>` summary. The replacement now targets the `<aside>` element explicitly.
 
@@ -391,8 +410,8 @@ For older changelog entries, please check the [changelog.txt](https://plugins.sv
 
 == Upgrade Notice ==
 
-= 2.0.1 =
-Hotfix for the visitor-facing "Generate AI summary" button: the summary box no longer goes blank after clicking. No other behavior changes vs 2.0.0.
+= 2.0.2 =
+Fixes the share block disappearing on every entry except the latest published one when the active theme calls `setup_postdata()` without `wp_reset_postdata()`. Divi, Bricks and FSE compatibility unchanged.
 
 == Advanced Usage ==
 
