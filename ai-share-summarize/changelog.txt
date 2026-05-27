@@ -3,6 +3,9 @@ AI Share & Summarize — Full changelog
 For each release, see the entries below. The latest version is always at the top.
 The current release notes also live in readme.txt under "== Changelog ==".
 
+= 2.0.3 =
+* Fix: Buttons not appearing on entries without a manual excerpt when the active theme or a third-party plugin calls `the_excerpt()` / `get_the_excerpt()` from the `<head>` to compose Open Graph, Twitter Card or similar meta descriptions. WordPress's `wp_trim_excerpt()` applies the `the_content` filter internally to auto-truncate posts without a manual excerpt — the 1.9.2+ id-match guard accepted that early invocation as legitimate, marked the post as processed and blocked the subsequent real call from the post template. The filter now early-returns and stays out of the processed-posts guard when running inside the excerpt pipeline.
+
 = 2.0.2 =
 * Fix: Buttons not appearing on entries other than the latest published post on themes/plugins that call `setup_postdata()` from a header/sidebar without a matching `wp_reset_postdata()`. The strict id-match guard added in 1.9.2 (for Divi Theme Builder, FSE and Bricks) now falls back to verifying that the filtered content belongs to the queried post when `get_the_ID()` and `get_queried_object_id()` disagree, so legitimate singular content still gets the buttons while widgets and footers running `the_content` on arbitrary text remain protected.
 

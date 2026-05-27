@@ -95,6 +95,29 @@ class AyudaWP_AISS_Frontend {
 			return $content;
 		}
 
+		/*
+		 * Skip when running inside the excerpt pipeline. WordPress's
+		 * wp_trim_excerpt() applies the_content filter internally to
+		 * auto-truncate posts that have no manual excerpt. Themes or
+		 * plugins that call the_excerpt() / get_the_excerpt() from the
+		 * <head> (Open Graph meta, Twitter Card description, JSON-LD,
+		 * etc.) would otherwise trigger the_content twice per request:
+		 * once for the excerpt (result discarded) and once for the real
+		 * template render. The 1.9.2+ id-match guard accepts the excerpt
+		 * call as legitimate, marks the post as processed and the
+		 * subsequent real call returns $content unchanged — so the
+		 * buttons never reach the rendered HTML.
+		 *
+		 * Returning early here keeps the buttons out of any excerpt
+		 * (where they don't belong anyway) and, crucially, prevents the
+		 * post from being added to the $processed guard, so the real
+		 * the_content invocation from the post template can still inject
+		 * normally.
+		 */
+		if ( doing_filter( 'get_the_excerpt' ) || doing_filter( 'the_excerpt' ) ) {
+			return $content;
+		}
+
 		$post_id = null;
 
 		if ( is_singular() ) {
