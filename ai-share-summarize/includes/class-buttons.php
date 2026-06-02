@@ -49,7 +49,7 @@ class AyudaWP_AISS_Buttons {
 		$button_order    = isset( $options['button_order'] ) ? $options['button_order'] : 'ayudawp_ai_first';
 		$button_alignment = isset( $options['button_alignment'] ) ? $options['button_alignment'] : 'left';
 		$title_text      = isset( $options['title_text'] ) ? $options['title_text'] : '';
-		$title_style     = isset( $options['title_style'] ) ? $options['title_style'] : 'span';
+		$title_style     = ayudawp_aiss_sanitize_title_style( isset( $options['title_style'] ) ? $options['title_style'] : 'span' );
 		$color_style     = isset( $options['button_colors'] ) ? $options['button_colors'] : 'brand';
 		$show_icons      = isset( $options['show_icons'] ) ? $options['show_icons'] : false;
 		$icon_style      = isset( $options['icon_style'] ) ? $options['icon_style'] : 'circular';

@@ -3,7 +3,7 @@ Contributors: fernandot,ayudawp
 Tags: claude, chatgpt, social share, ai, perplexity
 Requires at least: 5.6
 Tested up to: 7.0
-Stable tag: 2.0.3
+Stable tag: 2.0.4
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -382,6 +382,9 @@ The social and AI sharing buttons render as `<a>` / `<button>` elements that ope
 
 == Changelog ==
 
+= 2.0.4 =
+* Fix: Contributor+ stored XSS through the `title_style` attribute of the `[ayudawp_share_buttons]` shortcode. The value was emitted in HTML tag-name position with only `esc_attr()`, which does not encode spaces or `=`, so a user with the `edit_posts` capability could inject arbitrary attributes and event handlers. `title_style` is now validated against an allowlist (`h2`-`h6`, `p`, `span`, `div`) at every entry point (admin save, shortcode attribute, render). Reported by Haitam Lazaar.
+
 = 2.0.3 =
 * Fix: Buttons not appearing on entries without a manual excerpt when the active theme or a third-party plugin calls `the_excerpt()` / `get_the_excerpt()` from the `<head>` to compose Open Graph, Twitter Card or similar meta descriptions. WordPress's `wp_trim_excerpt()` applies the `the_content` filter internally to auto-truncate posts without a manual excerpt — the 1.9.2+ id-match guard accepted that early invocation as legitimate, marked the post as processed and blocked the subsequent real call from the post template. The filter now early-returns and stays out of the processed-posts guard when running inside the excerpt pipeline.
 
@@ -413,8 +416,8 @@ For older changelog entries, please check the [changelog.txt](https://plugins.sv
 
 == Upgrade Notice ==
 
-= 2.0.3 =
-Fixes the share block disappearing on entries without a manual excerpt when the theme or a plugin calls `the_excerpt()` from the `<head>` for Open Graph or Twitter Card meta. Divi, Bricks and FSE compatibility unchanged.
+= 2.0.4 =
+Security release. Fixes a Contributor+ stored XSS in the `title_style` attribute of the `[ayudawp_share_buttons]` shortcode. All sites that allow non-admin authors to publish content should update.
 
 == Advanced Usage ==
 

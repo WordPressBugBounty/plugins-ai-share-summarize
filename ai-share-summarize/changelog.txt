@@ -3,6 +3,9 @@ AI Share & Summarize — Full changelog
 For each release, see the entries below. The latest version is always at the top.
 The current release notes also live in readme.txt under "== Changelog ==".
 
+= 2.0.4 =
+* Fix: Contributor+ stored XSS through the `title_style` attribute of the `[ayudawp_share_buttons]` shortcode. The value was emitted in HTML tag-name position with only `esc_attr()`, which does not encode spaces or `=`, so a user with the `edit_posts` capability could inject arbitrary attributes and event handlers. `title_style` is now validated against an allowlist (`h2`-`h6`, `p`, `span`, `div`) at every entry point (admin save, shortcode attribute, render). Reported by Haitam Lazaar.
+
 = 2.0.3 =
 * Fix: Buttons not appearing on entries without a manual excerpt when the active theme or a third-party plugin calls `the_excerpt()` / `get_the_excerpt()` from the `<head>` to compose Open Graph, Twitter Card or similar meta descriptions. WordPress's `wp_trim_excerpt()` applies the `the_content` filter internally to auto-truncate posts without a manual excerpt — the 1.9.2+ id-match guard accepted that early invocation as legitimate, marked the post as processed and blocked the subsequent real call from the post template. The filter now early-returns and stays out of the processed-posts guard when running inside the excerpt pipeline.
 

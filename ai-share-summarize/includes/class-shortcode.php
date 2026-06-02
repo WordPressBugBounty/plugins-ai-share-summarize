@@ -88,7 +88,7 @@ class AyudaWP_AISS_Shortcode {
 		}
 
 		if ( ! empty( $atts['title_style'] ) ) {
-			$shortcode_options['title_style'] = $atts['title_style'];
+			$shortcode_options['title_style'] = ayudawp_aiss_sanitize_title_style( $atts['title_style'] );
 		}
 
 		// Handle show_title parameter.

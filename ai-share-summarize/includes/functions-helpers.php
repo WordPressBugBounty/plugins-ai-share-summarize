@@ -73,6 +73,25 @@ function ayudawp_aiss_get_ai_buttons() {
 }
 
 /**
+ * Sanitize a title_style value against an allowlist of HTML tag names.
+ *
+ * The value is emitted in tag-name position (`<{$tag}>`), where `esc_attr()`
+ * is not enough: it does not encode spaces or `=`, so an attacker could turn
+ * the opening tag into an arbitrary element with event-handler attributes.
+ * Anything outside the allowlist falls back to `span`.
+ *
+ * @since 2.0.4
+ * @param string $value Untrusted tag name.
+ * @return string Safe tag name from the allowlist.
+ */
+function ayudawp_aiss_sanitize_title_style( $value ) {
+	$allowed = array( 'h2', 'h3', 'h4', 'h5', 'h6', 'p', 'span', 'div' );
+	$value   = is_string( $value ) ? strtolower( trim( $value ) ) : '';
+
+	return in_array( $value, $allowed, true ) ? $value : 'span';
+}
+
+/**
  * Validate and sanitize plugin options
  *
  * @param array $input Raw input data.
@@ -119,6 +138,11 @@ function ayudawp_aiss_validate_options( $input ) {
 		if ( isset( $input[ $field ] ) ) {
 			$validated[ $field ] = sanitize_text_field( $input[ $field ] );
 		}
+	}
+
+	// title_style is emitted in tag-name position; restrict it to an allowlist.
+	if ( isset( $validated['title_style'] ) ) {
+		$validated['title_style'] = ayudawp_aiss_sanitize_title_style( $validated['title_style'] );
 	}
 
 	foreach ( $textarea_fields as $field ) {
