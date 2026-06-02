@@ -587,6 +587,108 @@ button.ayudawp-share-btn:focus {
 }
 
 /* =============================================
+   AI Summary: one paragraph per sentence (v2.1.0)
+   Each sentence renders as its own <p> for readability. itemprop="abstract"
+   sits on the wrapping container so the schema value stays single.
+   ============================================= */
+
+.ayudawp-aiss-summary-content .ayudawp-aiss-summary-text > p {
+	margin: 0 0 0.6em;
+}
+
+.ayudawp-aiss-summary-content .ayudawp-aiss-summary-text > p:last-child {
+	margin-bottom: 0;
+}
+
+/* =============================================
+   AI Summary: visual style presets (v2.1.0)
+   minimal = base look above; the variants below are opt-in from settings.
+   --ayudawp-aiss-accent can be overridden by a theme to match its palette.
+   ============================================= */
+
+.ayudawp-aiss-summary {
+	--ayudawp-aiss-accent: #2563eb;
+}
+
+/* Outline: accent border, transparent background. */
+.ayudawp-aiss-summary.style-outline {
+	border-width: 2px;
+	border-color: var(--ayudawp-aiss-accent);
+}
+
+/* Brand: filled accent background with light text. */
+.ayudawp-aiss-summary.style-brand {
+	background: var(--ayudawp-aiss-accent);
+	border-color: var(--ayudawp-aiss-accent);
+	color: #ffffff;
+}
+
+/* Dark: dark callout on light themes. */
+.ayudawp-aiss-summary.style-dark {
+	background: #1f2430;
+	border-color: #1f2430;
+	color: #e6e6e6;
+}
+
+/* Custom: colors from the settings color pickers (inline CSS variables). */
+.ayudawp-aiss-summary.style-custom {
+	background: var(--ayudawp-aiss-bg, transparent);
+	color: var(--ayudawp-aiss-text, inherit);
+	border-color: rgba(127, 127, 127, 0.35);
+}
+
+/* Keep the attribution and generate button legible on filled variants. */
+.ayudawp-aiss-summary.style-brand .ayudawp-aiss-summary-attribution,
+.ayudawp-aiss-summary.style-dark .ayudawp-aiss-summary-attribution,
+.ayudawp-aiss-summary.style-custom .ayudawp-aiss-summary-attribution {
+	color: inherit;
+	opacity: 0.75;
+}
+
+.ayudawp-aiss-summary.style-brand .ayudawp-aiss-summary-generate-btn,
+.ayudawp-aiss-summary.style-dark .ayudawp-aiss-summary-generate-btn,
+.ayudawp-aiss-summary.style-custom .ayudawp-aiss-summary-generate-btn {
+	border-color: currentColor;
+	color: inherit;
+}
+
+.ayudawp-aiss-summary.style-brand .ayudawp-aiss-summary-generate-btn:hover:not(:disabled),
+.ayudawp-aiss-summary.style-dark .ayudawp-aiss-summary-generate-btn:hover:not(:disabled),
+.ayudawp-aiss-summary.style-custom .ayudawp-aiss-summary-generate-btn:hover:not(:disabled) {
+	background: rgba(255, 255, 255, 0.12);
+}
+
+/* =============================================
+   AI Summary: icon position (v2.1.0)
+   "hidden" is also handled server-side (the icon span is not rendered).
+   ============================================= */
+
+.ayudawp-aiss-summary.icon-right .ayudawp-aiss-summary-toggle .ayudawp-aiss-summary-icon {
+	order: 2;
+	margin-left: auto;
+}
+
+.ayudawp-aiss-summary.icon-right .ayudawp-aiss-summary-details > summary::after {
+	order: 3;
+	margin-left: 8px;
+}
+
+.ayudawp-aiss-summary.icon-hidden .ayudawp-aiss-summary-icon {
+	display: none;
+}
+
+/* =============================================
+   AI Summary: visible keyboard focus (v2.1.0, a11y)
+   ============================================= */
+
+.ayudawp-aiss-summary-details > summary:focus-visible,
+.ayudawp-aiss-summary-generate-btn:focus-visible {
+	outline: 2px solid currentColor;
+	outline-offset: 2px;
+	border-radius: 4px;
+}
+
+/* =============================================
    Auto adaptation to dark backgrounds
    Triggered by the .is-on-dark class set by the JS background detector
    (added when the container's parent background luminance is below 0.5).
@@ -798,20 +900,23 @@ button.ayudawp-share-btn:focus {
    Mirrors the .is-on-dark token system used by the share buttons.
    ============================================= */
 
-.ayudawp-aiss-summary.is-on-dark {
+/* Only minimal/outline (transparent background) adapt to a dark page; the
+   filled presets (brand/dark/custom) carry their own colors, like the share
+   buttons skip .dark/.custom. */
+.ayudawp-aiss-summary.is-on-dark:not(.style-brand):not(.style-dark):not(.style-custom) {
 	border-color: var(--ayudawp-on-dark-border-subtle, rgba(255,255,255,0.18));
 	color: var(--ayudawp-on-dark-fg, #e6e6e6);
 }
 
-.ayudawp-aiss-summary.is-on-dark .ayudawp-aiss-summary-attribution {
+.ayudawp-aiss-summary.is-on-dark:not(.style-brand):not(.style-dark):not(.style-custom) .ayudawp-aiss-summary-attribution {
 	color: var(--ayudawp-on-dark-fg-muted, #b8b8b8);
 }
 
-.ayudawp-aiss-summary--placeholder.is-on-dark .ayudawp-aiss-summary-generate-btn {
+.ayudawp-aiss-summary--placeholder.is-on-dark:not(.style-brand):not(.style-dark):not(.style-custom) .ayudawp-aiss-summary-generate-btn {
 	border-color: var(--ayudawp-on-dark-border-subtle, rgba(255,255,255,0.18));
 	color: var(--ayudawp-on-dark-fg, #e6e6e6);
 }
 
-.ayudawp-aiss-summary--placeholder.is-on-dark .ayudawp-aiss-summary-generate-btn:hover:not(:disabled) {
+.ayudawp-aiss-summary--placeholder.is-on-dark:not(.style-brand):not(.style-dark):not(.style-custom) .ayudawp-aiss-summary-generate-btn:hover:not(:disabled) {
 	background: rgba(255, 255, 255, 0.08);
 }

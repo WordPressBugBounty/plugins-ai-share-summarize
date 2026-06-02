@@ -408,16 +408,24 @@ class AyudaWP_AISS_AI_Summary {
 	 * (dark-mode adaptation, caret rotation, attribution color), but the
 	 * baseline survives without it.
 	 *
-	 * @return string `<style>` tag, or empty when already printed this request.
+	 * Echoes directly (rather than returning a string the caller would echo)
+	 * so the output is a plain literal-string echo with no escaping concerns —
+	 * `echo helper()` of pre-built markup is a wordpress.org review red flag.
+	 * Idempotent: the static guard prints at most once per request, whether
+	 * the first call comes from wp_head (auto-insert) or from the summary
+	 * renderer (late shortcode fallback after wp_head has fired).
+	 *
+	 * @return void
 	 */
-	public static function get_critical_inline_style() {
+	public static function print_critical_inline_style() {
 		static $printed = false;
 		if ( $printed ) {
-			return '';
+			return;
 		}
 		$printed = true;
+		// All-literal CSS; echoing string literals needs no output escaping.
 		// phpcs:disable Generic.WhiteSpace.ScopeIndent.IncorrectExact -- one-liner CSS for minimal payload.
-		return '<style id="ayudawp-aiss-critical-inline">'
+		echo '<style id="ayudawp-aiss-critical-inline">'
 			. '.ayudawp-aiss-summary{margin:24px 0;padding:12px 16px;border:1px solid #e0e0e0;border-radius:6px}'
 			. '.ayudawp-aiss-summary-details{margin:0}'
 			. '.ayudawp-aiss-summary-details>summary{cursor:pointer;font-weight:600;list-style:none;display:inline-flex;align-items:center;gap:8px}'
@@ -430,6 +438,60 @@ class AyudaWP_AISS_AI_Summary {
 			. '.ayudawp-aiss-summary-icon svg{width:16px;height:16px}'
 			. '</style>';
 		// phpcs:enable
+	}
+
+	/**
+	 * Build the CSS class string for the summary <aside> (v2.1.0)
+	 *
+	 * Encapsulates the visual-style preset (minimal/outline/brand/dark/custom)
+	 * and the icon-position modifier so get_summary_html() and
+	 * get_generate_button_html() stay in sync.
+	 *
+	 * @param array  $options Plugin options.
+	 * @param string $extra   Extra base class to append (e.g. the placeholder modifier).
+	 * @return string Space-separated class list.
+	 */
+	private static function get_summary_block_classes( $options, $extra = '' ) {
+		$style    = isset( $options['ai_summary_style'] ) ? $options['ai_summary_style'] : 'minimal';
+		$icon_pos = isset( $options['ai_summary_icon_position'] ) ? $options['ai_summary_icon_position'] : 'left';
+
+		$classes = array( 'ayudawp-aiss-summary' );
+		if ( '' !== $extra ) {
+			$classes[] = $extra;
+		}
+		if ( in_array( $style, array( 'outline', 'brand', 'dark', 'custom' ), true ) ) {
+			$classes[] = 'style-' . $style;
+		}
+		if ( 'right' === $icon_pos ) {
+			$classes[] = 'icon-right';
+		} elseif ( 'hidden' === $icon_pos ) {
+			$classes[] = 'icon-hidden';
+		}
+
+		return implode( ' ', $classes );
+	}
+
+	/**
+	 * Resolve the custom background/text colors for the summary block (v2.1.0)
+	 *
+	 * Only returns values when the style is "custom"; mirrors the share buttons'
+	 * custom color CSS-variable pattern (see class-buttons.php). The caller
+	 * escapes each value with esc_attr() at the point of output, so escaping is
+	 * visible at the echo site (no `echo $prebuilt_attr` to suppress).
+	 *
+	 * @param array $options Plugin options.
+	 * @return array|null array{bg:string,text:string} when custom, else null.
+	 */
+	private static function get_summary_block_custom_colors( $options ) {
+		$style = isset( $options['ai_summary_style'] ) ? $options['ai_summary_style'] : 'minimal';
+		if ( 'custom' !== $style ) {
+			return null;
+		}
+
+		return array(
+			'bg'   => ! empty( $options['ai_summary_custom_bg'] ) ? $options['ai_summary_custom_bg'] : '#ffffff',
+			'text' => ! empty( $options['ai_summary_custom_text'] ) ? $options['ai_summary_custom_text'] : '#1a1a1a',
+		);
 	}
 
 	/**
@@ -461,16 +523,31 @@ class AyudaWP_AISS_AI_Summary {
 		$open     = empty( $options['ai_summary_collapsed_default'] ) ? ' open' : '';
 		$is_basic = 'extractive' === $provider;
 
-		$icon  = class_exists( 'AyudaWP_AISS_Icons' )
+		$label = ! empty( $options['ai_summary_label'] )
+			? $options['ai_summary_label']
+			: __( 'AI Summary', 'ai-share-summarize' );
+
+		$class_attr = self::get_summary_block_classes( $options );
+		$custom     = self::get_summary_block_custom_colors( $options );
+
+		$icon_pos = isset( $options['ai_summary_icon_position'] ) ? $options['ai_summary_icon_position'] : 'left';
+		$icon     = ( 'hidden' !== $icon_pos && class_exists( 'AyudaWP_AISS_Icons' ) )
 			? AyudaWP_AISS_Icons::ayudawp_get_icon( 'aiss_summary', 16 )
 			: '';
-		$label = __( 'AI Summary', 'ai-share-summarize' );
+
+		// Split into sentences so each renders on its own line (v2.1.0). The
+		// AI provider usually returns sentences glued with a single space, so
+		// the split happens at render time and also fixes already-stored
+		// summaries without regenerating them.
+		$sentences = ayudawp_aiss_split_sentences( $summary );
+		if ( empty( $sentences ) ) {
+			$sentences = array( $summary );
+		}
 
 		ob_start();
-		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static built-in critical CSS, no user input.
-		echo self::get_critical_inline_style();
+		self::print_critical_inline_style();
 		?>
-		<aside class="ayudawp-aiss-summary"
+		<aside class="<?php echo esc_attr( $class_attr ); ?>"<?php if ( $custom ) : ?> style="--ayudawp-aiss-bg:<?php echo esc_attr( $custom['bg'] ); ?>;--ayudawp-aiss-text:<?php echo esc_attr( $custom['text'] ); ?>;"<?php endif; ?>
 		       role="complementary"
 		       aria-label="<?php echo esc_attr( $label ); ?>"
 		       data-provider="<?php echo esc_attr( $provider ); ?>"
@@ -485,7 +562,11 @@ class AyudaWP_AISS_AI_Summary {
 					<span class="ayudawp-aiss-summary-label"><?php echo esc_html( $label ); ?></span>
 				</summary>
 				<div class="ayudawp-aiss-summary-content">
-					<p itemprop="abstract"><?php echo esc_html( $summary ); ?></p>
+					<div class="ayudawp-aiss-summary-text" itemprop="abstract">
+						<?php foreach ( $sentences as $sentence ) : ?>
+							<p><?php echo esc_html( $sentence ); ?></p>
+						<?php endforeach; ?>
+					</div>
 					<?php if ( $is_basic ) : ?>
 						<small class="ayudawp-aiss-summary-attribution"><?php esc_html_e( 'Basic summary', 'ai-share-summarize' ); ?></small>
 					<?php endif; ?>
@@ -517,16 +598,22 @@ class AyudaWP_AISS_AI_Summary {
 			return '';
 		}
 
-		$icon  = class_exists( 'AyudaWP_AISS_Icons' )
+		$label = ! empty( $options['ai_summary_generate_button_label'] )
+			? $options['ai_summary_generate_button_label']
+			: __( 'Generate AI summary', 'ai-share-summarize' );
+
+		$class_attr = self::get_summary_block_classes( $options, 'ayudawp-aiss-summary--placeholder' );
+		$custom     = self::get_summary_block_custom_colors( $options );
+
+		$icon_pos = isset( $options['ai_summary_icon_position'] ) ? $options['ai_summary_icon_position'] : 'left';
+		$icon     = ( 'hidden' !== $icon_pos && class_exists( 'AyudaWP_AISS_Icons' ) )
 			? AyudaWP_AISS_Icons::ayudawp_get_icon( 'aiss_summary', 16 )
 			: '';
-		$label = __( 'Generate AI summary', 'ai-share-summarize' );
 
 		ob_start();
-		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- static built-in critical CSS, no user input.
-		echo self::get_critical_inline_style();
+		self::print_critical_inline_style();
 		?>
-		<aside class="ayudawp-aiss-summary ayudawp-aiss-summary--placeholder"
+		<aside class="<?php echo esc_attr( $class_attr ); ?>"<?php if ( $custom ) : ?> style="--ayudawp-aiss-bg:<?php echo esc_attr( $custom['bg'] ); ?>;--ayudawp-aiss-text:<?php echo esc_attr( $custom['text'] ); ?>;"<?php endif; ?>
 		       role="complementary"
 		       aria-label="<?php echo esc_attr( $label ); ?>"
 		       data-post-id="<?php echo esc_attr( $post_id ); ?>"

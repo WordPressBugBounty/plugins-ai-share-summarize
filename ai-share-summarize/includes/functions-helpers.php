@@ -92,6 +92,42 @@ function ayudawp_aiss_sanitize_title_style( $value ) {
 }
 
 /**
+ * Build an opening title/section tag from a safe tag name (v2.1.0)
+ *
+ * The tag name is validated against the allowlist *inside* this helper, via
+ * ayudawp_aiss_sanitize_title_style(), so the allowlist can never be bypassed
+ * by a caller that builds the tag itself. This replaces the inline
+ * `'<' . esc_attr( $tag ) . ' class=...>'` pattern: esc_attr() does not encode
+ * spaces or `=`, so emitting an unsanitized value in tag-name position was the
+ * class of bug behind the 2.0.x stored XSS. Keeping the allowlist here removes
+ * that recurring "looks vulnerable" pattern from the codebase.
+ *
+ * @since 2.1.0
+ * @param string $style Untrusted tag name (validated against the allowlist).
+ * @param string $class CSS class(es) for the element (escaped here).
+ * @return string Opening tag, e.g. '<h3 class="ayudawp-title">'.
+ */
+function ayudawp_aiss_open_tag( $style, $class = '' ) {
+	$tag   = ayudawp_aiss_sanitize_title_style( $style );
+	$class = trim( (string) $class );
+
+	return '' !== $class
+		? '<' . $tag . ' class="' . esc_attr( $class ) . '">'
+		: '<' . $tag . '>';
+}
+
+/**
+ * Build the matching closing tag for ayudawp_aiss_open_tag() (v2.1.0)
+ *
+ * @since 2.1.0
+ * @param string $style Untrusted tag name (validated against the allowlist).
+ * @return string Closing tag, e.g. '</h3>'.
+ */
+function ayudawp_aiss_close_tag( $style ) {
+	return '</' . ayudawp_aiss_sanitize_title_style( $style ) . '>';
+}
+
+/**
  * Validate and sanitize plugin options
  *
  * @param array $input Raw input data.
@@ -120,6 +156,12 @@ function ayudawp_aiss_validate_options( $input ) {
 		'custom_color_text',
 		'dark_mode_adaptation',
 		'ai_summary_position',
+		'ai_summary_style',
+		'ai_summary_icon_position',
+		'ai_summary_label',
+		'ai_summary_generate_button_label',
+		'ai_summary_custom_bg',
+		'ai_summary_custom_text',
 	);
 	$textarea_fields = array( 'default_prompt', 'custom_text' );
 	$array_fields    = array( 'enabled_buttons', 'display_locations', 'auto_insert_content_types', 'button_custom_order_ai', 'button_custom_order_social', 'ai_summary_content_types' );
@@ -203,6 +245,18 @@ function ayudawp_aiss_validate_options( $input ) {
 		$validated['ai_summary_position'] = 'before_buttons';
 	}
 
+	// Validate ai_summary_style (v2.1.0).
+	$valid_summary_styles = array( 'minimal', 'outline', 'brand', 'dark', 'custom' );
+	if ( isset( $validated['ai_summary_style'] ) && ! in_array( $validated['ai_summary_style'], $valid_summary_styles, true ) ) {
+		$validated['ai_summary_style'] = 'minimal';
+	}
+
+	// Validate ai_summary_icon_position (v2.1.0).
+	$valid_icon_positions = array( 'left', 'right', 'hidden' );
+	if ( isset( $validated['ai_summary_icon_position'] ) && ! in_array( $validated['ai_summary_icon_position'], $valid_icon_positions, true ) ) {
+		$validated['ai_summary_icon_position'] = 'left';
+	}
+
 	// Validate ai_summary_sentences (v2.0.0) — integer in 1..5.
 	$validated['ai_summary_sentences'] = isset( $input['ai_summary_sentences'] )
 		? max( 1, min( 5, absint( $input['ai_summary_sentences'] ) ) )
@@ -214,6 +268,12 @@ function ayudawp_aiss_validate_options( $input ) {
 	}
 	if ( isset( $validated['custom_color_text'] ) ) {
 		$validated['custom_color_text'] = sanitize_hex_color( $validated['custom_color_text'] );
+	}
+	if ( isset( $validated['ai_summary_custom_bg'] ) ) {
+		$validated['ai_summary_custom_bg'] = sanitize_hex_color( $validated['ai_summary_custom_bg'] );
+	}
+	if ( isset( $validated['ai_summary_custom_text'] ) ) {
+		$validated['ai_summary_custom_text'] = sanitize_hex_color( $validated['ai_summary_custom_text'] );
 	}
 
 	// Sanitize mastodon instance URL.
@@ -562,6 +622,35 @@ function ayudawp_aiss_clean_html_for_summary( $html ) {
 }
 
 /**
+ * Split a block of text into sentences (v2.1.0)
+ *
+ * Single source of truth for sentence segmentation, shared by the extractive
+ * summarizer and the frontend renderer (which prints one <p> per sentence for
+ * readability). Splits on sentence-final punctuation followed by whitespace and
+ * an uppercase/opening character, so decimals and most abbreviations inside a
+ * sentence are not split.
+ *
+ * @since 2.1.0
+ * @param string $text Plain text (already stripped of HTML).
+ * @return array<int,string> Trimmed, non-empty sentences in original order.
+ */
+function ayudawp_aiss_split_sentences( $text ) {
+	$text = trim( (string) $text );
+	if ( '' === $text ) {
+		return array();
+	}
+
+	$parts = preg_split( '/(?<=[.!?])\s+(?=[A-ZÁÉÍÓÚÑ¿¡"\'])/u', $text );
+	if ( ! is_array( $parts ) ) {
+		return array( $text );
+	}
+
+	$parts = array_map( 'trim', $parts );
+
+	return array_values( array_filter( $parts, 'strlen' ) );
+}
+
+/**
  * Generate an extractive summary from post content (v2.0.0)
  *
  * Picks the top N sentences scored by token-frequency (excluding stopwords),
@@ -585,9 +674,9 @@ function ayudawp_aiss_extractive_summary( $content, $title, $n = 3 ) {
 		return '';
 	}
 
-	$sentences = preg_split( '/(?<=[.!?])\s+(?=[A-ZÁÉÍÓÚÑ¿¡"\'])/u', $text );
+	$sentences = ayudawp_aiss_split_sentences( $text );
 
-	if ( ! is_array( $sentences ) || count( $sentences ) < 3 ) {
+	if ( count( $sentences ) < 3 ) {
 		return '';
 	}
 

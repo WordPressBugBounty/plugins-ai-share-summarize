@@ -118,7 +118,7 @@ class AyudaWP_AISS_Buttons {
 
 		// Global title (only if no section titles).
 		if ( ! $use_section_titles && ! empty( trim( $title_text ) ) ) {
-			$html .= '<' . esc_attr( $title_style ) . ' class="ayudawp-title">' . esc_html( $title_text ) . '</' . esc_attr( $title_style ) . '>';
+			$html .= ayudawp_aiss_open_tag( $title_style, 'ayudawp-title' ) . esc_html( $title_text ) . ayudawp_aiss_close_tag( $title_style );
 		}
 
 		// Split buttons into groups for section titles.
@@ -150,7 +150,7 @@ class AyudaWP_AISS_Buttons {
 			foreach ( $groups as $index => $group ) {
 				if ( ! empty( $group['title'] ) ) {
 					$section_class = $index > 0 ? ' ayudawp-section-title' : '';
-					$html .= '<' . esc_attr( $title_style ) . ' class="ayudawp-title' . esc_attr( $section_class ) . '">' . esc_html( $group['title'] ) . '</' . esc_attr( $title_style ) . '>';
+					$html .= ayudawp_aiss_open_tag( $title_style, 'ayudawp-title' . $section_class ) . esc_html( $group['title'] ) . ayudawp_aiss_close_tag( $title_style );
 				} elseif ( $index > 0 ) {
 					$html .= '<div class="ayudawp-section-separator"></div>';
 				}

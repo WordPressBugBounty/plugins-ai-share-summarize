@@ -112,8 +112,14 @@ class AyudaWP_AISS_SEO_Integration {
         
         // Handle array-based meta (like Rank Math)
         if (!empty($config['is_array'])) {
-            $meta = is_array($meta) ? $meta : maybe_unserialize($meta);
-            return is_array($meta) && in_array($config['noindex'], $meta, true);
+            // get_post_meta( $id, $key, true ) already returns unserialized
+            // data, so a non-array value here is not a serialized array. Discard
+            // it rather than feed maybe_unserialize() a possible object-injection
+            // payload.
+            if (!is_array($meta)) {
+                return false;
+            }
+            return in_array($config['noindex'], $meta, true);
         }
         
         return $meta === $config['noindex'];

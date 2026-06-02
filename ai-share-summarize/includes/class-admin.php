@@ -311,6 +311,13 @@ class AyudaWP_AISS_Admin {
 			wp_die( 'Security check failed' );
 		}
 
+		// Defense in depth: the nonce is only printed on the settings screen
+		// (gated by manage_options), but verify the capability too so the
+		// option can never be flipped by a lower-privileged user.
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( 'Security check failed' );
+		}
+
 		update_option( 'ayudawp_aiss_activation_notice_dismissed', true );
 		wp_die();
 	}
@@ -395,9 +402,13 @@ class AyudaWP_AISS_Admin {
 			'ai_summary_content_types'             => esc_html__( 'Summaries by content type', 'ai-share-summarize' ),
 			'ai_summary_position'                  => esc_html__( 'Summary position', 'ai-share-summarize' ),
 			'ai_summary_collapsed_default'         => esc_html__( 'Collapsed by default', 'ai-share-summarize' ),
+			'ai_summary_label'                     => esc_html__( 'Summary block label', 'ai-share-summarize' ),
+			'ai_summary_style'                     => esc_html__( 'Summary block style', 'ai-share-summarize' ),
+			'ai_summary_icon_position'             => esc_html__( 'Summary icon position', 'ai-share-summarize' ),
 			'ai_summary_sentences'                 => esc_html__( 'Summary sentence count', 'ai-share-summarize' ),
 			'ai_summary_use_extractive_fallback'   => esc_html__( 'Use extractive fallback', 'ai-share-summarize' ),
 			'ai_summary_frontend_button'           => esc_html__( 'Frontend generation button', 'ai-share-summarize' ),
+			'ai_summary_generate_button_label'     => esc_html__( 'Frontend button label', 'ai-share-summarize' ),
 			'ai_summary_frontend_force_extractive' => esc_html__( 'Frontend uses extractive only', 'ai-share-summarize' ),
 		);
 
@@ -1369,6 +1380,93 @@ class AyudaWP_AISS_Admin {
 			<?php esc_html_e( 'Restrict visitor-triggered generation to the PHP extractive summarizer (zero cost)', 'ai-share-summarize' ); ?>
 		</label>
 		<p class="description"><?php esc_html_e( 'When disabled, visitor clicks can call the WP AI Client, which consumes credits from your configured provider. Leave enabled to keep costs predictable.', 'ai-share-summarize' ); ?></p>
+		<?php
+	}
+
+	/**
+	 * AI summary block label field (v2.1.0)
+	 */
+	public function ayudawp_ai_summary_label_callback() {
+		$options = get_option( 'ayudawp_aiss_options' );
+		$value   = isset( $options['ai_summary_label'] ) ? $options['ai_summary_label'] : '';
+		?>
+		<input type="text" name="ayudawp_aiss_options[ai_summary_label]" value="<?php echo esc_attr( $value ); ?>" class="regular-text" placeholder="<?php echo esc_attr_x( 'AI Summary', 'default summary block label', 'ai-share-summarize' ); ?>">
+		<p class="description"><?php esc_html_e( 'Heading shown on the collapsible summary block. Leave empty to use the default ("AI Summary").', 'ai-share-summarize' ); ?></p>
+		<?php
+	}
+
+	/**
+	 * AI summary block style field (v2.1.0)
+	 */
+	public function ayudawp_ai_summary_style_callback() {
+		$options = get_option( 'ayudawp_aiss_options' );
+		$style   = isset( $options['ai_summary_style'] ) ? $options['ai_summary_style'] : 'minimal';
+
+		$styles = array(
+			'minimal' => esc_html__( 'Minimal (default)', 'ai-share-summarize' ),
+			'outline' => esc_html__( 'Outline', 'ai-share-summarize' ),
+			'brand'   => esc_html__( 'Brand (filled)', 'ai-share-summarize' ),
+			'dark'    => esc_html__( 'Dark', 'ai-share-summarize' ),
+			'custom'  => esc_html__( 'Custom colors', 'ai-share-summarize' ),
+		);
+
+		foreach ( $styles as $key => $label ) {
+			$checked = ( $style === $key ) ? 'checked="checked"' : '';
+			echo '<label style="display: block; margin-bottom: 5px;">
+					<input type="radio" name="ayudawp_aiss_options[ai_summary_style]" value="' . esc_attr( $key ) . '" ' . esc_attr( $checked ) . '>
+					' . esc_html( $label ) . '
+				  </label>';
+		}
+
+		$custom_bg   = isset( $options['ai_summary_custom_bg'] ) ? $options['ai_summary_custom_bg'] : '#ffffff';
+		$custom_text = isset( $options['ai_summary_custom_text'] ) ? $options['ai_summary_custom_text'] : '#1a1a1a';
+		?>
+		<div class="ayudawp-color-picker-row" id="ayudawp-aiss-summary-custom-colors" style="<?php echo 'custom' !== $style ? 'display:none;' : ''; ?>">
+			<div>
+				<label for="ayudawp_aiss_summary_bg"><?php esc_html_e( 'Background color:', 'ai-share-summarize' ); ?></label>
+				<input type="text" id="ayudawp_aiss_summary_bg" name="ayudawp_aiss_options[ai_summary_custom_bg]" value="<?php echo esc_attr( $custom_bg ); ?>" class="ayudawp-color-field" data-default-color="#ffffff">
+			</div>
+			<div>
+				<label for="ayudawp_aiss_summary_text"><?php esc_html_e( 'Text color:', 'ai-share-summarize' ); ?></label>
+				<input type="text" id="ayudawp_aiss_summary_text" name="ayudawp_aiss_options[ai_summary_custom_text]" value="<?php echo esc_attr( $custom_text ); ?>" class="ayudawp-color-field" data-default-color="#1a1a1a">
+			</div>
+		</div>
+		<?php
+		echo '<p class="description">' . esc_html__( 'Visual style for the inline summary block and its Generate button. "Custom colors" uses the colors chosen above.', 'ai-share-summarize' ) . '</p>';
+	}
+
+	/**
+	 * AI summary icon position field (v2.1.0)
+	 */
+	public function ayudawp_ai_summary_icon_position_callback() {
+		$options  = get_option( 'ayudawp_aiss_options' );
+		$position = isset( $options['ai_summary_icon_position'] ) ? $options['ai_summary_icon_position'] : 'left';
+
+		$positions = array(
+			'left'   => esc_html__( 'Left (default)', 'ai-share-summarize' ),
+			'right'  => esc_html__( 'Right', 'ai-share-summarize' ),
+			'hidden' => esc_html__( 'Hidden', 'ai-share-summarize' ),
+		);
+
+		foreach ( $positions as $key => $label ) {
+			$checked = ( $position === $key ) ? 'checked="checked"' : '';
+			echo '<label style="display: block; margin-bottom: 5px;">
+					<input type="radio" name="ayudawp_aiss_options[ai_summary_icon_position]" value="' . esc_attr( $key ) . '" ' . esc_attr( $checked ) . '>
+					' . esc_html( $label ) . '
+				  </label>';
+		}
+		echo '<p class="description">' . esc_html__( 'Where the summary icon appears in the block header.', 'ai-share-summarize' ) . '</p>';
+	}
+
+	/**
+	 * AI summary frontend button label field (v2.1.0)
+	 */
+	public function ayudawp_ai_summary_generate_button_label_callback() {
+		$options = get_option( 'ayudawp_aiss_options' );
+		$value   = isset( $options['ai_summary_generate_button_label'] ) ? $options['ai_summary_generate_button_label'] : '';
+		?>
+		<input type="text" name="ayudawp_aiss_options[ai_summary_generate_button_label]" value="<?php echo esc_attr( $value ); ?>" class="regular-text" placeholder="<?php echo esc_attr_x( 'Generate AI summary', 'default frontend generate button label', 'ai-share-summarize' ); ?>">
+		<p class="description"><?php esc_html_e( 'Text of the visitor-facing button that generates the summary on demand. Leave empty to use the default ("Generate AI summary").', 'ai-share-summarize' ); ?></p>
 		<?php
 	}
 }

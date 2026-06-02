@@ -519,6 +519,15 @@ jQuery(document).ready(function($) {
                     var node = wrapper.querySelector('.ayudawp-aiss-summary:not(.ayudawp-aiss-summary--placeholder)');
                     if (node && placeholder.parentNode) {
                         placeholder.parentNode.replaceChild(node, placeholder);
+                        // A11y: open the freshly generated summary and move focus
+                        // to its toggle so screen readers announce the new content
+                        // that replaced the button the visitor just activated.
+                        var details = node.querySelector('details.ayudawp-aiss-summary-details');
+                        if (details) { details.open = true; }
+                        var toggle = node.querySelector('summary.ayudawp-aiss-summary-toggle') || node.querySelector('summary');
+                        if (toggle && typeof toggle.focus === 'function') {
+                            try { toggle.focus(); } catch (e) {}
+                        }
                     }
                     return;
                 }

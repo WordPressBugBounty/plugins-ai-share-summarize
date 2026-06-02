@@ -3,7 +3,7 @@ Contributors: fernandot,ayudawp
 Tags: claude, chatgpt, social share, ai, perplexity
 Requires at least: 5.6
 Tested up to: 7.0
-Stable tag: 2.0.4
+Stable tag: 2.1.0
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -382,42 +382,20 @@ The social and AI sharing buttons render as `<a>` / `<button>` elements that ope
 
 == Changelog ==
 
-= 2.0.4 =
-* Fix: Contributor+ stored XSS through the `title_style` attribute of the `[ayudawp_share_buttons]` shortcode. The value was emitted in HTML tag-name position with only `esc_attr()`, which does not encode spaces or `=`, so a user with the `edit_posts` capability could inject arbitrary attributes and event handlers. `title_style` is now validated against an allowlist (`h2`-`h6`, `p`, `span`, `div`) at every entry point (admin save, shortcode attribute, render). Reported by Haitam Lazaar.
-
-= 2.0.3 =
-* Fix: Buttons not appearing on entries without a manual excerpt when the active theme or a third-party plugin calls `the_excerpt()` / `get_the_excerpt()` from the `<head>` to compose Open Graph, Twitter Card or similar meta descriptions. WordPress's `wp_trim_excerpt()` applies the `the_content` filter internally to auto-truncate posts without a manual excerpt — the 1.9.2+ id-match guard accepted that early invocation as legitimate, marked the post as processed and blocked the subsequent real call from the post template. The filter now early-returns and stays out of the processed-posts guard when running inside the excerpt pipeline.
-
-= 2.0.2 =
-* Fix: Buttons not appearing on entries other than the latest published post on themes/plugins that call `setup_postdata()` from a header/sidebar without a matching `wp_reset_postdata()`. The strict id-match guard added in 1.9.2 (for Divi Theme Builder, FSE and Bricks) now falls back to verifying that the filtered content belongs to the queried post when `get_the_ID()` and `get_queried_object_id()` disagree, so legitimate singular content still gets the buttons while widgets and footers running `the_content` on arbitrary text remain protected.
-
-= 2.0.1 =
-* Fix: Visitor-facing "Generate AI summary" click made the summary box look empty until the page was reloaded — the placeholder element was being replaced by the inline critical CSS `<style>` block instead of the actual `<aside>` summary. The replacement now targets the `<aside>` element explicitly.
-
-= 2.0.0 =
-* New: Inline AI summary feature — the plugin's namesake "Summarize" capability now generates a short summary of each post and shows it inline in a collapsible block alongside the share buttons
-* New: Two-tier provider cascade — Level A uses the WordPress 7.0 AI Client (`wp_ai_client_prompt()`) with credentials managed centrally in Settings > Connectors (OpenAI, Anthropic, Google), so no API keys are configured in this plugin
-* New: Level C PHP extractive fallback for sites on WP < 7.0 or without an AI Connector — picks the most representative sentences using token-frequency scoring with a Jaccard-similarity filter to avoid redundant sentences in the output
-* New: Dedicated "AI Summary" settings section with independent post-type selection, position, default collapsed state, sentence count (also used by the AI prompt), extractive fallback opt-out and per-feature controls
-* New: Block editor sidebar panel to view the current summary, edit it manually (which locks it against auto-regeneration) and trigger a synchronous regeneration on demand
-* New: Classic editor meta box equivalent — view, edit and force regeneration on next save, with admin notice showing the result or the underlying AI error
-* New: Visitor-facing "Generate AI summary" button for posts without a stored summary, with admin setting to keep generation extractive-only (zero cost) or allow the AI Client (rate-limited to 1 generation per IP per minute)
-* New: `[ayudawp_aiss_summary]` shortcode to render the summary outside the auto-insert flow (accepts a `post_id` attribute)
-* New: REST endpoints `POST /aiss/v1/summary/regenerate` (capability `edit_post`) and `POST /aiss/v1/summary/generate` (public, rate-limited)
-* New: Schema.org microdata on the summary block (`CreativeWork` + `abstract`) plus `data-nosnippet` so search engines understand it's a derived summary and don't compete it as a featured snippet against the original content
-* New: Last AI Client error is persisted and surfaced in the settings page, so configuration issues are visible without enabling `WP_DEBUG`
-* New: Async generation via WP-Cron (`wp_schedule_single_event`) so the editor save never blocks waiting for the AI provider; explicit user actions (sidebar "Regenerate now", classic-editor "Regenerate on next save") run synchronously for immediate feedback
-* Improved: Frontend "Generate AI summary" button rewritten in vanilla JS so it survives aggressive defer/async optimizations from caching and performance plugins
-* Improved: Critical inline CSS printed alongside the summary HTML so the collapsible block stays visually correct even when the main stylesheet is deferred with `rel="preload"`
-* Improved: Shortcodes (`[gallery]`, `[caption]`, plugin-defined ones) are stripped from post content before summarization so the resulting summary no longer includes raw shortcode markup
-* Improved: Minimum WordPress version raised to 5.6 to use `wp_after_insert_post`, which fires after meta updates and avoids redundant regenerations
+= 2.1.0 =
+* New: Summary block appearance — choose a style for the inline AI summary block and its Generate button (minimal, outline, brand, dark, or custom colors), set the background and text colors, and place the icon on the left, on the right, or hidden.
+* New: Customizable summary text — set your own label for the summary block heading and for the visitor-facing "Generate AI summary" button (both translatable; leave empty to keep the defaults).
+* Improved: The AI summary now renders each sentence on its own line for easier reading, for both the AI Client and the extractive providers.
+* Improved: Summary accessibility — visible keyboard focus on the block toggle and the Generate button, and focus moves to the freshly generated summary so screen readers announce the new content.
+* Fix: The summary in the "before content" position did not appear on sites whose theme, plugins or snippets rewrite `the_content` with `DOMDocument` (image optimizers, lazy-load, "nofollow" on image links, table-of-contents, etc.), which dropped the block when reserializing the content. The before-content summary is now injected after those filters and its critical CSS is printed in the page `<head>`, so the block survives; the share buttons keep their position.
+* Fix: Hardening — the section/title tag is now built through an allowlist helper (closing the class of the 2.0.x XSS against future refactors), the activation-notice dismissal now also verifies the user capability, and a redundant `unserialize()` was removed from the SEO noindex detection.
 
 For older changelog entries, please check the [changelog.txt](https://plugins.svn.wordpress.org/ai-share-summarize/trunk/changelog.txt) file
 
 == Upgrade Notice ==
 
-= 2.0.4 =
-Security release. Fixes a Contributor+ stored XSS in the `title_style` attribute of the `[ayudawp_share_buttons]` shortcode. All sites that allow non-admin authors to publish content should update.
+= 2.1.0 =
+Fixes the inline summary not showing in the "before content" position on sites with plugins or snippets that rewrite content (image optimizers, nofollow, table of contents). Adds summary block styles, colors, icon position and custom labels.
 
 == Advanced Usage ==
 

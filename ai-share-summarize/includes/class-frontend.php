@@ -25,7 +25,21 @@ class AyudaWP_AISS_Frontend {
 	 */
 	public function __construct() {
 		add_action( 'wp_enqueue_scripts', array( $this, 'ayudawp_enqueue_scripts' ) );
+		add_action( 'wp_head', array( $this, 'ayudawp_print_summary_critical_css' ) );
 		add_filter( 'the_content', array( $this, 'ayudawp_add_share_buttons' ) );
+
+		/*
+		 * The "before content" summary is injected by a separate filter at a
+		 * deliberately high priority so it runs AFTER content-rewriting filters
+		 * (image optimizers, lazy-load, nofollow, table-of-contents, etc.) that
+		 * reserialize the_content through DOMDocument. Those filters hoist a
+		 * leading <style>/<aside> into the implicit <head> and drop it when they
+		 * keep only the <body> children, which made the summary vanish when it
+		 * was prepended at the default priority 10. Buttons stay at priority 10
+		 * so their position relative to other injected content is unchanged.
+		 */
+		$before_content_priority = (int) apply_filters( 'ayudawp_aiss_summary_before_content_priority', 1000 );
+		add_filter( 'the_content', array( $this, 'ayudawp_prepend_before_content_summary' ), $before_content_priority );
 	}
 
 	/**
@@ -77,48 +91,102 @@ class AyudaWP_AISS_Frontend {
 	}
 
 	/**
-	 * Add share buttons to content
+	 * Add the share buttons (and the buttons-anchored summary) to the content
+	 *
+	 * Runs at the default the_content priority (10). The standalone
+	 * "before content" summary is injected separately by
+	 * ayudawp_prepend_before_content_summary() at a high priority so it is not
+	 * stripped by content-rewriting filters. This method therefore only injects
+	 * the buttons and, for the before_buttons / after_buttons positions, the
+	 * summary glued to the buttons block.
 	 *
 	 * @param string $content Post content.
 	 * @return string Modified content with buttons.
 	 */
 	public function ayudawp_add_share_buttons( $content ) {
 		// Track which post IDs already received the buttons so the same post
-		// can never get them twice on the same request — protects against
-		// builders/widgets that apply the_content filter more than once and
-		// against widgets/sidebars running the_content() on arbitrary text
-		// while the singular post is being rendered.
+		// can never get them twice on the same request.
 		static $processed = array();
 
+		$post_id = $this->ayudawp_resolve_target_post_id( $content );
+		if ( ! $post_id || in_array( $post_id, $processed, true ) ) {
+			return $content;
+		}
+
+		if ( ! ayudawp_aiss_should_display_buttons() ) {
+			return $content;
+		}
+
+		// Apply per-post exclusion set via the meta box.
+		if ( ayudawp_aiss_is_post_excluded( $post_id ) ) {
+			return $content;
+		}
+
+		$options         = get_option( 'ayudawp_aiss_options' );
+		$insert_position = isset( $options['auto_insert_position'] ) ? $options['auto_insert_position'] : 'after_content';
+		$summary_enabled = ! empty( $options['ai_summary_enabled'] );
+		$frontend_button = ! empty( $options['ai_summary_frontend_button'] );
+		$summary_pos     = isset( $options['ai_summary_position'] ) ? $options['ai_summary_position'] : 'before_buttons';
+
+		// Buttons are this filter's job. When auto-insert is disabled there is
+		// nothing to do here — a standalone summary (if any) is rendered by
+		// ayudawp_prepend_before_content_summary().
+		if ( 'disabled' === $insert_position ) {
+			return $content;
+		}
+
+		$buttons_html = AyudaWP_AISS_Buttons::ayudawp_generate_buttons_html();
+
+		// Glue the summary to the buttons only for the buttons-relative
+		// positions. 'before_content' is rendered standalone at a later
+		// priority and must not be added here.
+		$glue_summary = ( $summary_enabled || $frontend_button )
+			&& in_array( $summary_pos, array( 'before_buttons', 'after_buttons' ), true )
+			&& class_exists( 'AyudaWP_AISS_AI_Summary' )
+			&& ayudawp_aiss_should_apply_summary( $post_id );
+
+		$summary_html = $glue_summary
+			? AyudaWP_AISS_AI_Summary::get_summary_html( $post_id )
+			: '';
+
+		$processed[] = $post_id;
+
+		return $this->ayudawp_compose_output( $content, $buttons_html, $summary_html, $insert_position, $summary_pos );
+	}
+
+	/**
+	 * Resolve which post the current the_content call belongs to (v2.1.0)
+	 *
+	 * Shared by ayudawp_add_share_buttons() and
+	 * ayudawp_prepend_before_content_summary() so both filters agree on the
+	 * target. Returns the post ID to inject into, or null when this the_content
+	 * call must be left untouched (backend, feed, excerpt pipeline, secondary
+	 * loop / widget content, or tainted globals that don't match the queried
+	 * post). Each caller keeps its own "already processed" guard.
+	 *
+	 * @param string $content Content passed to the_content.
+	 * @return int|null Target post ID, or null to skip injection.
+	 */
+	private function ayudawp_resolve_target_post_id( $content ) {
 		// Backend or feeds: never inject.
 		if ( is_admin() || is_feed() ) {
-			return $content;
+			return null;
 		}
 
 		/*
 		 * Skip when running inside the excerpt pipeline. WordPress's
-		 * wp_trim_excerpt() applies the_content filter internally to
-		 * auto-truncate posts that have no manual excerpt. Themes or
-		 * plugins that call the_excerpt() / get_the_excerpt() from the
-		 * <head> (Open Graph meta, Twitter Card description, JSON-LD,
-		 * etc.) would otherwise trigger the_content twice per request:
-		 * once for the excerpt (result discarded) and once for the real
-		 * template render. The 1.9.2+ id-match guard accepts the excerpt
-		 * call as legitimate, marks the post as processed and the
-		 * subsequent real call returns $content unchanged — so the
-		 * buttons never reach the rendered HTML.
-		 *
-		 * Returning early here keeps the buttons out of any excerpt
-		 * (where they don't belong anyway) and, crucially, prevents the
-		 * post from being added to the $processed guard, so the real
-		 * the_content invocation from the post template can still inject
-		 * normally.
+		 * wp_trim_excerpt() applies the_content internally to auto-truncate
+		 * posts with no manual excerpt. Themes/plugins that call the_excerpt()
+		 * / get_the_excerpt() from the <head> (Open Graph, Twitter Card,
+		 * JSON-LD, etc.) would otherwise trigger the_content twice: once for
+		 * the excerpt (discarded) and once for the real render. Returning null
+		 * keeps the injection out of excerpts and, crucially, prevents the
+		 * caller from marking the post as processed, so the real the_content
+		 * invocation still injects normally.
 		 */
 		if ( doing_filter( 'get_the_excerpt' ) || doing_filter( 'the_excerpt' ) ) {
-			return $content;
+			return null;
 		}
-
-		$post_id = null;
 
 		if ( is_singular() ) {
 			// On singular pages the only valid target is the queried post.
@@ -129,76 +197,88 @@ class AyudaWP_AISS_Frontend {
 			// false even when the singular post is being rendered legitimately.
 			$queried_id = get_queried_object_id();
 			if ( ! $queried_id ) {
-				return $content;
+				return null;
 			}
 
 			$current_id = get_the_ID();
 
 			if ( $current_id && $current_id === $queried_id ) {
 				/*
-				 * Fast path: sane globals. Either standard WP loop or a
-				 * modern builder (Divi / Bricks / FSE) rendering the
-				 * queried post with the global $post properly set up.
-				 * This is the 1.9.2 behaviour.
+				 * Fast path: sane globals. Either standard WP loop or a modern
+				 * builder (Divi / Bricks / FSE) rendering the queried post with
+				 * the global $post properly set up.
 				 */
-				$post_id = $queried_id;
-			} else {
-				/*
-				 * Slow path: tainted globals. Typically a theme/plugin
-				 * calling setup_postdata() from a header/sidebar/widget
-				 * without a matching wp_reset_postdata(), which makes
-				 * get_the_ID() return the wrong id everywhere. The strict
-				 * 1.9.2 guard would then block the buttons on every entry
-				 * except the one that happens to coincide with the tainted
-				 * id (the typical "buttons only show on the latest post"
-				 * symptom).
-				 *
-				 * We verify that the $content this filter received actually
-				 * belongs to the queried post by matching a short stripped
-				 * fragment of its post_content against the (already
-				 * processed) $content. If it matches, trust the queried id.
-				 * If it doesn't, this is genuine widget/footer content with
-				 * arbitrary text and we skip — preserving the original
-				 * 1.9.2 intent.
-				 */
-				static $queried_samples = array();
-				if ( ! isset( $queried_samples[ $queried_id ] ) ) {
-					$queried_post = get_post( $queried_id );
-					$raw          = $queried_post ? strip_shortcodes( (string) $queried_post->post_content ) : '';
-					$clean        = trim( wp_strip_all_tags( $raw ) );
-					$queried_samples[ $queried_id ] = function_exists( 'mb_substr' )
-						? mb_substr( $clean, 0, 50 )
-						: substr( $clean, 0, 50 );
-				}
-				$sample = $queried_samples[ $queried_id ];
-
-				// Sample too short to be reliable (very short or
-				// image-only post): fall back to the strict behaviour
-				// rather than risk a false positive on widget content.
-				if ( strlen( $sample ) < 20 ) {
-					return $content;
-				}
-
-				$haystack = wp_strip_all_tags( $content );
-				$found    = function_exists( 'mb_strpos' )
-					? mb_strpos( $haystack, $sample )
-					: strpos( $haystack, $sample );
-
-				if ( false === $found ) {
-					return $content;
-				}
-
-				$post_id = $queried_id;
+				return $queried_id;
 			}
-		} else {
-			// On archives/home, require the main loop so secondary loops and
-			// widgets running the_content() are not picked up.
-			if ( ! in_the_loop() || ! is_main_query() ) {
-				return $content;
+
+			/*
+			 * Slow path: tainted globals. Typically a theme/plugin calling
+			 * setup_postdata() from a header/sidebar/widget without a matching
+			 * wp_reset_postdata(), which makes get_the_ID() return the wrong id
+			 * everywhere. We verify that the $content this filter received
+			 * actually belongs to the queried post by matching a short stripped
+			 * fragment of its post_content against $content. If it matches,
+			 * trust the queried id; otherwise this is genuine widget/footer
+			 * content with arbitrary text and we skip.
+			 */
+			static $queried_samples = array();
+			if ( ! isset( $queried_samples[ $queried_id ] ) ) {
+				$queried_post = get_post( $queried_id );
+				$raw          = $queried_post ? strip_shortcodes( (string) $queried_post->post_content ) : '';
+				$clean        = trim( wp_strip_all_tags( $raw ) );
+				$queried_samples[ $queried_id ] = function_exists( 'mb_substr' )
+					? mb_substr( $clean, 0, 50 )
+					: substr( $clean, 0, 50 );
 			}
-			$post_id = get_the_ID();
+			$sample = $queried_samples[ $queried_id ];
+
+			// Sample too short to be reliable (very short or image-only post):
+			// fall back to the strict behaviour rather than risk a false
+			// positive on widget content.
+			if ( strlen( $sample ) < 20 ) {
+				return null;
+			}
+
+			$haystack = wp_strip_all_tags( $content );
+			$found    = function_exists( 'mb_strpos' )
+				? mb_strpos( $haystack, $sample )
+				: strpos( $haystack, $sample );
+
+			return ( false === $found ) ? null : $queried_id;
 		}
 
+		// On archives/home, require the main loop so secondary loops and
+		// widgets running the_content() are not picked up.
+		if ( ! in_the_loop() || ! is_main_query() ) {
+			return null;
+		}
+		$post_id = get_the_ID();
+
+		return $post_id ? $post_id : null;
+	}
+
+	/**
+	 * Prepend the standalone "before content" summary at a late priority (v2.1.0)
+	 *
+	 * Runs after content-rewriting filters (image optimizers, lazy-load,
+	 * nofollow, table-of-contents, etc.) so a block injected at the start of
+	 * the content is not dropped when those filters reserialize the_content
+	 * through DOMDocument. Handles the 'before_content' position and the
+	 * fallback where the summary is anchored to the buttons but the buttons are
+	 * not being auto-inserted (nothing to glue to). The buttons-glued positions
+	 * are handled in ayudawp_add_share_buttons().
+	 *
+	 * @param string $content Post content.
+	 * @return string Content with the summary prepended when applicable.
+	 */
+	public function ayudawp_prepend_before_content_summary( $content ) {
+		static $processed = array();
+
+		if ( ! class_exists( 'AyudaWP_AISS_AI_Summary' ) ) {
+			return $content;
+		}
+
+		$post_id = $this->ayudawp_resolve_target_post_id( $content );
 		if ( ! $post_id || in_array( $post_id, $processed, true ) ) {
 			return $content;
 		}
@@ -206,9 +286,7 @@ class AyudaWP_AISS_Frontend {
 		if ( ! ayudawp_aiss_should_display_buttons() ) {
 			return $content;
 		}
-
-		// Apply per-post exclusion set via the meta box.
-		if ( $post_id && ayudawp_aiss_is_post_excluded( $post_id ) ) {
+		if ( ayudawp_aiss_is_post_excluded( $post_id ) ) {
 			return $content;
 		}
 
@@ -218,46 +296,87 @@ class AyudaWP_AISS_Frontend {
 		$frontend_button = ! empty( $options['ai_summary_frontend_button'] );
 		$summary_pos     = isset( $options['ai_summary_position'] ) ? $options['ai_summary_position'] : 'before_buttons';
 
-		// The summary slot is active when its position is not "disabled" AND
-		// either auto-generation is on OR the visitor-driven button is on.
-		// get_summary_html() applies the per-feature gating internally.
-		$buttons_active = ( 'disabled' !== $insert_position );
 		$summary_active = ( 'disabled' !== $summary_pos ) && ( $summary_enabled || $frontend_button );
-
-		// Both pieces disabled: leave content untouched.
-		if ( ! $buttons_active && ! $summary_active ) {
+		if ( ! $summary_active ) {
 			return $content;
 		}
 
-		$buttons_html = $buttons_active
-			? AyudaWP_AISS_Buttons::ayudawp_generate_buttons_html()
-			: '';
+		/*
+		 * Render standalone at the start of the content when the position is
+		 * 'before_content', or when the summary is anchored to the buttons but
+		 * the buttons are not being auto-inserted (so there is nothing to glue
+		 * it to). The glued cases live in ayudawp_add_share_buttons().
+		 */
+		$buttons_active = ( 'disabled' !== $insert_position );
+		$standalone     = ( 'before_content' === $summary_pos )
+			|| ( ! $buttons_active && in_array( $summary_pos, array( 'before_buttons', 'after_buttons' ), true ) );
 
-		$summary_html = (
-			$summary_active
-			&& $post_id
-			&& class_exists( 'AyudaWP_AISS_AI_Summary' )
-			&& ayudawp_aiss_should_apply_summary( $post_id )
-		)
-			? AyudaWP_AISS_AI_Summary::get_summary_html( $post_id )
-			: '';
-
-		if ( $post_id ) {
-			$processed[] = $post_id;
+		if ( ! $standalone || ! ayudawp_aiss_should_apply_summary( $post_id ) ) {
+			return $content;
 		}
 
 		/*
-		 * Effective summary position falls back to 'before_content' when the
-		 * summary is anchored to the buttons but the buttons are not being
-		 * inserted (auto_insert_position = 'disabled'). Otherwise the summary
-		 * would have nothing to anchor against and would never render.
+		 * Guard against a nested/secondary the_content render stealing the slot.
+		 * Because this filter runs late (after priority-999 plugins), a plugin
+		 * that fires a nested the_content of the same post during its own
+		 * priority-999 pass (e.g. while building related content) reaches this
+		 * filter BEFORE the outer/visible render does. Without a discriminator it
+		 * would take the summary and mark the post processed, leaving the real
+		 * content without it (buttons survive because they inject at priority 10,
+		 * before any nesting). When buttons are auto-inserted, the visible main
+		 * content already carries the share-buttons block, while the skipped
+		 * nested render does not — so require that marker to make sure we prepend
+		 * to the stream the buttons filter already claimed.
 		 */
-		$effective_summary_pos = $summary_pos;
-		if ( $summary_active && ! $buttons_active && in_array( $summary_pos, array( 'before_buttons', 'after_buttons' ), true ) ) {
-			$effective_summary_pos = 'before_content';
+		if ( $buttons_active && false === strpos( $content, 'ayudawp-share-buttons' ) ) {
+			return $content;
 		}
 
-		return $this->ayudawp_compose_output( $content, $buttons_html, $summary_html, $insert_position, $effective_summary_pos );
+		$summary_html = AyudaWP_AISS_AI_Summary::get_summary_html( $post_id );
+		if ( '' === $summary_html ) {
+			return $content;
+		}
+
+		$processed[] = $post_id;
+
+		return $summary_html . $content;
+	}
+
+	/**
+	 * Print the summary block's critical inline CSS in <head> (v2.1.0)
+	 *
+	 * Previously the critical CSS was emitted inside the_content next to the
+	 * summary block. Content-rewriting filters that reserialize via DOMDocument
+	 * hoist a mid-content <style> into the implicit <head> and then drop it when
+	 * they keep only the <body> children, leaving the block unstyled. Printing
+	 * it in the real <head> makes it immune to those filters.
+	 * get_summary_html() / get_generate_button_html() keep a self-guarded inline
+	 * fallback for late shortcode renders that happen after wp_head has fired.
+	 */
+	public function ayudawp_print_summary_critical_css() {
+		if ( ! is_singular() || ! class_exists( 'AyudaWP_AISS_AI_Summary' ) ) {
+			return;
+		}
+
+		$post_id = get_queried_object_id();
+		if ( ! $post_id || ! ayudawp_aiss_should_display_buttons() ) {
+			return;
+		}
+
+		$options         = get_option( 'ayudawp_aiss_options', array() );
+		$summary_pos     = isset( $options['ai_summary_position'] ) ? $options['ai_summary_position'] : 'before_buttons';
+		$summary_enabled = ! empty( $options['ai_summary_enabled'] );
+		$frontend_button = ! empty( $options['ai_summary_frontend_button'] );
+
+		if ( 'disabled' === $summary_pos || ( ! $summary_enabled && ! $frontend_button ) ) {
+			return;
+		}
+
+		if ( ! ayudawp_aiss_should_apply_summary( $post_id ) ) {
+			return;
+		}
+
+		AyudaWP_AISS_AI_Summary::print_critical_inline_style();
 	}
 
 	/**

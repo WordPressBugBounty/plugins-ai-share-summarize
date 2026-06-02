@@ -289,6 +289,15 @@ window.AissPaginator = (function($) {
 			}
 		});
 
+		// Toggle the AI summary custom colors when its style changes (v2.1.0).
+		$('input[name="ayudawp_aiss_options[ai_summary_style]"]').on('change', function() {
+			if ($(this).val() === 'custom') {
+				$('#ayudawp-aiss-summary-custom-colors').show();
+			} else {
+				$('#ayudawp-aiss-summary-custom-colors').hide();
+			}
+		});
+
 		// Init jQuery UI Sortable for both group lists (v1.6.0).
 		if ($.fn.sortable) {
 			$('.ayudawp-sortable-list').sortable({
