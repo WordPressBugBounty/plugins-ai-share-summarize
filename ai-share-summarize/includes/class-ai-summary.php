@@ -287,6 +287,12 @@ class AyudaWP_AISS_AI_Summary {
 	 * the configured Connector cannot handle text generation, or when
 	 * the call itself fails.
 	 *
+	 * When running inside WP-Cron (the async path scheduled after save),
+	 * transient provider errors are retried with a short backoff (2s, 5s)
+	 * before giving up — retry count filterable via
+	 * 'ayudawp_aiss_ai_retry_attempts' (default 2). Sync callers are never
+	 * retried so the editor and the public endpoint keep failing fast.
+	 *
 	 * The builder chain is wrapped in try/catch \Throwable to survive
 	 * any future signature drift in the WP AI Client API.
 	 *
@@ -323,28 +329,61 @@ class AyudaWP_AISS_AI_Summary {
 			$excerpt
 		);
 
-		try {
-			$result = wp_ai_client_prompt( $prompt )
-				->using_system_instruction( $system )
-				->generate_text();
-		} catch ( \Throwable $e ) {
+		// Transient provider errors (e.g. "Unexpected API response: Missing
+		// the 'content' key") resolve on a quick retry. Only the async cron
+		// path retries — sync calls (editor "Regenerate now", public frontend
+		// endpoint) fail fast because a user is actively waiting.
+		$retries      = wp_doing_cron() ? (int) apply_filters( 'ayudawp_aiss_ai_retry_attempts', 2 ) : 0;
+		$max_attempts = 1 + min( 5, max( 0, $retries ) );
+		$error        = null;
+
+		for ( $attempt = 1; $attempt <= $max_attempts; $attempt++ ) {
+			if ( $attempt > 1 ) {
+				sleep( 2 === $attempt ? 2 : 5 );
+			}
+
+			try {
+				$result = wp_ai_client_prompt( $prompt )
+					->using_system_instruction( $system )
+					->generate_text();
+			} catch ( \Throwable $e ) {
+				$error = new WP_Error(
+					'wp_ai_client_exception',
+					sprintf( '%s (%s)', $e->getMessage(), get_class( $e ) )
+				);
+				continue;
+			}
+
+			if ( is_wp_error( $result ) ) {
+				$error = $result;
+				continue;
+			}
+
+			$text = trim( wp_strip_all_tags( (string) $result ) );
+
+			if ( '' === $text ) {
+				$error = new WP_Error( 'wp_ai_client_empty', __( 'WP AI Client returned an empty response.', 'ai-share-summarize' ) );
+				continue;
+			}
+
+			return $text;
+		}
+
+		// Every attempt failed. Surface the attempt count in the error so the
+		// admin can tell a persistent failure from a single transient hiccup.
+		if ( $max_attempts > 1 && $error instanceof WP_Error ) {
 			return new WP_Error(
-				'wp_ai_client_exception',
-				sprintf( '%s (%s)', $e->getMessage(), get_class( $e ) )
+				$error->get_error_code(),
+				sprintf(
+					/* translators: 1: error message from the AI client, 2: number of attempts. */
+					__( '%1$s (failed after %2$d attempts)', 'ai-share-summarize' ),
+					$error->get_error_message(),
+					$max_attempts
+				)
 			);
 		}
 
-		if ( is_wp_error( $result ) ) {
-			return $result;
-		}
-
-		$text = trim( wp_strip_all_tags( (string) $result ) );
-
-		if ( '' === $text ) {
-			return new WP_Error( 'wp_ai_client_empty', __( 'WP AI Client returned an empty response.', 'ai-share-summarize' ) );
-		}
-
-		return $text;
+		return $error;
 	}
 
 	/**

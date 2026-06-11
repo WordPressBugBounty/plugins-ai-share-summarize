@@ -1173,7 +1173,7 @@ class AyudaWP_AISS_Admin {
 				. sprintf(
 					/* translators: %s is a link to the Connectors settings screen. */
 					esc_html__( 'Configure your AI provider in %s to enable high-quality summaries.', 'ai-share-summarize' ),
-					'<a href="' . esc_url( $connectors_url ) . '">' . esc_html__( 'Settings > Connectors', 'ai-share-summarize' ) . '</a>'
+					'<a href="' . esc_url( $connectors_url ) . '" target="_blank" rel="noopener">' . esc_html__( 'Settings > Connectors', 'ai-share-summarize' ) . '</a>'
 				)
 				. '</p>';
 

@@ -561,18 +561,22 @@ function ayudawp_aiss_enqueue_frontend_assets() {
  * This helper preprocesses the HTML so the sentence splitter has natural
  * breakpoints to work with:
  *
- *   1. Strips WordPress block comments (`<!-- wp:table -->`).
- *   2. Removes entire blocks that are usually noise for prose summarization
+ *   1. Removes shortcodes and bare autoembed URLs (a URL alone on its own
+ *      line or paragraph renders as an embedded player, so it is media,
+ *      not prose).
+ *   2. Strips WordPress block comments (`<!-- wp:table -->`).
+ *   3. Removes entire blocks that are usually noise for prose summarization
  *      (tables, code, captions, forms, navigation, embeds).
- *   3. Replaces block-level tag boundaries with ". " so sentences from
+ *   4. Replaces block-level tag boundaries with ". " so sentences from
  *      different paragraphs/list-items don't get concatenated.
- *   4. Strips remaining inline tags via wp_strip_all_tags().
- *   5. Normalizes whitespace and collapses runs of dots.
+ *   5. Strips remaining inline tags via wp_strip_all_tags().
+ *   6. Normalizes whitespace and collapses runs of dots.
  *
  * Applied by both the extractive summarizer and the AI Client prompt so
  * the LLM also receives clean text instead of table soup.
  *
  * @since 2.0.0
+ * @since 2.1.1 Bare oEmbed/autoembed URLs (YouTube, Vimeo...) are removed too.
  * @param string $html Raw HTML / block content.
  * @return string Cleaned plain text ready to summarize.
  */
@@ -588,6 +592,15 @@ function ayudawp_aiss_clean_html_for_summary( $html ) {
 	//    cannot `do_shortcode()` here because that would inject the whole
 	//    rendered gallery/embed back into the prose we want to summarize.
 	$html = strip_shortcodes( $html );
+
+	// 0.5 Remove oEmbed URLs: a URL alone on its own line or alone in its
+	//     paragraph becomes an embedded player (YouTube, Vimeo, X...) when
+	//     the post renders. WP_Embed::autoembed() detects embeds with these
+	//     same two patterns — we mirror them, deleting instead of embedding.
+	//     Linked URLs (<a href>) and URLs quoted inside a sentence don't
+	//     match (core doesn't embed those either), so prose is untouched.
+	$html = preg_replace( '#^\s*https?://[^\s<>"]+\s*$#im', ' ', $html );
+	$html = preg_replace( '#<p(?:\s[^>]*)?>\s*https?://[^\s<>"]+\s*</p>#i', ' ', $html );
 
 	// 1. Strip block comments (Gutenberg leaves them in post_content).
 	$html = preg_replace( '#<!--.*?-->#s', '', $html );

@@ -58,50 +58,29 @@ class AyudaWP_AISS_Promo_Banner {
 	 * @return array
 	 */
 	private function get_plugins_catalog() {
+		// Mirror of ayudawp-promo-banner-catalog.md (the single source of
+		// truth, alphabetical by slug). The host plugin's own entry is
+		// included on purpose: get_random_plugins() unsets it at runtime.
 		return array(
-			'vigilante'                        => array(
-				'icon'        => 'dashicons-shield',
-				'title'       => __( 'Complete WordPress security', 'ai-share-summarize' ),
-				'description' => __( 'All-in-one security plugin: firewall, login protection, security headers, 2FA, file integrity monitoring, and activity logging.', 'ai-share-summarize' ),
-				'button'      => __( 'Install Vigilante', 'ai-share-summarize' ),
-			),
-			'gozer'                            => array(
-				'icon'        => 'dashicons-admin-network',
-				'title'       => __( 'Restrict site access', 'ai-share-summarize' ),
-				'description' => __( 'Force visitors to log in before accessing your site with extensive exception controls for pages, posts, and user roles.', 'ai-share-summarize' ),
-				'button'      => __( 'Install Gozer', 'ai-share-summarize' ),
-			),
-			'vigia'                            => array(
-				'icon'        => 'dashicons-visibility',
-				'title'       => __( 'Monitor AI crawler activity', 'ai-share-summarize' ),
-				'description' => __( 'Track which AI bots visit your site, analyze their behavior, and take control with blocking rules and robots.txt management.', 'ai-share-summarize' ),
-				'button'      => __( 'Install VigIA', 'ai-share-summarize' ),
-			),
-			'ai-content-signals'               => array(
+			'ai-content-signals'              => array(
 				'icon'        => 'dashicons-flag',
 				'title'       => __( 'Control AI content usage', 'ai-share-summarize' ),
 				'description' => __( 'Cloudflare-endorsed plugin to define how AI systems can use your content: for training, search results, or both.', 'ai-share-summarize' ),
 				'button'      => __( 'Install AI Content Signals', 'ai-share-summarize' ),
 			),
-			'wpo-tweaks'                       => array(
-				'icon'        => 'dashicons-performance',
-				'title'       => __( 'Speed up your WordPress', 'ai-share-summarize' ),
-				'description' => __( 'Comprehensive performance optimizations: critical CSS, lazy loading, cache rules, and 30+ tweaks with zero configuration.', 'ai-share-summarize' ),
-				'button'      => __( 'Install WPO Tweaks', 'ai-share-summarize' ),
+			'ai-share-summarize'              => array(
+				'icon'        => 'dashicons-share',
+				'title'       => __( 'Boost your AI presence', 'ai-share-summarize' ),
+				'description' => __( 'Add social sharing and AI summarize buttons. Help visitors share your content and let AIs learn from your site while getting backlinks.', 'ai-share-summarize' ),
+				'button'      => __( 'Install AI Share & Summarize', 'ai-share-summarize' ),
 			),
-			'no-gutenberg'                     => array(
-				'icon'        => 'dashicons-edit-page',
-				'title'       => __( 'Back to Classic Editor', 'ai-share-summarize' ),
-				'description' => __( 'Completely remove Gutenberg, FSE styles, and block widgets. Restore the classic editing experience with better performance.', 'ai-share-summarize' ),
-				'button'      => __( 'Install No Gutenberg', 'ai-share-summarize' ),
-			),
-			'anticache'                        => array(
+			'anticache'                       => array(
 				'icon'        => 'dashicons-hammer',
 				'title'       => __( 'Development toolkit', 'ai-share-summarize' ),
 				'description' => __( 'Bypass all caching during development. Auto-detects cache plugins, enables debug mode, and includes maintenance screen.', 'ai-share-summarize' ),
 				'button'      => __( 'Install Anti-Cache Kit', 'ai-share-summarize' ),
 			),
-			'auto-capitalize-names-ayudawp'    => array(
+			'auto-capitalize-names-ayudawp'   => array(
 				'icon'        => 'dashicons-editor-textcolor',
 				'title'       => __( 'Fix customer names', 'ai-share-summarize' ),
 				'description' => __( 'Auto-capitalize names and addresses in WordPress and WooCommerce. Keep invoices and reports professionally formatted.', 'ai-share-summarize' ),
@@ -113,31 +92,73 @@ class AyudaWP_AISS_Promo_Banner {
 				'description' => __( 'Remove millions of completed, failed, and old actions from WooCommerce Action Scheduler. Reduce database size instantly.', 'ai-share-summarize' ),
 				'button'      => __( 'Install Scheduler Cleaner', 'ai-share-summarize' ),
 			),
-			'native-sitemap-customizer'        => array(
-				'icon'        => 'dashicons-networking',
-				'title'       => __( 'Customize your sitemap', 'ai-share-summarize' ),
-				'description' => __( 'Control WordPress native sitemap: exclude post types, taxonomies, specific posts, and authors. No bloat, just options.', 'ai-share-summarize' ),
-				'button'      => __( 'Install Sitemap Customizer', 'ai-share-summarize' ),
+			'easy-store-management-ayudawp'   => array(
+				'icon'        => 'dashicons-store',
+				'title'       => __( 'Simplify store management', 'ai-share-summarize' ),
+				'description' => __( 'Clean up WordPress admin for Store Managers. Hide unnecessary menus, keep only orders, products, and customers, plus quick access shortcuts.', 'ai-share-summarize' ),
+				'button'      => __( 'Install Easy Store', 'ai-share-summarize' ),
 			),
-			'post-visibility-control'          => array(
+			'eu-withdrawal-compliance'        => array(
+				'icon'        => 'dashicons-undo',
+				'title'       => __( 'EU withdrawal compliance', 'ai-share-summarize' ),
+				'description' => __( 'Add the EU online withdrawal function required by Directive 2023/2673 from June 2026. Public form, My Account button, email notice and SHA-256 receipt hash.', 'ai-share-summarize' ),
+				'button'      => __( 'Install EU Withdrawal', 'ai-share-summarize' ),
+			),
+			'gozer'                           => array(
+				'icon'        => 'dashicons-admin-network',
+				'title'       => __( 'Restrict site access', 'ai-share-summarize' ),
+				'description' => __( 'Force visitors to log in before accessing your site with extensive exception controls for pages, posts, and user roles.', 'ai-share-summarize' ),
+				'button'      => __( 'Install Gozer', 'ai-share-summarize' ),
+			),
+			'lightbox-images-for-divi'        => array(
+				'icon'        => 'dashicons-format-gallery',
+				'title'       => __( 'Lightbox for Divi', 'ai-share-summarize' ),
+				'description' => __( 'Add native lightbox functionality to Divi theme images. No jQuery, fast loading, fully customizable.', 'ai-share-summarize' ),
+				'button'      => __( 'Install Divi Lightbox', 'ai-share-summarize' ),
+			),
+			'multiple-sale-prices-scheduler'  => array(
+				'icon'        => 'dashicons-calendar-alt',
+				'title'       => __( 'Schedule sale prices', 'ai-share-summarize' ),
+				'description' => __( 'Set multiple future sale prices for WooCommerce products. Plan promotions in advance with start and end dates.', 'ai-share-summarize' ),
+				'button'      => __( 'Install Sale Scheduler', 'ai-share-summarize' ),
+			),
+			'native-aeo-pack'                 => array(
+				'icon'        => 'dashicons-embed-generic',
+				'title'       => __( 'All-in-one native SEO', 'ai-share-summarize' ),
+				'description' => __( 'Meta tags, Open Graph, JSON-LD schema, robots directives and native sitemap control in one lightweight plugin built on WordPress core features.', 'ai-share-summarize' ),
+				'button'      => __( 'Install Native SEO Pack', 'ai-share-summarize' ),
+			),
+			'no-gutenberg'                    => array(
+				'icon'        => 'dashicons-edit-page',
+				'title'       => __( 'Back to Classic Editor', 'ai-share-summarize' ),
+				'description' => __( 'Completely remove Gutenberg, FSE styles, and block widgets. Restore the classic editing experience with better performance.', 'ai-share-summarize' ),
+				'button'      => __( 'Install No Gutenberg', 'ai-share-summarize' ),
+			),
+			'periscopio'                      => array(
+				'icon'        => 'dashicons-rss',
+				'title'       => __( 'Custom Dashboard News', 'ai-share-summarize' ),
+				'description' => __( 'Add your own custom feeds and links to the news and events dashboard widget and replace WordPress default one.', 'ai-share-summarize' ),
+				'button'      => __( 'Install Periscope', 'ai-share-summarize' ),
+			),
+			'post-visibility-control'         => array(
 				'icon'        => 'dashicons-hidden',
 				'title'       => __( 'Control post visibility', 'ai-share-summarize' ),
 				'description' => __( 'Hide posts from homepage, archives, feeds, or REST API while keeping them accessible via direct URL.', 'ai-share-summarize' ),
 				'button'      => __( 'Install Post Visibility', 'ai-share-summarize' ),
 			),
-			'widget-visibility-control'        => array(
-				'icon'        => 'dashicons-welcome-widgets-menus',
-				'title'       => __( 'Smart widget display', 'ai-share-summarize' ),
-				'description' => __( 'Show or hide widgets based on pages, post types, categories, user roles, and more. Works with any theme.', 'ai-share-summarize' ),
-				'button'      => __( 'Install Widget Visibility', 'ai-share-summarize' ),
+			'scheduled-posts-showcase'        => array(
+				'icon'        => 'dashicons-clock',
+				'title'       => __( 'Show visitors what is coming up next', 'ai-share-summarize' ),
+				'description' => __( 'Display your scheduled and future posts on the frontend to gain and retain visits.', 'ai-share-summarize' ),
+				'button'      => __( 'Install Scheduled Posts Showcase', 'ai-share-summarize' ),
 			),
-			'search-replace-text-blocks'       => array(
+			'search-replace-text-blocks'      => array(
 				'icon'        => 'dashicons-search',
 				'title'       => __( 'Search & replace in blocks', 'ai-share-summarize' ),
 				'description' => __( 'Find and replace text across all your Gutenberg blocks. Bulk edit content without touching the database directly.', 'ai-share-summarize' ),
 				'button'      => __( 'Install Search Replace Blocks', 'ai-share-summarize' ),
 			),
-			'seo-read-more-buttons-ayudawp'    => array(
+			'seo-read-more-buttons-ayudawp'   => array(
 				'icon'        => 'dashicons-admin-links',
 				'title'       => __( 'Better read more links', 'ai-share-summarize' ),
 				'description' => __( 'Customize excerpt "read more" links with buttons, custom text, and nofollow option. Improve CTR and SEO.', 'ai-share-summarize' ),
@@ -149,41 +170,35 @@ class AyudaWP_AISS_Promo_Banner {
 				'description' => __( 'Display only the lowest price for WooCommerce variable products instead of confusing price ranges.', 'ai-share-summarize' ),
 				'button'      => __( 'Install Lowest Price', 'ai-share-summarize' ),
 			),
-			'multiple-sale-prices-scheduler'   => array(
-				'icon'        => 'dashicons-calendar-alt',
-				'title'       => __( 'Schedule sale prices', 'ai-share-summarize' ),
-				'description' => __( 'Set multiple future sale prices for WooCommerce products. Plan promotions in advance with start and end dates.', 'ai-share-summarize' ),
-				'button'      => __( 'Install Sale Scheduler', 'ai-share-summarize' ),
+			'terms-conditions-consent-log'    => array(
+				'icon'        => 'dashicons-yes-alt',
+				'title'       => __( 'Tamper-evident consent log', 'ai-share-summarize' ),
+				'description' => __( 'GDPR art. 7.1 audit trail for any acceptance checkbox: WooCommerce checkout, CF7, WPForms, comments and shortcode. Timestamp, IP, version and SHA-256 sealed text.', 'ai-share-summarize' ),
+				'button'      => __( 'Install Consent Log', 'ai-share-summarize' ),
 			),
-			'easy-store-management-ayudawp'    => array(
-				'icon'        => 'dashicons-store',
-				'title'       => __( 'Simplify store management', 'ai-share-summarize' ),
-				'description' => __( 'Clean up WordPress admin for Store Managers. Hide unnecessary menus, keep only orders, products, and customers, plus quick access shortcuts.', 'ai-share-summarize' ),
-				'button'      => __( 'Install Easy Store', 'ai-share-summarize' ),
+			'vigia'                           => array(
+				'icon'        => 'dashicons-visibility',
+				'title'       => __( 'Monitor AI crawler activity', 'ai-share-summarize' ),
+				'description' => __( 'Track which AI bots visit your site, analyze their behavior, and take control with blocking rules and robots.txt management.', 'ai-share-summarize' ),
+				'button'      => __( 'Install VigIA', 'ai-share-summarize' ),
 			),
-			'scheduled-posts-showcase' => array(
-            'icon'        => 'dashicons-clock',
-            'title'       => __( 'Show visitors what is coming up next', 'ai-share-summarize' ),
-            'description' => __( 'Display your scheduled and future posts on the frontend to gain and retain visits.', 'ai-share-summarize' ),
-            'button'      => __( 'Install Scheduled Posts Showcase', 'ai-share-summarize' ),
-        	),
-			'noindexer'                        => array(
-				'icon'        => 'dashicons-editor-unlink',
-				'title'       => __( 'Control search indexing', 'ai-share-summarize' ),
-				'description' => __( 'Tell search engines what not to index. Apply noindex per post, page, or entire post types with simple override controls.', 'ai-share-summarize' ),
-				'button'      => __( 'Install NoIndexer', 'ai-share-summarize' ),
+			'vigilante'                       => array(
+				'icon'        => 'dashicons-shield',
+				'title'       => __( 'Complete WordPress security', 'ai-share-summarize' ),
+				'description' => __( 'All-in-one security plugin: firewall, login protection, security headers, 2FA, file integrity monitoring, and activity logging.', 'ai-share-summarize' ),
+				'button'      => __( 'Install Vigilant', 'ai-share-summarize' ),
 			),
-			'periscopio'                       => array(
-				'icon'        => 'dashicons-rss',
-				'title'       => __( 'Custom dashboard news', 'ai-share-summarize' ),
-				'description' => __( 'Add your own custom feeds and links to the news and events dashboard widget and replace the WordPress default one.', 'ai-share-summarize' ),
-				'button'      => __( 'Install Periscope', 'ai-share-summarize' ),
+			'widget-visibility-control'       => array(
+				'icon'        => 'dashicons-welcome-widgets-menus',
+				'title'       => __( 'Smart widget display', 'ai-share-summarize' ),
+				'description' => __( 'Show or hide widgets based on pages, post types, categories, user roles, and more. Works with any theme.', 'ai-share-summarize' ),
+				'button'      => __( 'Install Widget Visibility', 'ai-share-summarize' ),
 			),
-			'lightbox-images-for-divi'         => array(
-				'icon'        => 'dashicons-format-gallery',
-				'title'       => __( 'Lightbox for Divi', 'ai-share-summarize' ),
-				'description' => __( 'Add native lightbox functionality to Divi theme images. No jQuery, fast loading, fully customizable.', 'ai-share-summarize' ),
-				'button'      => __( 'Install Divi Lightbox', 'ai-share-summarize' ),
+			'wpo-tweaks'                      => array(
+				'icon'        => 'dashicons-food',
+				'title'       => __( 'Put WordPress on a diet', 'ai-share-summarize' ),
+				'description' => __( 'Disable bloat and apply 30+ performance tweaks (critical CSS, lazy loading, cache rules) with zero configuration for a leaner, faster site.', 'ai-share-summarize' ),
+				'button'      => __( 'Install DietPress', 'ai-share-summarize' ),
 			),
 		);
 	}
