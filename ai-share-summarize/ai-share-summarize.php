@@ -3,11 +3,11 @@
  * Plugin Name: AI Share & Summarize
  * Plugin URI: https://servicios.ayudawp.com/
  * Description: Inline AI summary on every post + one-click sharing to social networks and 11 AI assistants (Claude, ChatGPT, Gemini, Grok, Perplexity, DeepSeek, Mistral, Copilot, Qwen, Meta AI). Powered by the new WordPress 7.0 AI Connectors.
- * Version: 2.1.1
+ * Version: 2.2.0
  * Author: Fernando Tellado
  * Author URI: https://ayudawp.com/
  * Text Domain: ai-share-summarize
- * Requires at least: 5.6
+ * Requires at least: 6.1
  * Tested up to: 7.0
  * Requires PHP: 7.4
  * License: GPL v2 or later
@@ -22,7 +22,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Define plugin constants.
-define( 'AYUDAWP_AISS_VERSION', '2.1.1' );
+define( 'AYUDAWP_AISS_VERSION', '2.2.0' );
 define( 'AYUDAWP_AISS_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'AYUDAWP_AISS_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'AYUDAWP_AISS_PLUGIN_BASENAME', plugin_basename( __FILE__ ) );
@@ -222,6 +222,21 @@ class AyudaWP_AI_Share_Summarize {
 			}
 		}
 
+		// Migration for v2.2.0: collapse the two AI-summary booleans into a single
+		// explicit mode, then drop the legacy keys.
+		if ( version_compare( $from_version, '2.2.0', '<' ) ) {
+			if ( ! isset( $options['ai_summary_mode'] ) ) {
+				$was_enabled  = ! isset( $options['ai_summary_enabled'] ) || ! empty( $options['ai_summary_enabled'] );
+				$was_fallback = ! isset( $options['ai_summary_use_extractive_fallback'] ) || ! empty( $options['ai_summary_use_extractive_fallback'] );
+				if ( ! $was_enabled ) {
+					$options['ai_summary_mode'] = 'disabled';
+				} else {
+					$options['ai_summary_mode'] = $was_fallback ? 'ai_fallback' : 'ai_only';
+				}
+			}
+			unset( $options['ai_summary_enabled'], $options['ai_summary_use_extractive_fallback'] );
+		}
+
 		update_option( 'ayudawp_aiss_options', $options );
 	}
 
@@ -256,8 +271,7 @@ class AyudaWP_AI_Share_Summarize {
 			'seo_button_type'            => 'link',
 			'exclude_noindex'            => true,
 			'button_custom_order'        => array(),
-			'ai_summary_enabled'                 => true,
-			'ai_summary_use_extractive_fallback' => true,
+			'ai_summary_mode'                    => 'ai_fallback',
 			'ai_summary_sentences'               => 3,
 			'ai_summary_position'                => 'before_buttons',
 			'ai_summary_collapsed_default'       => true,

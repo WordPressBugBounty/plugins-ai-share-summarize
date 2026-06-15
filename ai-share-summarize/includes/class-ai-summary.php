@@ -111,9 +111,7 @@ class AyudaWP_AISS_AI_Summary {
 			return;
 		}
 
-		$options = get_option( 'ayudawp_aiss_options', array() );
-
-		if ( empty( $options['ai_summary_enabled'] ) ) {
+		if ( ! ayudawp_aiss_is_summary_active() ) {
 			return;
 		}
 
@@ -216,9 +214,17 @@ class AyudaWP_AISS_AI_Summary {
 
 			$options = get_option( 'ayudawp_aiss_options', array() );
 
-			if ( $force_extractive ) {
+			// Resolve the admin's generation mode (v2.2.0). "extractive_only"
+			// behaves like a forced-extractive call; "ai_only" disables the
+			// fallback; "ai_fallback" keeps the A->C cascade. A caller that
+			// forces extractive (public frontend) always allows the fallback.
+			$mode                       = ayudawp_aiss_get_summary_mode();
+			$force_extractive_effective = $force_extractive || 'extractive_only' === $mode;
+			$allow_fallback             = $force_extractive || 'ai_fallback' === $mode;
+
+			if ( $force_extractive_effective ) {
 				// Skip Level A entirely — caller wants zero-cost generation
-				// (typically the public frontend endpoint).
+				// (typically the public frontend endpoint, or extractive_only mode).
 				$summary  = '';
 				$provider = '';
 			} else {
@@ -234,14 +240,13 @@ class AyudaWP_AISS_AI_Summary {
 				// sidebar, the meta box and an admin notice — much more useful
 				// than relying on error_log + WP_DEBUG). Skip when the caller
 				// forced extractive — it isn't a real failure.
-				if ( ! $force_extractive ) {
+				if ( ! $force_extractive_effective ) {
 					self::store_last_ai_error( $ai_error );
 				}
 
-				// Forced-extractive callers always run the fallback regardless
-				// of the admin's ai_summary_use_extractive_fallback setting,
-				// since the caller is explicitly opting into it.
-				if ( ! $force_extractive && empty( $options['ai_summary_use_extractive_fallback'] ) ) {
+				// Whether to run the extractive fallback is driven by the mode
+				// ("ai_fallback"), or by a caller that explicitly forced extractive.
+				if ( ! $force_extractive_effective && ! $allow_fallback ) {
 					if ( $ai_error ) {
 						// Surface the real error code/message so the user sees
 						// what really happened, not a generic "AI failed".
@@ -329,6 +334,37 @@ class AyudaWP_AISS_AI_Summary {
 			$excerpt
 		);
 
+		// Resolve which model to use. The plugin exposes a model selector in
+		// Settings; when it is left on "Automatic" (or points at a model that no
+		// longer exists) we bias toward a sensible, cheaper model per provider so
+		// generation never lands on the newest flagship. That is what broke when
+		// Claude Fable 5 shipped and became the first Anthropic candidate while
+		// being unavailable to most accounts. See
+		// ayudawp_aiss_resolve_default_model_preference().
+		$available    = ayudawp_aiss_get_available_models();
+		$selected     = isset( $options['ai_summary_model'] ) ? (string) $options['ai_summary_model'] : '';
+		$pin_provider = '';
+		$pin_models   = array();
+
+		if ( '' !== $selected && false !== strpos( $selected, ':' ) ) {
+			list( $sel_provider, $sel_model ) = explode( ':', $selected, 2 );
+			// Honor the explicit choice only if it still exists in the live list.
+			if ( isset( $available[ $sel_provider ]['models'] ) ) {
+				foreach ( $available[ $sel_provider ]['models'] as $candidate ) {
+					if ( $candidate['id'] === $sel_model ) {
+						$pin_provider = $sel_provider;
+						$pin_models   = array( $sel_model );
+						break;
+					}
+				}
+			}
+		}
+
+		if ( empty( $pin_models ) ) {
+			// Automatic, or a stale stored selection: bias toward the cheaper default.
+			$pin_models = ayudawp_aiss_resolve_default_model_preference( $available );
+		}
+
 		// Transient provider errors (e.g. "Unexpected API response: Missing
 		// the 'content' key") resolve on a quick retry. Only the async cron
 		// path retries — sync calls (editor "Regenerate now", public frontend
@@ -343,9 +379,14 @@ class AyudaWP_AISS_AI_Summary {
 			}
 
 			try {
-				$result = wp_ai_client_prompt( $prompt )
-					->using_system_instruction( $system )
-					->generate_text();
+				$builder = wp_ai_client_prompt( $prompt )->using_system_instruction( $system );
+				if ( '' !== $pin_provider ) {
+					$builder = $builder->using_provider( $pin_provider );
+				}
+				if ( ! empty( $pin_models ) ) {
+					$builder = $builder->using_model_preference( ...$pin_models );
+				}
+				$result = $builder->generate_text();
 			} catch ( \Throwable $e ) {
 				$error = new WP_Error(
 					'wp_ai_client_exception',

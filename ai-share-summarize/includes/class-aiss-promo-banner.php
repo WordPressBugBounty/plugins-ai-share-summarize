@@ -123,10 +123,10 @@ class AyudaWP_AISS_Promo_Banner {
 				'button'      => __( 'Install Sale Scheduler', 'ai-share-summarize' ),
 			),
 			'native-aeo-pack'                 => array(
-				'icon'        => 'dashicons-embed-generic',
-				'title'       => __( 'All-in-one native SEO', 'ai-share-summarize' ),
-				'description' => __( 'Meta tags, Open Graph, JSON-LD schema, robots directives and native sitemap control in one lightweight plugin built on WordPress core features.', 'ai-share-summarize' ),
-				'button'      => __( 'Install Native SEO Pack', 'ai-share-summarize' ),
+				'icon'        => 'dashicons-visibility',
+				'title'       => __( 'All-in-one SEO, AEO & GEO', 'ai-share-summarize' ),
+				'description' => __( 'Meta tags, Open Graph, JSON-LD schema, robots and native sitemap control: the clean metadata search engines and AI assistants read, built on WordPress core.', 'ai-share-summarize' ),
+				'button'      => __( 'Install Visibility', 'ai-share-summarize' ),
 			),
 			'no-gutenberg'                    => array(
 				'icon'        => 'dashicons-edit-page',

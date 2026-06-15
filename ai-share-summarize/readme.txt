@@ -1,9 +1,9 @@
 === AI Share & Summarize ===
 Contributors: fernandot,ayudawp
 Tags: claude, chatgpt, social share, ai, perplexity
-Requires at least: 5.6
+Requires at least: 6.1
 Tested up to: 7.0
-Stable tag: 2.1.1
+Stable tag: 2.2.0
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -16,9 +16,10 @@ Inline AI summary on every post + one-click sharing to social networks and 11 AI
 
 Among the **first plugins to integrate the native WordPress 7.0 AI Connectors API**: configure your AI provider once in **Settings > Connectors** (OpenAI, Anthropic, Google) and the plugin reuses those credentials — no API keys to manage, no extra accounts.
 
-= Inline AI Summary (New from 2.0.0) =
+= Inline AI Summary =
 
-* **Two-tier cascade**: Level A uses the WordPress 7.0 AI Client; Level C is a built-in PHP extractive fallback with zero API cost on any WP 5.6+ install.
+* **Two-tier cascade**: Level A uses the WordPress 7.0 AI Client; Level C is a built-in PHP extractive fallback with zero API cost on any WP 6.1+ install.
+* **Choose your AI model and mode**: pick the provider and model used to generate summaries, or leave it on Automatic to use a fast, cost-effective model instead of the newest, most expensive one. Set how generation behaves too: AI with extractive fallback, AI only, extractive only, or disabled.
 * **Collapsible inline block** with native `<details>`, `data-nosnippet` and Schema.org `CreativeWork` microdata so search engines treat it as derived content, not competition.
 * **Editor controls** in the block sidebar and the classic meta box: view, edit manually, regenerate on demand.
 * **Visitor-facing "Generate AI summary" button** for posts without a stored summary, restrictable to extractive-only or open to the AI Client.
@@ -79,7 +80,7 @@ Among the **first plugins to integrate the native WordPress 7.0 AI Connectors AP
 15. **Set button order**: Social first, AI first, or mixed — drag & drop to reorder within each group
 16. **Configure SEO settings**: Choose between links with nofollow or button elements
 17. **Configure data retention**: Set retention period and optionally delete all data when plugin is uninstalled
-18. **Configure AI Summary** (new from 2.0.0):
+18. **Configure AI Summary**:
     - Enable the inline AI summary feature
     - Choose position (before / after the buttons, before the content, or disabled)
     - Pick the post types where summaries should be generated (independent from the buttons' list)
@@ -115,21 +116,9 @@ Yes, AI Share & Summarize is 100% free with all features included, including sup
 
 When you publish or update a post, the plugin generates a short summary asynchronously (in a background WP-Cron event, to avoid blocking the editor save). The summary then appears inline next to the share buttons, inside a collapsible block. Visitors can expand it without leaving the page. You can disable the feature globally in **Settings > AI Share & Summarize > AI Summary**, choose where the summary is placed (before/after the buttons, or before the content), and override or edit the text per post from the editor sidebar.
 
-= How do the "Enable AI Summary" and "Use extractive fallback" settings relate? =
+= How do I choose the AI generation mode and model? =
 
-The two checkboxes in the AI Summary section work as a cascade, not as independent toggles:
-
-* **Enable AI Summary** is the master switch. Off means nothing is generated, ever.
-* **Use extractive fallback** controls what happens *if* the AI Client cannot return a summary — no Connector configured, API error, the canonical AI plugin's approval system blocking the request, an older WordPress version, etc.
-
-The real behaviors today:
-
-* **Enable off** → no summary at all.
-* **Enable on + fallback on** (recommended default) → tries the WP AI Client first; if it fails, falls back to the built-in PHP extractive summarizer so the post still gets a basic summary at zero cost.
-* **Enable on + fallback off** → AI only. If the AI call fails, the post has no summary.
-* **Enable on + fallback on, with no Connector configured** → de facto "extractive only", because the AI step always fails and the fallback always kicks in.
-
-There is no explicit "extractive only by choice" toggle yet: with a Connector configured, the AI Client is always attempted first. If you want zero AI calls on purpose (privacy, cost…), do not configure any AI Connector for now. A future release will replace these two checkboxes with a single explicit selector (AI + fallback / AI only / Extractive only / Disabled) — this FAQ will be removed at that point.
+The **AI Summary generation** setting is a single selector with four modes: *AI with extractive fallback* (recommended), *AI only*, *Extractive only* (never contacts a provider), and *Disabled*. The **AI model** selector lists the models your configured providers expose; leave it on *Automatic* to let the plugin pick a fast, cost-effective model per provider instead of the newest, most expensive flagship.
 
 = Where do I configure API keys for the AI summary? =
 
@@ -382,25 +371,18 @@ The social and AI sharing buttons render as `<a>` / `<button>` elements that ope
 
 == Changelog ==
 
-= 2.1.1 =
-* Improved: Background (cron) AI summary generation now retries transient provider errors — e.g. a malformed API response — up to 2 times with a short backoff before falling back to the extractive summarizer. Editor- and visitor-triggered generation still fails fast. The retry count is filterable via `ayudawp_aiss_ai_retry_attempts`, and the stored error now reports how many attempts were made.
-* Improved: The "Settings > Connectors" link in the AI Summary settings section now opens in a new tab so you keep the plugin settings page open.
-* Fix: Bare video/oEmbed URLs (YouTube, Vimeo, X...) placed on their own line or paragraph to embed a player no longer leak into the AI and extractive summaries. The content cleanup now mirrors WordPress core's autoembed detection and removes them before summarizing; linked URLs and URLs written inside a sentence are preserved. Note: already-stored summaries are not regenerated by the update — edit the post or use "Regenerate now" on affected posts.
-
-= 2.1.0 =
-* New: Summary block appearance — choose a style for the inline AI summary block and its Generate button (minimal, outline, brand, dark, or custom colors), set the background and text colors, and place the icon on the left, on the right, or hidden.
-* New: Customizable summary text — set your own label for the summary block heading and for the visitor-facing "Generate AI summary" button (both translatable; leave empty to keep the defaults).
-* Improved: The AI summary now renders each sentence on its own line for easier reading, for both the AI Client and the extractive providers.
-* Improved: Summary accessibility — visible keyboard focus on the block toggle and the Generate button, and focus moves to the freshly generated summary so screen readers announce the new content.
-* Fix: The summary in the "before content" position did not appear on sites whose theme, plugins or snippets rewrite `the_content` with `DOMDocument` (image optimizers, lazy-load, "nofollow" on image links, table-of-contents, etc.), which dropped the block when reserializing the content. The before-content summary is now injected after those filters and its critical CSS is printed in the page `<head>`, so the block survives; the share buttons keep their position.
-* Fix: Hardening — the section/title tag is now built through an allowlist helper (closing the class of the 2.0.x XSS against future refactors), the activation-notice dismissal now also verifies the user capability, and a redundant `unserialize()` was removed from the SEO noindex detection.
+= 2.2.0 =
+* New: AI model selector for the summary. Pick the provider and model used for generation, or leave it on Automatic to use a fast, cost-effective model per provider instead of the newest, most expensive flagship.
+* Improved: AI Summary generation is now a single, explicit mode selector (AI with extractive fallback / AI only / Extractive only / Disabled), replacing the two checkboxes. Extractive-only is now a real choice without removing your AI provider.
+* Fix: summaries could fail when the configured provider's newest model was not available to your account (for example a limited-access flagship). Generation now defaults to a sensible model and no longer breaks in that case.
+* Fix: prevented a possible fatal error during analytics cleanup on WordPress older than 6.1, so the minimum is now WordPress 6.1. The AI summary needs WordPress 7.0; on earlier versions you can still use the extractive summary.
 
 For older changelog entries, please check the [changelog.txt](https://plugins.svn.wordpress.org/ai-share-summarize/trunk/changelog.txt) file
 
 == Upgrade Notice ==
 
-= 2.1.1 =
-Fixes bare YouTube/oEmbed URLs leaking into AI summaries (use Regenerate on affected posts after updating), adds automatic retries for transient AI errors during background generation, and the Connectors link now opens in a new tab.
+= 2.2.0 =
+Adds an AI model selector and a clearer generation-mode setting, and fixes summaries failing when a provider's newest model isn't available. Minimum WordPress is now 6.1. The AI summary needs WordPress 7.0; on earlier versions you can still use the extractive summary.
 
 == Advanced Usage ==
 
@@ -465,7 +447,7 @@ The `[ayudawp_share_buttons]` shortcode accepts several parameters:
 
 `[ayudawp_share_buttons size="fluid" style="outline" show_icons="true"]`
 
-= AI summary shortcode (v2.0.0) =
+= AI summary shortcode =
 
 The `[ayudawp_aiss_summary]` shortcode renders the AI-generated summary as a standalone collapsible block. Useful when you want to place the summary somewhere other than where the share buttons are auto-inserted, or when you have buttons disabled but still want to surface the summary.
 
@@ -477,7 +459,7 @@ The shortcode outputs nothing when the post has no stored summary, so it is safe
 
 = CSS Customization Guide =
 
-Since version 1.6.0, the plugin uses CSS custom properties for all brand colors. You can override these in your theme to change any platform color globally:
+The plugin uses CSS custom properties for all brand colors. You can override these in your theme to change any platform color globally:
 
 **Override platform colors:**
 `.ayudawp-share-buttons {

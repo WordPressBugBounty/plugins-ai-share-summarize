@@ -52,7 +52,7 @@ class AyudaWP_AISS_Frontend {
 	public function ayudawp_enqueue_scripts() {
 		$options         = get_option( 'ayudawp_aiss_options' );
 		$insert_position = isset( $options['auto_insert_position'] ) ? $options['auto_insert_position'] : 'after_content';
-		$summary_enabled = ! empty( $options['ai_summary_enabled'] );
+		$summary_enabled = ayudawp_aiss_is_summary_active();
 		$summary_pos     = isset( $options['ai_summary_position'] ) ? $options['ai_summary_position'] : 'before_buttons';
 
 		// Determine if assets are needed on this page.
@@ -124,7 +124,7 @@ class AyudaWP_AISS_Frontend {
 
 		$options         = get_option( 'ayudawp_aiss_options' );
 		$insert_position = isset( $options['auto_insert_position'] ) ? $options['auto_insert_position'] : 'after_content';
-		$summary_enabled = ! empty( $options['ai_summary_enabled'] );
+		$summary_enabled = ayudawp_aiss_is_summary_active();
 		$frontend_button = ! empty( $options['ai_summary_frontend_button'] );
 		$summary_pos     = isset( $options['ai_summary_position'] ) ? $options['ai_summary_position'] : 'before_buttons';
 
@@ -292,7 +292,7 @@ class AyudaWP_AISS_Frontend {
 
 		$options         = get_option( 'ayudawp_aiss_options' );
 		$insert_position = isset( $options['auto_insert_position'] ) ? $options['auto_insert_position'] : 'after_content';
-		$summary_enabled = ! empty( $options['ai_summary_enabled'] );
+		$summary_enabled = ayudawp_aiss_is_summary_active();
 		$frontend_button = ! empty( $options['ai_summary_frontend_button'] );
 		$summary_pos     = isset( $options['ai_summary_position'] ) ? $options['ai_summary_position'] : 'before_buttons';
 
@@ -365,7 +365,7 @@ class AyudaWP_AISS_Frontend {
 
 		$options         = get_option( 'ayudawp_aiss_options', array() );
 		$summary_pos     = isset( $options['ai_summary_position'] ) ? $options['ai_summary_position'] : 'before_buttons';
-		$summary_enabled = ! empty( $options['ai_summary_enabled'] );
+		$summary_enabled = ayudawp_aiss_is_summary_active();
 		$frontend_button = ! empty( $options['ai_summary_frontend_button'] );
 
 		if ( 'disabled' === $summary_pos || ( ! $summary_enabled && ! $frontend_button ) ) {

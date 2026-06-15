@@ -129,8 +129,7 @@ class AyudaWP_AISS_Meta_Box {
 
 		<?php
 		// AI Summary fields (v2.0.0).
-		$options         = get_option( 'ayudawp_aiss_options', array() );
-		$summary_enabled = ! empty( $options['ai_summary_enabled'] );
+		$summary_enabled = ayudawp_aiss_is_summary_active();
 
 		if ( $summary_enabled && class_exists( 'AyudaWP_AISS_AI_Summary' ) ) {
 			$summary  = get_post_meta( $post->ID, AyudaWP_AISS_AI_Summary::META_SUMMARY, true );

@@ -398,7 +398,8 @@ class AyudaWP_AISS_Admin {
 
 		// AI Summary section fields (v2.0.0).
 		$summary_fields = array(
-			'ai_summary_enabled'                   => esc_html__( 'Enable AI Summary', 'ai-share-summarize' ),
+			'ai_summary_mode'                      => esc_html__( 'AI Summary generation', 'ai-share-summarize' ),
+			'ai_summary_model'                     => esc_html__( 'AI model', 'ai-share-summarize' ),
 			'ai_summary_content_types'             => esc_html__( 'Summaries by content type', 'ai-share-summarize' ),
 			'ai_summary_position'                  => esc_html__( 'Summary position', 'ai-share-summarize' ),
 			'ai_summary_collapsed_default'         => esc_html__( 'Collapsed by default', 'ai-share-summarize' ),
@@ -406,7 +407,6 @@ class AyudaWP_AISS_Admin {
 			'ai_summary_style'                     => esc_html__( 'Summary block style', 'ai-share-summarize' ),
 			'ai_summary_icon_position'             => esc_html__( 'Summary icon position', 'ai-share-summarize' ),
 			'ai_summary_sentences'                 => esc_html__( 'Summary sentence count', 'ai-share-summarize' ),
-			'ai_summary_use_extractive_fallback'   => esc_html__( 'Use extractive fallback', 'ai-share-summarize' ),
 			'ai_summary_frontend_button'           => esc_html__( 'Frontend generation button', 'ai-share-summarize' ),
 			'ai_summary_generate_button_label'     => esc_html__( 'Frontend button label', 'ai-share-summarize' ),
 			'ai_summary_frontend_force_extractive' => esc_html__( 'Frontend uses extractive only', 'ai-share-summarize' ),
@@ -1239,17 +1239,79 @@ class AyudaWP_AISS_Admin {
 	}
 
 	/**
-	 * AI summary enabled field
+	 * AI summary generation mode field (v2.2.0)
+	 *
+	 * Single explicit selector that replaces the former "Enable AI Summary" +
+	 * "Use extractive fallback" checkbox pair.
 	 */
-	public function ayudawp_ai_summary_enabled_callback() {
-		$options = get_option( 'ayudawp_aiss_options' );
-		$enabled = isset( $options['ai_summary_enabled'] ) ? (bool) $options['ai_summary_enabled'] : true;
+	public function ayudawp_ai_summary_mode_callback() {
+		$mode = ayudawp_aiss_get_summary_mode();
+
+		$modes = array(
+			'ai_fallback'     => esc_html__( 'AI with extractive fallback (recommended)', 'ai-share-summarize' ),
+			'ai_only'         => esc_html__( 'AI only (no fallback)', 'ai-share-summarize' ),
+			'extractive_only' => esc_html__( 'Extractive only (never contacts an AI provider)', 'ai-share-summarize' ),
+			'disabled'        => esc_html__( 'Disabled', 'ai-share-summarize' ),
+		);
+
+		$descriptions = array(
+			'ai_fallback'     => esc_html__( 'Generate with your AI provider; if it is unavailable, fall back to the on-server extractive summary.', 'ai-share-summarize' ),
+			'ai_only'         => esc_html__( 'Generate with your AI provider only. If it fails, no summary is produced.', 'ai-share-summarize' ),
+			'extractive_only' => esc_html__( 'Always use the on-server extractive summarizer. Zero cost, never contacts an AI provider.', 'ai-share-summarize' ),
+			'disabled'        => esc_html__( 'Do not generate summaries at all.', 'ai-share-summarize' ),
+		);
+
+		foreach ( $modes as $key => $label ) {
+			?>
+			<p style="margin:0 0 8px;">
+				<label>
+					<input type="radio" name="ayudawp_aiss_options[ai_summary_mode]" value="<?php echo esc_attr( $key ); ?>" <?php checked( $mode, $key ); ?>>
+					<strong><?php echo esc_html( $label ); ?></strong>
+				</label>
+				<span class="description" style="display:block;margin-left:24px;"><?php echo esc_html( $descriptions[ $key ] ); ?></span>
+			</p>
+			<?php
+		}
+	}
+
+	/**
+	 * AI model selector field (v2.2.0)
+	 *
+	 * Lists the text-generation models exposed by each configured AI provider
+	 * (provider plugin active + credentials set). Defaults to "Automatic", which
+	 * biases toward a sensible, cheaper model per provider. Shows a hint pointing
+	 * to Settings > Connectors when no provider is configured.
+	 */
+	public function ayudawp_ai_summary_model_callback() {
+		$options   = get_option( 'ayudawp_aiss_options' );
+		$selected  = isset( $options['ai_summary_model'] ) ? (string) $options['ai_summary_model'] : '';
+		$available = ayudawp_aiss_get_available_models();
+
+		if ( empty( $available ) ) {
+			$connectors_url = admin_url( 'options-connectors.php' );
+			?>
+			<p class="description">
+				<?php esc_html_e( 'No AI provider is configured yet, so there are no models to choose from. The summary will use whichever provider you set up.', 'ai-share-summarize' ); ?>
+				<a href="<?php echo esc_url( $connectors_url ); ?>" target="_blank" rel="noopener"><?php esc_html_e( 'Configure a provider in Settings > Connectors', 'ai-share-summarize' ); ?></a>
+			</p>
+			<?php
+			return;
+		}
 		?>
-		<label>
-			<input type="checkbox" name="ayudawp_aiss_options[ai_summary_enabled]" value="1" <?php checked( $enabled, true ); ?>>
-			<?php esc_html_e( 'Generate and display AI summaries', 'ai-share-summarize' ); ?>
-		</label>
-		<p class="description"><?php esc_html_e( 'When enabled, a summary is generated after each post is published or updated.', 'ai-share-summarize' ); ?></p>
+		<select name="ayudawp_aiss_options[ai_summary_model]">
+			<option value="" <?php selected( $selected, '' ); ?>><?php esc_html_e( 'Automatic (recommended): fast, cost-effective model per provider', 'ai-share-summarize' ); ?></option>
+			<?php foreach ( $available as $provider_id => $data ) : ?>
+				<optgroup label="<?php echo esc_attr( $data['name'] ); ?>">
+					<?php
+					foreach ( $data['models'] as $model ) :
+						$value = $provider_id . ':' . $model['id'];
+						?>
+						<option value="<?php echo esc_attr( $value ); ?>" <?php selected( $selected, $value ); ?>><?php echo esc_html( $model['name'] ); ?></option>
+					<?php endforeach; ?>
+				</optgroup>
+			<?php endforeach; ?>
+		</select>
+		<p class="description"><?php esc_html_e( 'Model used when AI generation is active. "Automatic" avoids the newest, most expensive flagship and picks a fast, cost-effective model.', 'ai-share-summarize' ); ?></p>
 		<?php
 	}
 
@@ -1290,21 +1352,6 @@ class AyudaWP_AISS_Admin {
 			<?php esc_html_e( 'Show summary collapsed by default (visitor expands it manually)', 'ai-share-summarize' ); ?>
 		</label>
 		<p class="description"><?php esc_html_e( 'When disabled, the summary is shown expanded as soon as the page loads.', 'ai-share-summarize' ); ?></p>
-		<?php
-	}
-
-	/**
-	 * AI summary extractive fallback field
-	 */
-	public function ayudawp_ai_summary_use_extractive_fallback_callback() {
-		$options  = get_option( 'ayudawp_aiss_options' );
-		$fallback = isset( $options['ai_summary_use_extractive_fallback'] ) ? (bool) $options['ai_summary_use_extractive_fallback'] : true;
-		?>
-		<label>
-			<input type="checkbox" name="ayudawp_aiss_options[ai_summary_use_extractive_fallback]" value="1" <?php checked( $fallback, true ); ?>>
-			<?php esc_html_e( 'Use the PHP extractive summarizer when WP AI Client is not available', 'ai-share-summarize' ); ?>
-		</label>
-		<p class="description"><?php esc_html_e( 'The extractive fallback picks the most representative sentences from the content. It works without any AI provider but produces a more basic summary.', 'ai-share-summarize' ); ?></p>
 		<?php
 	}
 

@@ -169,8 +169,6 @@ function ayudawp_aiss_validate_options( $input ) {
 		'show_icons',
 		'delete_data_on_uninstall',
 		'exclude_noindex',
-		'ai_summary_enabled',
-		'ai_summary_use_extractive_fallback',
 		'ai_summary_collapsed_default',
 		'ai_summary_frontend_button',
 		'ai_summary_frontend_force_extractive',
@@ -261,6 +259,39 @@ function ayudawp_aiss_validate_options( $input ) {
 	$validated['ai_summary_sentences'] = isset( $input['ai_summary_sentences'] )
 		? max( 1, min( 5, absint( $input['ai_summary_sentences'] ) ) )
 		: 3;
+
+	// Validate ai_summary_mode (v2.2.0) — explicit generation mode allowlist.
+	$valid_summary_modes          = array( 'ai_fallback', 'ai_only', 'extractive_only', 'disabled' );
+	$validated['ai_summary_mode'] = isset( $input['ai_summary_mode'] ) && in_array( $input['ai_summary_mode'], $valid_summary_modes, true )
+		? $input['ai_summary_mode']
+		: 'ai_fallback';
+
+	// Validate ai_summary_model (v2.2.0) — '' (automatic) or a "provider:model"
+	// pair restricted to a safe charset. When the live model list is available
+	// the pair must exist in it; if enumeration is momentarily unavailable we
+	// keep the sanitized value rather than wiping the admin's choice.
+	$validated['ai_summary_model'] = '';
+	if ( isset( $input['ai_summary_model'] ) && '' !== $input['ai_summary_model'] ) {
+		$candidate = preg_replace( '/[^a-zA-Z0-9:._-]/', '', (string) $input['ai_summary_model'] );
+		if ( '' !== $candidate && 1 === substr_count( $candidate, ':' ) ) {
+			list( $cand_provider, $cand_model ) = explode( ':', $candidate, 2 );
+			if ( '' !== $cand_provider && '' !== $cand_model ) {
+				$available = ayudawp_aiss_get_available_models();
+				$is_known  = false;
+				if ( isset( $available[ $cand_provider ]['models'] ) ) {
+					foreach ( $available[ $cand_provider ]['models'] as $known_model ) {
+						if ( $known_model['id'] === $cand_model ) {
+							$is_known = true;
+							break;
+						}
+					}
+				}
+				if ( $is_known || empty( $available ) ) {
+					$validated['ai_summary_model'] = $candidate;
+				}
+			}
+		}
+	}
 
 	// Sanitize hex colors.
 	if ( isset( $validated['custom_color_bg'] ) ) {
@@ -432,6 +463,200 @@ function ayudawp_aiss_should_apply_summary( $post_id ) {
 	}
 	$allowed = ayudawp_aiss_get_summary_post_types();
 	return in_array( $post_type, $allowed, true );
+}
+
+/**
+ * Resolve the AI summary generation mode (v2.2.0)
+ *
+ * Replaces the legacy ai_summary_enabled + ai_summary_use_extractive_fallback
+ * boolean pair with a single explicit mode. Falls back to deriving the mode
+ * from the old booleans for sites whose options have not been migrated yet.
+ *
+ * @since 2.2.0
+ * @return string One of: ai_fallback, ai_only, extractive_only, disabled.
+ */
+function ayudawp_aiss_get_summary_mode() {
+	$options = get_option( 'ayudawp_aiss_options', array() );
+
+	if ( isset( $options['ai_summary_mode'] ) ) {
+		$mode = (string) $options['ai_summary_mode'];
+		if ( in_array( $mode, array( 'ai_fallback', 'ai_only', 'extractive_only', 'disabled' ), true ) ) {
+			return $mode;
+		}
+	}
+
+	// Legacy fallback for pre-2.2.0 options not yet migrated.
+	$enabled = ! isset( $options['ai_summary_enabled'] ) || ! empty( $options['ai_summary_enabled'] );
+	if ( ! $enabled ) {
+		return 'disabled';
+	}
+	$fallback = ! isset( $options['ai_summary_use_extractive_fallback'] ) || ! empty( $options['ai_summary_use_extractive_fallback'] );
+	return $fallback ? 'ai_fallback' : 'ai_only';
+}
+
+/**
+ * Whether the AI summary feature is active (any mode other than disabled) (v2.2.0)
+ *
+ * @since 2.2.0
+ * @return bool True when summaries should be generated and displayed.
+ */
+function ayudawp_aiss_is_summary_active() {
+	return 'disabled' !== ayudawp_aiss_get_summary_mode();
+}
+
+/**
+ * Enumerate the text-generation models available from the configured AI providers (v2.2.0)
+ *
+ * Walks the WordPress 7.0 AI Client provider registry, keeps the providers whose
+ * companion plugin is active AND whose credentials are configured, and lists each
+ * one's text-generation models. The AI Client caches the live model lookup for
+ * 24h, so repeated calls are cheap. Used to build the model selector in Settings
+ * and to resolve the "Automatic" default at generation time.
+ *
+ * Note: providers ship as separate plugins (ai-provider-for-anthropic, etc.); the
+ * registry only lists those whose plugin is active, which is exactly the set that
+ * can actually generate. Wrapped in try/catch \Throwable to survive any signature
+ * drift in the AI Client builder API.
+ *
+ * @since 2.2.0
+ * @return array<string,array{name:string,models:array<int,array{id:string,name:string}>}>
+ *               Map of provider ID to its display name and model list. Empty when
+ *               the AI Client is unavailable or no provider is configured.
+ */
+function ayudawp_aiss_get_available_models() {
+	if ( ! class_exists( '\WordPress\AiClient\AiClient' ) ) {
+		return array();
+	}
+
+	$out = array();
+
+	try {
+		$registry = \WordPress\AiClient\AiClient::defaultRegistry();
+		$ids      = $registry->getRegisteredProviderIds();
+		if ( empty( $ids ) ) {
+			return array();
+		}
+
+		// Friendly provider display names for the UI. We deliberately avoid
+		// wp_get_connectors() (WP 7.0) so the plugin stays within its declared
+		// minimum WP version; unknown providers fall back to a title-cased ID.
+		$provider_names = array(
+			'anthropic' => 'Anthropic',
+			'google'    => 'Google',
+			'openai'    => 'OpenAI',
+		);
+
+		$requirements = new \WordPress\AiClient\Providers\Models\DTO\ModelRequirements(
+			array( \WordPress\AiClient\Providers\Models\Enums\CapabilityEnum::textGeneration() ),
+			array()
+		);
+
+		foreach ( $ids as $provider_id ) {
+			if ( ! $registry->isProviderConfigured( $provider_id ) ) {
+				continue;
+			}
+
+			try {
+				$models_metadata = $registry->findProviderModelsMetadataForSupport( $provider_id, $requirements );
+			} catch ( \Throwable $e ) {
+				// One provider's live lookup failing must not break the others.
+				continue;
+			}
+
+			$models = array();
+			foreach ( $models_metadata as $model_metadata ) {
+				$models[] = array(
+					'id'   => $model_metadata->getId(),
+					'name' => $model_metadata->getName(),
+				);
+			}
+
+			if ( empty( $models ) ) {
+				continue;
+			}
+
+			$out[ $provider_id ] = array(
+				'name'   => isset( $provider_names[ $provider_id ] ) ? $provider_names[ $provider_id ] : ucfirst( $provider_id ),
+				'models' => $models,
+			);
+		}
+	} catch ( \Throwable $e ) {
+		return array();
+	}
+
+	return $out;
+}
+
+/**
+ * Resolve the preferred "Automatic" model IDs for summary generation (v2.2.0)
+ *
+ * When the admin leaves the model selector on "Automatic", we must not let the
+ * WP AI Client fall back to its first discovered candidate, which is the newest
+ * (and usually most expensive, sometimes access-restricted) flagship. That is
+ * exactly what broke summaries when Claude Fable 5 shipped and became the first
+ * Anthropic candidate while being unavailable to most accounts.
+ *
+ * Instead we bias toward a sensible, cheaper model per provider, matched by ID
+ * substring so the choice survives model-ID changes (date suffixes, new minor
+ * versions). The result is an ordered list of model IDs suitable for
+ * PromptBuilder::using_model_preference(); IDs that no provider exposes are
+ * simply ignored by the builder, so listing several is safe.
+ *
+ * @since 2.2.0
+ * @param array|null $available Optional pre-fetched ayudawp_aiss_get_available_models() output.
+ * @return array<int,string> Ordered list of preferred model IDs. May be empty.
+ */
+function ayudawp_aiss_resolve_default_model_preference( $available = null ) {
+	if ( null === $available ) {
+		$available = ayudawp_aiss_get_available_models();
+	}
+	if ( empty( $available ) ) {
+		return array();
+	}
+
+	/**
+	 * Filters the per-provider model preference patterns for "Automatic" mode.
+	 *
+	 * Each provider maps to an ordered list of case-insensitive substrings; the
+	 * first model whose ID contains the first matching substring is chosen. Add
+	 * entries for OpenAI, Google or other providers to bias their defaults too.
+	 *
+	 * @since 2.2.0
+	 * @param array<string,array<int,string>> $patterns Provider ID => ordered ID substrings.
+	 */
+	$patterns = apply_filters(
+		'ayudawp_aiss_default_models',
+		array(
+			'anthropic' => array( 'sonnet', 'haiku', 'opus' ),
+			'google'    => array( 'flash', 'pro' ),
+			'openai'    => array( 'mini' ),
+		)
+	);
+
+	$preference = array();
+
+	foreach ( $available as $provider_id => $data ) {
+		if ( empty( $patterns[ $provider_id ] ) || empty( $data['models'] ) ) {
+			continue;
+		}
+
+		foreach ( $patterns[ $provider_id ] as $needle ) {
+			$needle = strtolower( (string) $needle );
+			$match  = '';
+			foreach ( $data['models'] as $model ) {
+				if ( '' !== $needle && false !== strpos( strtolower( $model['id'] ), $needle ) ) {
+					$match = $model['id'];
+					break;
+				}
+			}
+			if ( '' !== $match ) {
+				$preference[] = $match;
+				break; // First matching pattern for this provider wins.
+			}
+		}
+	}
+
+	return $preference;
 }
 
 /**

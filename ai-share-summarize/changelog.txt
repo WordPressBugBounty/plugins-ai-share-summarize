@@ -3,6 +3,12 @@ AI Share & Summarize — Full changelog
 For each release, see the entries below. The latest version is always at the top.
 The current release notes also live in readme.txt under "== Changelog ==".
 
+= 2.2.0 =
+* New: AI model selector for the summary. Pick the provider and model used for generation, or leave it on Automatic to use a fast, cost-effective model per provider instead of the newest, most expensive flagship.
+* Improved: AI Summary generation is now a single, explicit mode selector (AI with extractive fallback / AI only / Extractive only / Disabled), replacing the two checkboxes. Extractive-only is now a real choice without removing your AI provider.
+* Fix: summaries could fail when the configured provider's newest model was not available to your account (for example a limited-access flagship). Generation now defaults to a sensible model and no longer breaks in that case.
+* Fix: prevented a possible fatal error during analytics cleanup on WordPress older than 6.1, so the minimum is now WordPress 6.1. The AI summary needs WordPress 7.0; on earlier versions you can still use the extractive summary.
+
 = 2.1.1 =
 * Improved: Background (cron) AI summary generation now retries transient provider errors — e.g. a malformed API response — up to 2 times with a short backoff before falling back to the extractive summarizer. Editor- and visitor-triggered generation still fails fast. The retry count is filterable via `ayudawp_aiss_ai_retry_attempts`, and the stored error now reports how many attempts were made.
 * Improved: The "Settings > Connectors" link in the AI Summary settings section now opens in a new tab so you keep the plugin settings page open.
