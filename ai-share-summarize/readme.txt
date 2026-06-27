@@ -579,6 +579,9 @@ Replace with your own style:
 
 == Support ==
 
+= Need private support or custom development? =
+Do you need one-on-one help, priority troubleshooting, or a custom feature, integration, or tweak built specifically for your site? I offer private support and custom development. Just [contact me](mailto:ai-share-summarize@ayudawp.com) and tell me what you need.
+
 = Need help or have suggestions? =
 * [Official website](https://servicios.ayudawp.com/)
 * [WordPress support forum](https://wordpress.org/support/plugin/ai-share-summarize/)
