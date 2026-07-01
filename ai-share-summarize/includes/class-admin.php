@@ -1299,7 +1299,7 @@ class AyudaWP_AISS_Admin {
 		}
 		?>
 		<select name="ayudawp_aiss_options[ai_summary_model]">
-			<option value="" <?php selected( $selected, '' ); ?>><?php esc_html_e( 'Automatic (recommended): fast, cost-effective model per provider', 'ai-share-summarize' ); ?></option>
+			<option value="" <?php selected( $selected, '' ); ?>><?php esc_html_e( 'Automatic (recommended): cheapest model per provider', 'ai-share-summarize' ); ?></option>
 			<?php foreach ( $available as $provider_id => $data ) : ?>
 				<optgroup label="<?php echo esc_attr( $data['name'] ); ?>">
 					<?php
@@ -1311,7 +1311,7 @@ class AyudaWP_AISS_Admin {
 				</optgroup>
 			<?php endforeach; ?>
 		</select>
-		<p class="description"><?php esc_html_e( 'Model used when AI generation is active. "Automatic" avoids the newest, most expensive flagship and picks a fast, cost-effective model.', 'ai-share-summarize' ); ?></p>
+		<p class="description"><?php esc_html_e( 'Model used when AI generation is active. "Automatic" picks the cheapest model of each provider and falls back to another one if it is momentarily unavailable.', 'ai-share-summarize' ); ?></p>
 		<?php
 	}
 
@@ -1396,7 +1396,7 @@ class AyudaWP_AISS_Admin {
 		echo '</div>';
 
 		echo '<p class="description" style="margin-top: 10px;">'
-			. esc_html__( 'Independent from the share buttons content-type list. Lets you generate summaries on content where buttons are hidden, and vice versa.', 'ai-share-summarize' )
+			. esc_html__( 'This has its own list, but while it is left empty, summaries fall back to the content types used by the share buttons. Select at least one type here to control summaries independently.', 'ai-share-summarize' )
 			. '</p>';
 	}
 

@@ -3,6 +3,11 @@ AI Share & Summarize — Full changelog
 For each release, see the entries below. The latest version is always at the top.
 The current release notes also live in readme.txt under "== Changelog ==".
 
+= 2.2.1 =
+* Improved: the "Automatic" model setting now uses each provider's cheapest model (Haiku on Anthropic) instead of a mid-tier one, and keeps the rest of the provider's catalog as an ordered fallback chain, so summaries stay cheap and keep working when a model is unavailable.
+* Fix: AI summaries could stop generating after the active provider changed its available models — a listed model that is not actually usable, or a corrupted cached model list on sites with a persistent object cache. Generation now degrades to the next model and refreshes the cached model list automatically instead of failing until the cache expires.
+* Fix: corrected the summary "content types" help text, which claimed to be fully independent from the share buttons list while it actually falls back to that list when left empty.
+
 = 2.2.0 =
 * New: AI model selector for the summary. Pick the provider and model used for generation, or leave it on Automatic to use a fast, cost-effective model per provider instead of the newest, most expensive flagship.
 * Improved: AI Summary generation is now a single, explicit mode selector (AI with extractive fallback / AI only / Extractive only / Disabled), replacing the two checkboxes. Extractive-only is now a real choice without removing your AI provider.

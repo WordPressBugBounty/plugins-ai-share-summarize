@@ -588,23 +588,30 @@ function ayudawp_aiss_get_available_models() {
 }
 
 /**
- * Resolve the preferred "Automatic" model IDs for summary generation (v2.2.0)
+ * Resolve the ordered "Automatic" model candidate chain for summary generation
  *
  * When the admin leaves the model selector on "Automatic", we must not let the
  * WP AI Client fall back to its first discovered candidate, which is the newest
- * (and usually most expensive, sometimes access-restricted) flagship. That is
- * exactly what broke summaries when Claude Fable 5 shipped and became the first
- * Anthropic candidate while being unavailable to most accounts.
+ * (and usually most expensive, sometimes access-restricted) flagship — exactly
+ * what broke summaries when Claude Fable 5 / Sonnet 5 shipped and became the
+ * first Anthropic candidates while being unavailable to, or pricier for, most
+ * accounts.
  *
- * Instead we bias toward a sensible, cheaper model per provider, matched by ID
- * substring so the choice survives model-ID changes (date suffixes, new minor
- * versions). The result is an ordered list of model IDs suitable for
- * PromptBuilder::using_model_preference(); IDs that no provider exposes are
- * simply ignored by the builder, so listing several is safe.
+ * Instead we bias toward the cheapest tier of each provider (Haiku, Flash-Lite,
+ * Nano...), matched by ID substring so the choice survives model-ID changes
+ * (date suffixes, new minor versions). We return the FULL ordered chain — every
+ * matching model, cheapest tier first, then any leftover models the patterns did
+ * not match — as [providerId, modelId] tuples. Emitting tuples lets the builder
+ * resolve the provider directly, and returning the whole chain (not a single
+ * pick) gives generate_with_wp_ai_client() real fallbacks to degrade through
+ * when a listed model turns out not to be usable.
  *
  * @since 2.2.0
+ * @since 2.2.1 Returns the full ordered chain as [providerId, modelId] tuples,
+ *              cheapest tier first, with a catch-all so a renamed catalog never
+ *              yields an empty list.
  * @param array|null $available Optional pre-fetched ayudawp_aiss_get_available_models() output.
- * @return array<int,string> Ordered list of preferred model IDs. May be empty.
+ * @return array<int,array{0:string,1:string}> Ordered [providerId, modelId] tuples. May be empty.
  */
 function ayudawp_aiss_resolve_default_model_preference( $available = null ) {
 	if ( null === $available ) {
@@ -617,42 +624,66 @@ function ayudawp_aiss_resolve_default_model_preference( $available = null ) {
 	/**
 	 * Filters the per-provider model preference patterns for "Automatic" mode.
 	 *
-	 * Each provider maps to an ordered list of case-insensitive substrings; the
-	 * first model whose ID contains the first matching substring is chosen. Add
-	 * entries for OpenAI, Google or other providers to bias their defaults too.
+	 * Each provider maps to an ordered list of case-insensitive substrings, from
+	 * the cheapest/smallest tier to the priciest. Every model whose ID contains a
+	 * pattern is added in that order; models matching no pattern are appended
+	 * afterwards so the chain is never empty. Add entries for other providers to
+	 * bias their defaults too.
 	 *
 	 * @since 2.2.0
+	 * @since 2.2.1 Ordered cheapest tier first; all matches are kept (no longer
+	 *              just the first), and unmatched models are appended as a
+	 *              catch-all.
 	 * @param array<string,array<int,string>> $patterns Provider ID => ordered ID substrings.
 	 */
 	$patterns = apply_filters(
 		'ayudawp_aiss_default_models',
 		array(
-			'anthropic' => array( 'sonnet', 'haiku', 'opus' ),
-			'google'    => array( 'flash', 'pro' ),
-			'openai'    => array( 'mini' ),
+			'anthropic' => array( 'haiku', 'sonnet', 'opus' ),
+			'google'    => array( 'flash-lite', 'flash', 'pro' ),
+			'openai'    => array( 'nano', 'mini' ),
 		)
 	);
 
 	$preference = array();
 
 	foreach ( $available as $provider_id => $data ) {
-		if ( empty( $patterns[ $provider_id ] ) || empty( $data['models'] ) ) {
+		if ( empty( $data['models'] ) ) {
 			continue;
 		}
 
-		foreach ( $patterns[ $provider_id ] as $needle ) {
-			$needle = strtolower( (string) $needle );
-			$match  = '';
-			foreach ( $data['models'] as $model ) {
-				if ( '' !== $needle && false !== strpos( strtolower( $model['id'] ), $needle ) ) {
-					$match = $model['id'];
-					break;
+		$ordered = array();
+		$seen    = array();
+
+		// 1) Add models matching the known tiers, cheapest first.
+		if ( ! empty( $patterns[ $provider_id ] ) ) {
+			foreach ( $patterns[ $provider_id ] as $needle ) {
+				$needle = strtolower( (string) $needle );
+				if ( '' === $needle ) {
+					continue;
+				}
+				foreach ( $data['models'] as $model ) {
+					$id = (string) $model['id'];
+					if ( ! isset( $seen[ $id ] ) && false !== strpos( strtolower( $id ), $needle ) ) {
+						$ordered[]   = $id;
+						$seen[ $id ] = true;
+					}
 				}
 			}
-			if ( '' !== $match ) {
-				$preference[] = $match;
-				break; // First matching pattern for this provider wins.
+		}
+
+		// 2) Catch-all: append any remaining models in provider order, so a
+		// renamed catalog (no pattern matches) still yields candidates.
+		foreach ( $data['models'] as $model ) {
+			$id = (string) $model['id'];
+			if ( ! isset( $seen[ $id ] ) ) {
+				$ordered[]   = $id;
+				$seen[ $id ] = true;
 			}
+		}
+
+		foreach ( $ordered as $id ) {
+			$preference[] = array( $provider_id, $id );
 		}
 	}
 
