@@ -457,12 +457,8 @@ class AyudaWP_AISS_Admin {
 			?>
 
 			<?php
-			// Promo banner - dynamic rotation from AyudaWP catalog.
-			$promo_banner = new AyudaWP_AISS_Promo_Banner(
-				'ai-share-summarize',
-				'ai-share-summarize',
-				'aiss'
-			);
+			// Promo banner - random rotation of AyudaWP services.
+			$promo_banner = new AyudaWP_AISS_Promo_Banner( 'aiss' );
 			$promo_banner->render( 'horizontal' );
 			?>
 		</div>

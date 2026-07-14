@@ -242,6 +242,10 @@ class AyudaWP_AISS_Meta_Box {
 					if ( '' === $submitted ) {
 						delete_post_meta( $post_id, AyudaWP_AISS_AI_Summary::META_SUMMARY );
 						delete_post_meta( $post_id, AyudaWP_AISS_AI_Summary::META_PROVIDER );
+						// Clear the content hash too. Left behind, it still matches
+						// the current content, so should_regenerate() sees no change
+						// and automatic generation never refills the emptied summary.
+						delete_post_meta( $post_id, AyudaWP_AISS_AI_Summary::META_HASH );
 					} else {
 						update_post_meta( $post_id, AyudaWP_AISS_AI_Summary::META_SUMMARY, $submitted );
 						update_post_meta( $post_id, AyudaWP_AISS_AI_Summary::META_PROVIDER, 'manual' );

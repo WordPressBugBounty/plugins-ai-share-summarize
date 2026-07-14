@@ -3,7 +3,7 @@ Contributors: fernandot,ayudawp
 Tags: claude, chatgpt, social share, ai, perplexity
 Requires at least: 6.1
 Tested up to: 7.0
-Stable tag: 2.2.1
+Stable tag: 2.2.2
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -371,6 +371,11 @@ The social and AI sharing buttons render as `<a>` / `<button>` elements that ope
 
 == Changelog ==
 
+= 2.2.2 =
+* Improved: Caches are refreshed right after an automatic summary is generated, so it shows up without waiting for a page cache to expire. New `ayudawp_aiss_summary_generated` action lets cache plugins purge the affected URLs.
+* Fix: The automatic AI summary was not generated when a scheduled post went live (and could be missed on some interrupted publishes) on certain hosts. It is now generated reliably as soon as the post publishes, with self-healing on the first view and a daily rescue sweep as safety nets.
+* Fix: In the classic editor, emptying the manual summary field left the content hash behind, so automatic generation never refilled it. The hash is now cleared too.
+
 = 2.2.1 =
 * Improved: the "Automatic" model setting now uses each provider's cheapest model (Haiku on Anthropic) instead of a mid-tier one, and keeps the rest of the provider's catalog as an ordered fallback chain, so summaries stay cheap and keep working when a model is unavailable.
 * Fix: AI summaries could stop generating after the active provider changed its available models — a listed model that is not actually usable, or a corrupted cached model list on sites with a persistent object cache. Generation now degrades to the next model and refreshes the cached model list automatically instead of failing until the cache expires.
@@ -386,8 +391,8 @@ For older changelog entries, please check the [changelog.txt](https://plugins.sv
 
 == Upgrade Notice ==
 
-= 2.2.1 =
-"Automatic" now picks each provider's cheapest model (Haiku on Anthropic) and falls back through the rest, so summaries stay cheap and keep generating even when a provider changes its available models or a cached model list breaks.
+= 2.2.2 =
+Fixes the AI summary not being generated on scheduled posts on some hosts, and refreshes caches right after generating so it appears immediately. Recommended for everyone using automatic summaries.
 
 == Advanced Usage ==
 

@@ -7,8 +7,16 @@
  * fallback for older WordPress versions or sites without an AI provider
  * configured in Settings > Connectors.
  *
- * Generation runs asynchronously via wp_schedule_single_event() to avoid
- * blocking the save_post response — the AI provider call can take 5-30s.
+ * Generation runs asynchronously via wp_schedule_single_event() so the AI
+ * provider call (5-30s) never blocks the request that triggered it, whether a
+ * web save or the cron process that publishes a scheduled post. Scheduled
+ * posts are triggered from future_to_publish, early in wp_publish_post(),
+ * because the wp_after_insert_post handler sits at the end of the publish hook
+ * chain and is missed whenever a cron publish process is interrupted before
+ * reaching it. The only inline path is the daily rescue sweep, a dedicated
+ * cron with no publish work to lose. Scheduling is verified after the fact and
+ * re-checked at shutdown, with a frontend self-heal plus that daily sweep as
+ * safety nets against a single-shot event erased by a concurrent cron runner.
  *
  * @package AiShareSummarize
  * @since 2.0.0
@@ -29,7 +37,24 @@ class AyudaWP_AISS_AI_Summary {
 	const META_HASH       = '_ayudawp_aiss_summary_hash';
 	const CRON_HOOK       = 'ayudawp_aiss_generate_summary_async';
 	const LOCK_PREFIX     = '_ayudawp_aiss_generating_';
+	const LOCK_RESCUE_AGE = 180; // Seconds before a lock with no queued event counts as orphaned (v2.3.0).
+	const RESCUE_WINDOW_DAYS = 14; // Recovery layers only touch posts newer than this (v2.3.0) — repairing lost events, never backfilling the archive.
 	const LAST_ERROR_OPT  = 'ayudawp_aiss_last_ai_error';
+
+	/**
+	 * Post IDs whose async event was scheduled during this request and must
+	 * be re-verified against the database at shutdown (v2.3.0).
+	 *
+	 * @var array<int,bool>
+	 */
+	private static $pending_events = array();
+
+	/**
+	 * Whether the shutdown re-verifier has been hooked already (v2.3.0).
+	 *
+	 * @var bool
+	 */
+	private static $shutdown_hooked = false;
 
 	/**
 	 * Constructor: register hooks
@@ -37,7 +62,24 @@ class AyudaWP_AISS_AI_Summary {
 	public function __construct() {
 		add_action( 'init', array( $this, 'register_meta' ) );
 		add_action( 'wp_after_insert_post', array( $this, 'on_save_post' ), 20, 4 );
+
+		// Scheduled posts publish through wp_publish_post() inside WP-Cron,
+		// where the wp_after_insert_post handler above is the very last link of
+		// a long hook chain. If anything earlier aborts that chain (a killed
+		// cron process, a third-party save_post callback that wp_die()s with no
+		// nonce, a fatal in another callback), the post goes live but
+		// on_save_post never runs. future_to_publish fires early in
+		// wp_publish_post(), before that chain, so generation is triggered
+		// reliably on any host. See on_future_publish().
+		add_action( 'future_to_publish', array( $this, 'on_future_publish' ), 20, 1 );
+
 		add_action( self::CRON_HOOK, array( __CLASS__, 'run' ), 10, 1 );
+
+		// Rescue sweep (v2.3.0): piggyback on the existing daily cron so
+		// posts whose async event was silently lost (a concurrent wp-cron
+		// runner clobbering the 'cron' option is a real, observed failure
+		// mode) eventually get their summary without any new cron of our own.
+		add_action( 'ayudawp_aiss_daily_purge', array( __CLASS__, 'rescue_sweep' ) );
 	}
 
 	/**
@@ -95,7 +137,7 @@ class AyudaWP_AISS_AI_Summary {
 	}
 
 	/**
-	 * Fire on every post save — decide whether to schedule async generation
+	 * Fire on every post save — trigger automatic generation when it applies
 	 *
 	 * Uses wp_after_insert_post (WP 5.6+) which fires after both the post
 	 * row and its meta are committed, so the manual-edit provider flag is
@@ -110,36 +152,294 @@ class AyudaWP_AISS_AI_Summary {
 		if ( wp_is_post_autosave( $post_id ) || wp_is_post_revision( $post_id ) ) {
 			return;
 		}
-
-		if ( ! ayudawp_aiss_is_summary_active() ) {
+		if ( ! ( $post instanceof WP_Post ) || 'publish' !== $post->post_status ) {
 			return;
 		}
+		self::maybe_generate( (int) $post_id, $post );
+	}
 
-		if ( 'publish' !== $post->post_status ) {
-			return;
+	/**
+	 * Trigger generation when a scheduled post goes live (v2.3.0)
+	 *
+	 * future_to_publish fires early inside wp_publish_post(), unlike
+	 * wp_after_insert_post which sits at the end of the chain and is skipped
+	 * when the cron publish process is interrupted before it. Forces the async
+	 * route ($prefer_async) so the provider call runs in a separate cron
+	 * request, never inside the publish process itself. maybe_generate()
+	 * re-checks every eligibility rule (feature active, post type, exclusions,
+	 * the manual-edit flag — already committed when the post was saved as
+	 * 'future' — and the content hash), so this stays safe and idempotent next
+	 * to on_save_post for a scheduled post published from the editor.
+	 *
+	 * @since 2.3.0
+	 * @param WP_Post $post The post transitioning from future to publish.
+	 * @return void
+	 */
+	public function on_future_publish( $post ) {
+		if ( ! ( $post instanceof WP_Post ) ) {
+			$post = get_post( $post );
+		}
+		if ( $post instanceof WP_Post ) {
+			self::maybe_generate( (int) $post->ID, $post, true );
+		}
+	}
+
+	/**
+	 * Central gate for automatic generation (v2.3.0)
+	 *
+	 * Runs every eligibility check (feature active, post published, post type
+	 * allowed, not excluded, not manually edited, content actually changed,
+	 * no generation already in flight) and then generates by the most robust
+	 * route available:
+	 *
+	 * - The daily rescue sweep (a dedicated cron with no publish work to lose):
+	 *   run() INLINE. There is no user waiting and nothing to interrupt.
+	 * - Everything else — web saves, the frontend self-heal and scheduled-post
+	 *   publishing (which passes $prefer_async): schedule the async event with
+	 *   verification and a shutdown re-check against the database, so the
+	 *   provider call never runs inside the request that triggered it, and a
+	 *   single-shot event erased by a concurrent cron runner still has the
+	 *   shutdown re-check, self-heal and sweep behind it (see
+	 *   schedule_generation()).
+	 *
+	 * Shared by the save-post handler, the frontend self-heal and the daily
+	 * rescue sweep so all entry points agree on the rules.
+	 *
+	 * @since 2.3.0
+	 * @param int          $post_id      Post ID.
+	 * @param WP_Post|null $post         Optional post object to avoid a refetch.
+	 * @param bool         $prefer_async When true, schedule the async event even
+	 *                                   inside WP-Cron instead of running inline.
+	 *                                   Used by the scheduled-post publish path so
+	 *                                   the provider call does not run inside the
+	 *                                   publish process.
+	 * @return bool True when generation ran or was scheduled.
+	 */
+	public static function maybe_generate( $post_id, $post = null, $prefer_async = false ) {
+		$post_id = (int) $post_id;
+		if ( ! $post_id || ! ayudawp_aiss_is_summary_active() ) {
+			return false;
+		}
+
+		if ( null === $post ) {
+			$post = get_post( $post_id );
+		}
+		if ( ! ( $post instanceof WP_Post ) || 'publish' !== $post->post_status ) {
+			return false;
 		}
 
 		if ( ! ayudawp_aiss_should_apply_summary( $post_id ) ) {
-			return;
+			return false;
 		}
 
 		// Respect manual edits — user override always wins.
 		if ( 'manual' === get_post_meta( $post_id, self::META_PROVIDER, true ) ) {
-			return;
+			return false;
 		}
 
-		if ( ! $this->should_regenerate( $post_id, $post ) ) {
-			return;
+		if ( ! self::should_regenerate( $post_id, $post ) ) {
+			return false;
 		}
 
-		// Re-entrancy lock: avoid duplicate cron events for the same post.
+		// Re-entrancy lock: a generation for this post is already in flight.
+		// The lock stores its creation timestamp so an ORPHANED lock can be
+		// told apart from a live one: when the async event this lock guards
+		// is erased by a concurrent cron runner AFTER the publishing request
+		// ended (the classic-editor failure window observed in production),
+		// the lock would otherwise block every retry for its full 5 minutes.
+		// An old-enough lock with no event in the queue means exactly that,
+		// so fall through and reschedule. A duplicate is harmless anyway:
+		// run() re-checks the content hash and no-ops when already generated.
 		$lock_key = self::LOCK_PREFIX . $post_id;
-		if ( get_transient( $lock_key ) ) {
+		$lock     = get_transient( $lock_key );
+		if ( $lock ) {
+			$lock_age = time() - (int) $lock;
+			if ( $lock_age < self::LOCK_RESCUE_AGE
+				|| false !== wp_next_scheduled( self::CRON_HOOK, array( $post_id ) ) ) {
+				return false;
+			}
+			// Orphaned lock (old, with nothing in the queue): rescue below.
+		}
+
+		if ( wp_doing_cron() && ! $prefer_async ) {
+			// Dedicated cron with nothing to interrupt (the daily rescue
+			// sweep): generate right here. run() releases the lock in its
+			// finally block whatever happens. The scheduled-post publish path
+			// passes $prefer_async = true so its provider call runs in a
+			// separate cron request instead of inside wp_publish_post().
+			set_transient( $lock_key, time(), 5 * MINUTE_IN_SECONDS );
+			self::run( $post_id );
+			return true;
+		}
+
+		return self::schedule_generation( $post_id );
+	}
+
+	/**
+	 * Schedule the async generation event, verifying it actually landed (v2.3.0)
+	 *
+	 * The 'cron' option is rewritten wholesale by every process that touches
+	 * the queue (non-atomic read-modify-write), so a single-shot event can be
+	 * silently erased by an overlapping wp-cron runner that started with a
+	 * pre-event snapshot. Defenses, in order:
+	 *
+	 * 1. Verify with wp_next_scheduled() right after scheduling; when the
+	 *    event is not there (a 'pre_schedule_event' short-circuit from a cron
+	 *    manager, a failed write), return false WITHOUT setting the lock so a
+	 *    later save or the self-heal can retry.
+	 * 2. The lock transient is set only AFTER the event is confirmed — the
+	 *    pre-2.3.0 order (lock first, schedule unchecked) turned any silent
+	 *    scheduling failure into a 5-minute retry blackout.
+	 * 3. At shutdown, re-read the queue FROM THE DATABASE (the in-process
+	 *    cache cannot see other processes' writes) and reschedule if the
+	 *    event vanished mid-request.
+	 *
+	 * @since 2.3.0
+	 * @param int $post_id Post ID.
+	 * @return bool True when the event is confirmed in the queue.
+	 */
+	public static function schedule_generation( $post_id ) {
+		$post_id = (int) $post_id;
+
+		wp_schedule_single_event( time() + 1, self::CRON_HOOK, array( $post_id ) );
+
+		if ( false === wp_next_scheduled( self::CRON_HOOK, array( $post_id ) ) ) {
+			return false;
+		}
+
+		set_transient( self::LOCK_PREFIX . $post_id, time(), 5 * MINUTE_IN_SECONDS );
+
+		self::$pending_events[ $post_id ] = true;
+		if ( ! self::$shutdown_hooked ) {
+			self::$shutdown_hooked = true;
+			add_action( 'shutdown', array( __CLASS__, 'reverify_scheduled_events' ), 5 );
+		}
+
+		return true;
+	}
+
+	/**
+	 * Shutdown re-check: reschedule events erased by concurrent processes (v2.3.0)
+	 *
+	 * wp_next_scheduled() reads the request-local option cache, which cannot
+	 * see a concurrent runner's clobbering write, so the caches for 'cron'
+	 * and 'alloptions' are dropped first to force a fresh read from the
+	 * database. The request is ending, so the invalidation is free.
+	 *
+	 * @since 2.3.0
+	 * @return void
+	 */
+	public static function reverify_scheduled_events() {
+		if ( empty( self::$pending_events ) ) {
 			return;
 		}
-		set_transient( $lock_key, 1, 5 * MINUTE_IN_SECONDS );
+		$pending              = array_keys( self::$pending_events );
+		self::$pending_events = array();
 
-		wp_schedule_single_event( time() + 1, self::CRON_HOOK, array( (int) $post_id ) );
+		wp_cache_delete( 'cron', 'options' );
+		wp_cache_delete( 'alloptions', 'options' );
+
+		foreach ( $pending as $post_id ) {
+			if ( false !== wp_next_scheduled( self::CRON_HOOK, array( $post_id ) ) ) {
+				continue;
+			}
+			// Erased between our verified write and now: put it back.
+			wp_schedule_single_event( time() + 1, self::CRON_HOOK, array( $post_id ) );
+		}
+	}
+
+	/**
+	 * Daily rescue sweep for published posts left without a summary (v2.3.0)
+	 *
+	 * Last safety net: even if the async event is lost after the request ends
+	 * and no visitor triggers the frontend self-heal, recent posts get their
+	 * summary within a day. Piggybacks on the existing daily purge cron (no
+	 * new scheduled event) and is tightly bounded: only the newest handful of
+	 * posts from the last two weeks. Runs inside cron, so maybe_generate()
+	 * takes the inline path.
+	 *
+	 * @since 2.3.0
+	 * @return void
+	 */
+	public static function rescue_sweep() {
+		if ( ! ayudawp_aiss_is_summary_active() ) {
+			return;
+		}
+		$post_types = ayudawp_aiss_get_summary_post_types();
+		if ( empty( $post_types ) ) {
+			return;
+		}
+
+		$query = new WP_Query(
+			array(
+				'post_type'      => $post_types,
+				'post_status'    => 'publish',
+				'posts_per_page' => 5,
+				'orderby'        => 'date',
+				'order'          => 'DESC',
+				'fields'         => 'ids',
+				'no_found_rows'  => true,
+				'date_query'     => array(
+					array( 'after' => self::RESCUE_WINDOW_DAYS . ' days ago' ),
+				),
+				// phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_query -- bounded rescue query (5 posts, 14-day window), runs once a day from cron.
+				'meta_query'     => array(
+					'relation' => 'OR',
+					array(
+						'key'     => self::META_SUMMARY,
+						'compare' => 'NOT EXISTS',
+					),
+					array(
+						'key'     => self::META_SUMMARY,
+						'value'   => '',
+						'compare' => '=',
+					),
+				),
+			)
+		);
+
+		foreach ( $query->posts as $post_id ) {
+			self::maybe_generate( (int) $post_id );
+		}
+	}
+
+	/**
+	 * Frontend self-heal: recover posts whose generation event was lost (v2.3.0)
+	 *
+	 * Called from get_summary_html() when a post that should have a summary
+	 * has none. maybe_generate() re-runs every eligibility check (including
+	 * the manual-edit flag and the in-flight lock, so no scheduling storms),
+	 * making a lost event self-correct on the next visit instead of never.
+	 *
+	 * @since 2.3.0
+	 * @param int $post_id Post ID.
+	 * @return void
+	 */
+	private static function maybe_self_heal( $post_id ) {
+		if ( is_admin() || wp_doing_ajax() ) {
+			return;
+		}
+		static $seen = array();
+		if ( isset( $seen[ $post_id ] ) ) {
+			return;
+		}
+		$seen[ $post_id ] = true;
+
+		// Recency window: self-heal repairs posts whose generation event was
+		// recently lost. Older summary-less posts (typically pre-dating the
+		// plugin) are deliberately left alone — backfilling an archive means
+		// paid API calls nobody asked for, and it has its own explicit tools
+		// (the per-post Regenerate button, the public frontend button).
+		$post = get_post( $post_id );
+		if ( ! ( $post instanceof WP_Post ) ) {
+			return;
+		}
+		$published = get_post_time( 'U', true, $post );
+		if ( ! $published || $published < time() - self::RESCUE_WINDOW_DAYS * DAY_IN_SECONDS ) {
+			return;
+		}
+
+		self::maybe_generate( $post_id, $post );
 	}
 
 	/**
@@ -151,7 +451,7 @@ class AyudaWP_AISS_AI_Summary {
 	 * @param WP_Post|null $post    Optional post object to avoid an extra fetch.
 	 * @return bool True when the summary should be regenerated.
 	 */
-	public function should_regenerate( $post_id, $post = null ) {
+	public static function should_regenerate( $post_id, $post = null ) {
 		if ( null === $post ) {
 			$post = get_post( $post_id );
 		}
@@ -278,6 +578,28 @@ class AyudaWP_AISS_AI_Summary {
 			update_post_meta( $post_id, self::META_SUMMARY, wp_kses_post( $summary ) );
 			update_post_meta( $post_id, self::META_PROVIDER, $provider );
 			update_post_meta( $post_id, self::META_HASH, $hash );
+
+			// Refresh caches now that the summary exists. Generation usually
+			// runs seconds after publishing (the async event, or the scheduled
+			// -post cron), by which point a page cache may already have stored
+			// the post, its archive or the home without the summary.
+			// clean_post_cache() invalidates the object cache and fires
+			// 'clean_post_cache', which several page caches hook; the dedicated
+			// action below lets any cache plugin purge the exact URLs. Both
+			// no-op when nothing is caching.
+			clean_post_cache( $post_id );
+
+			/**
+			 * Fires after an automatic summary is generated and stored.
+			 *
+			 * Lets page-cache integrations purge the affected URLs so the fresh
+			 * summary shows without waiting for the cache to expire on its own.
+			 *
+			 * @since 2.2.2
+			 * @param int    $post_id  Post the summary was generated for.
+			 * @param string $provider Provider that produced it ('wp_ai_client' or 'extractive').
+			 */
+			do_action( 'ayudawp_aiss_summary_generated', $post_id, $provider );
 
 			return $summary;
 		} finally {
@@ -753,6 +1075,10 @@ class AyudaWP_AISS_AI_Summary {
 		$summary = get_post_meta( $post_id, self::META_SUMMARY, true );
 
 		if ( '' === $summary ) {
+			// Self-heal (v2.3.0): if this post should have an automatic
+			// summary and its generation event was lost, reschedule it now.
+			self::maybe_self_heal( $post_id );
+
 			// No stored summary — render the public "Generate" button when
 			// the admin has enabled visitor-driven generation. Otherwise
 			// stay silent so the post layout isn't disturbed.
