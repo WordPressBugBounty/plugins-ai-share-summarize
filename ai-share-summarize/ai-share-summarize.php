@@ -3,7 +3,7 @@
  * Plugin Name: AI Share & Summarize
  * Plugin URI: https://servicios.ayudawp.com/
  * Description: Inline AI summary on every post + one-click sharing to social networks and 11 AI assistants (Claude, ChatGPT, Gemini, Grok, Perplexity, DeepSeek, Mistral, Copilot, Qwen, Meta AI). Powered by the new WordPress 7.0 AI Connectors.
- * Version: 2.2.2
+ * Version: 2.3.0
  * Author: Fernando Tellado
  * Author URI: https://ayudawp.com/
  * Text Domain: ai-share-summarize
@@ -22,7 +22,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Define plugin constants.
-define( 'AYUDAWP_AISS_VERSION', '2.2.2' );
+define( 'AYUDAWP_AISS_VERSION', '2.3.0' );
 define( 'AYUDAWP_AISS_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'AYUDAWP_AISS_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'AYUDAWP_AISS_PLUGIN_BASENAME', plugin_basename( __FILE__ ) );
@@ -237,7 +237,60 @@ class AyudaWP_AI_Share_Summarize {
 			unset( $options['ai_summary_enabled'], $options['ai_summary_use_extractive_fallback'] );
 		}
 
+		// Persist before the 2.3.0 block: its derivation helper reads this
+		// option back from the database, so earlier in-memory migrations
+		// (mode materialization above) must already be stored.
 		update_option( 'ayudawp_aiss_options', $options );
+
+		/*
+		 * Migration for v2.3.0: the AI-summary settings move to their own
+		 * option, `ayudawp_aiss_summary_options`, behind the new AI Summary
+		 * settings tab. COPY, do not move: the `ai_summary_*` keys stay in
+		 * `ayudawp_aiss_options` as a frozen snapshot so a rollback to 2.2.x
+		 * finds its configuration intact (the snapshot is scheduled for
+		 * removal in a future release). The derivation also materializes the
+		 * old read-time inheritance of the buttons' content-type list, which
+		 * 2.3.0 removes from the runtime resolver.
+		 */
+		if ( version_compare( $from_version, '2.3.0', '<' ) ) {
+			if ( false === get_option( 'ayudawp_aiss_summary_options' ) ) {
+				add_option( 'ayudawp_aiss_summary_options', ayudawp_aiss_derive_summary_options_from_legacy() );
+			}
+			$this->ayudawp_migrate_summary_exclusion_meta();
+		}
+	}
+
+	/**
+	 * Materialize the per-post summary exclusion for posts excluded pre-2.3.0
+	 *
+	 * Before 2.3.0 the single "Hide share buttons" checkbox silently hid the
+	 * AI summary too. 2.3.0 splits that into two independent controls, so
+	 * every post that had the old meta gets the new summary-exclusion meta
+	 * stamped once here — existing exclusions keep behaving exactly as they
+	 * did, while both controls become editable independently from now on.
+	 *
+	 * Runs once from the 2.3.0 migration. add_post_meta() with $unique keeps
+	 * it idempotent and refreshes each post's meta cache as it goes.
+	 *
+	 * @since 2.3.0
+	 */
+	private function ayudawp_migrate_summary_exclusion_meta() {
+		global $wpdb;
+
+		// Direct lookup on purpose: it must cover every post status and every
+		// post type (WP_Query would need fragile any-status/any-type gymnastics
+		// for a one-time upgrade sweep this small).
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- one-time 2.3.0 upgrade sweep over our own meta key, result consumed immediately.
+		$post_ids = $wpdb->get_col(
+			$wpdb->prepare(
+				"SELECT post_id FROM {$wpdb->postmeta} WHERE meta_key = %s AND meta_value = '1'",
+				'_ayudawp_aiss_exclude'
+			)
+		);
+
+		foreach ( $post_ids as $post_id ) {
+			add_post_meta( (int) $post_id, '_ayudawp_aiss_exclude_summary', '1', true );
+		}
 	}
 
 	/**
@@ -271,6 +324,10 @@ class AyudaWP_AI_Share_Summarize {
 			'seo_button_type'            => 'link',
 			'exclude_noindex'            => true,
 			'button_custom_order'        => array(),
+		);
+
+		// AI-summary settings live in their own option since 2.3.0.
+		$default_summary_options = array(
 			'ai_summary_mode'                    => 'ai_fallback',
 			'ai_summary_sentences'               => 3,
 			'ai_summary_position'                => 'before_buttons',
@@ -281,6 +338,7 @@ class AyudaWP_AI_Share_Summarize {
 		);
 
 		add_option( 'ayudawp_aiss_options', $default_options );
+		add_option( 'ayudawp_aiss_summary_options', $default_summary_options );
 		update_option( 'ayudawp_aiss_version', AYUDAWP_AISS_VERSION );
 		set_transient( 'ayudawp_aiss_just_activated', true, 60 );
 
@@ -328,6 +386,7 @@ class AyudaWP_AI_Share_Summarize {
 
 		if ( $delete_data ) {
 			delete_option( 'ayudawp_aiss_options' );
+			delete_option( 'ayudawp_aiss_summary_options' );
 			delete_option( 'ayudawp_aiss_version' );
 			delete_option( 'ayudawp_aiss_db_version' );
 			delete_option( 'ayudawp_aiss_activation_notice_dismissed' );
@@ -339,6 +398,8 @@ class AyudaWP_AI_Share_Summarize {
 			global $wpdb;
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- postmeta cleanup on uninstall, not cached by design.
 			$wpdb->delete( $wpdb->postmeta, array( 'meta_key' => '_ayudawp_aiss_exclude' ) );
+			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- postmeta cleanup on uninstall, not cached by design.
+			$wpdb->delete( $wpdb->postmeta, array( 'meta_key' => '_ayudawp_aiss_exclude_summary' ) );
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- postmeta cleanup on uninstall, not cached by design.
 			$wpdb->delete( $wpdb->postmeta, array( 'meta_key' => '_ayudawp_aiss_summary' ) );
 			// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- postmeta cleanup on uninstall, not cached by design.

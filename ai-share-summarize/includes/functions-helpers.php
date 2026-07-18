@@ -130,6 +130,12 @@ function ayudawp_aiss_close_tag( $style ) {
 /**
  * Validate and sanitize plugin options
  *
+ * Handles the buttons/general option only. The AI-summary settings moved to
+ * their own option (`ayudawp_aiss_summary_options`) in 2.3.0 — see
+ * ayudawp_aiss_validate_summary_options(). Any `ai_summary_*` keys still
+ * present in the stored value are a frozen pre-2.3.0 snapshot kept for
+ * rollback safety; they are carried over untouched, never re-validated.
+ *
  * @param array $input Raw input data.
  * @return array Validated and sanitized options.
  */
@@ -155,23 +161,13 @@ function ayudawp_aiss_validate_options( $input ) {
 		'custom_color_bg',
 		'custom_color_text',
 		'dark_mode_adaptation',
-		'ai_summary_position',
-		'ai_summary_style',
-		'ai_summary_icon_position',
-		'ai_summary_label',
-		'ai_summary_generate_button_label',
-		'ai_summary_custom_bg',
-		'ai_summary_custom_text',
 	);
 	$textarea_fields = array( 'default_prompt', 'custom_text' );
-	$array_fields    = array( 'enabled_buttons', 'display_locations', 'auto_insert_content_types', 'button_custom_order_ai', 'button_custom_order_social', 'ai_summary_content_types' );
+	$array_fields    = array( 'enabled_buttons', 'display_locations', 'auto_insert_content_types', 'button_custom_order_ai', 'button_custom_order_social' );
 	$boolean_fields  = array(
 		'show_icons',
 		'delete_data_on_uninstall',
 		'exclude_noindex',
-		'ai_summary_collapsed_default',
-		'ai_summary_frontend_button',
-		'ai_summary_frontend_force_extractive',
 	);
 
 	foreach ( $text_fields as $field ) {
@@ -237,39 +233,75 @@ function ayudawp_aiss_validate_options( $input ) {
 		$validated['dark_mode_adaptation'] = 'disabled';
 	}
 
-	// Validate ai_summary_position (v2.0.0).
-	$valid_summary_positions = array( 'before_buttons', 'after_buttons', 'before_content', 'disabled' );
-	if ( isset( $validated['ai_summary_position'] ) && ! in_array( $validated['ai_summary_position'], $valid_summary_positions, true ) ) {
-		$validated['ai_summary_position'] = 'before_buttons';
+	// Sanitize hex colors.
+	if ( isset( $validated['custom_color_bg'] ) ) {
+		$validated['custom_color_bg'] = sanitize_hex_color( $validated['custom_color_bg'] );
+	}
+	if ( isset( $validated['custom_color_text'] ) ) {
+		$validated['custom_color_text'] = sanitize_hex_color( $validated['custom_color_text'] );
 	}
 
-	// Validate ai_summary_style (v2.1.0).
-	$valid_summary_styles = array( 'minimal', 'outline', 'brand', 'dark', 'custom' );
-	if ( isset( $validated['ai_summary_style'] ) && ! in_array( $validated['ai_summary_style'], $valid_summary_styles, true ) ) {
-		$validated['ai_summary_style'] = 'minimal';
+	// Sanitize mastodon instance URL.
+	if ( isset( $validated['mastodon_instance'] ) ) {
+		$validated['mastodon_instance'] = sanitize_text_field( wp_unslash( $validated['mastodon_instance'] ) );
+		// Remove protocol and trailing slashes.
+		$validated['mastodon_instance'] = preg_replace( '#^https?://#', '', $validated['mastodon_instance'] );
+		$validated['mastodon_instance'] = rtrim( $validated['mastodon_instance'], '/' );
 	}
 
-	// Validate ai_summary_icon_position (v2.1.0).
-	$valid_icon_positions = array( 'left', 'right', 'hidden' );
-	if ( isset( $validated['ai_summary_icon_position'] ) && ! in_array( $validated['ai_summary_icon_position'], $valid_icon_positions, true ) ) {
-		$validated['ai_summary_icon_position'] = 'left';
+	/*
+	 * Carry over the frozen pre-2.3.0 `ai_summary_*` snapshot (v2.3.0).
+	 *
+	 * The 2.3.0 migration copies (does not move) the AI-summary keys into
+	 * `ayudawp_aiss_summary_options`, leaving the originals here so a rollback
+	 * to 2.2.x finds its configuration intact. Rebuilding the option from
+	 * scratch on every save would silently drop that snapshot on the first
+	 * buttons-tab save after updating. The snapshot (and this carry-over) is
+	 * scheduled for removal in a future release once 2.3.0 has settled.
+	 */
+	$stored = get_option( 'ayudawp_aiss_options', array() );
+	if ( is_array( $stored ) ) {
+		foreach ( $stored as $key => $value ) {
+			if ( 0 === strpos( $key, 'ai_summary' ) && ! isset( $validated[ $key ] ) ) {
+				$validated[ $key ] = $value;
+			}
+		}
 	}
 
-	// Validate ai_summary_sentences (v2.0.0) — integer in 1..5.
-	$validated['ai_summary_sentences'] = isset( $input['ai_summary_sentences'] )
-		? max( 1, min( 5, absint( $input['ai_summary_sentences'] ) ) )
-		: 3;
+	return $validated;
+}
 
-	// Validate ai_summary_mode (v2.2.0) — explicit generation mode allowlist.
+/**
+ * Validate and sanitize the AI-summary options (v2.3.0)
+ *
+ * Sanitize callback for `ayudawp_aiss_summary_options`, the dedicated option
+ * behind the AI Summary settings tab. Every key is always emitted with an
+ * explicit value, so the stored option is complete and unambiguous: an empty
+ * `ai_summary_content_types` list genuinely means "no content types" (the
+ * form ships a hidden `ai_summary_content_types_submitted` marker so an
+ * all-unchecked group can be told apart from a request that did not include
+ * the field at all).
+ *
+ * @since 2.3.0
+ * @param array $input Raw input data.
+ * @return array Validated and sanitized summary options.
+ */
+function ayudawp_aiss_validate_summary_options( $input ) {
+	if ( ! is_array( $input ) ) {
+		$input = array();
+	}
+	$validated = array();
+
+	// Generation mode — explicit allowlist (v2.2.0).
 	$valid_summary_modes          = array( 'ai_fallback', 'ai_only', 'extractive_only', 'disabled' );
 	$validated['ai_summary_mode'] = isset( $input['ai_summary_mode'] ) && in_array( $input['ai_summary_mode'], $valid_summary_modes, true )
 		? $input['ai_summary_mode']
 		: 'ai_fallback';
 
-	// Validate ai_summary_model (v2.2.0) — '' (automatic) or a "provider:model"
-	// pair restricted to a safe charset. When the live model list is available
-	// the pair must exist in it; if enumeration is momentarily unavailable we
-	// keep the sanitized value rather than wiping the admin's choice.
+	// Model — '' (automatic) or a "provider:model" pair restricted to a safe
+	// charset. When the live model list is available the pair must exist in
+	// it; if enumeration is momentarily unavailable we keep the sanitized
+	// value rather than wiping the admin's choice.
 	$validated['ai_summary_model'] = '';
 	if ( isset( $input['ai_summary_model'] ) && '' !== $input['ai_summary_model'] ) {
 		$candidate = preg_replace( '/[^a-zA-Z0-9:._-]/', '', (string) $input['ai_summary_model'] );
@@ -293,29 +325,151 @@ function ayudawp_aiss_validate_options( $input ) {
 		}
 	}
 
-	// Sanitize hex colors.
-	if ( isset( $validated['custom_color_bg'] ) ) {
-		$validated['custom_color_bg'] = sanitize_hex_color( $validated['custom_color_bg'] );
-	}
-	if ( isset( $validated['custom_color_text'] ) ) {
-		$validated['custom_color_text'] = sanitize_hex_color( $validated['custom_color_text'] );
-	}
-	if ( isset( $validated['ai_summary_custom_bg'] ) ) {
-		$validated['ai_summary_custom_bg'] = sanitize_hex_color( $validated['ai_summary_custom_bg'] );
-	}
-	if ( isset( $validated['ai_summary_custom_text'] ) ) {
-		$validated['ai_summary_custom_text'] = sanitize_hex_color( $validated['ai_summary_custom_text'] );
+	// Content types. The hidden marker distinguishes "submitted with every
+	// checkbox unchecked" (a deliberate empty list) from input that simply
+	// did not include the field (programmatic partial update: keep stored).
+	if ( isset( $input['ai_summary_content_types'] ) && is_array( $input['ai_summary_content_types'] ) ) {
+		$validated['ai_summary_content_types'] = array_values( array_map( 'sanitize_text_field', $input['ai_summary_content_types'] ) );
+	} elseif ( isset( $input['ai_summary_content_types_submitted'] ) ) {
+		$validated['ai_summary_content_types'] = array();
+	} else {
+		$stored = ayudawp_aiss_get_summary_options();
+		$validated['ai_summary_content_types'] = isset( $stored['ai_summary_content_types'] ) && is_array( $stored['ai_summary_content_types'] )
+			? array_values( array_map( 'strval', $stored['ai_summary_content_types'] ) )
+			: array( 'post' );
 	}
 
-	// Sanitize mastodon instance URL.
-	if ( isset( $validated['mastodon_instance'] ) ) {
-		$validated['mastodon_instance'] = sanitize_text_field( wp_unslash( $validated['mastodon_instance'] ) );
-		// Remove protocol and trailing slashes.
-		$validated['mastodon_instance'] = preg_replace( '#^https?://#', '', $validated['mastodon_instance'] );
-		$validated['mastodon_instance'] = rtrim( $validated['mastodon_instance'], '/' );
-	}
+	// Position — allowlist.
+	$valid_summary_positions          = array( 'before_buttons', 'after_buttons', 'before_content', 'disabled' );
+	$validated['ai_summary_position'] = isset( $input['ai_summary_position'] ) && in_array( $input['ai_summary_position'], $valid_summary_positions, true )
+		? $input['ai_summary_position']
+		: 'before_buttons';
+
+	// Block style — allowlist.
+	$valid_summary_styles          = array( 'minimal', 'outline', 'brand', 'dark', 'custom' );
+	$validated['ai_summary_style'] = isset( $input['ai_summary_style'] ) && in_array( $input['ai_summary_style'], $valid_summary_styles, true )
+		? $input['ai_summary_style']
+		: 'minimal';
+
+	// Icon position — allowlist.
+	$valid_icon_positions                  = array( 'left', 'right', 'hidden' );
+	$validated['ai_summary_icon_position'] = isset( $input['ai_summary_icon_position'] ) && in_array( $input['ai_summary_icon_position'], $valid_icon_positions, true )
+		? $input['ai_summary_icon_position']
+		: 'left';
+
+	// Sentence count — integer in 1..5.
+	$validated['ai_summary_sentences'] = isset( $input['ai_summary_sentences'] )
+		? max( 1, min( 5, absint( $input['ai_summary_sentences'] ) ) )
+		: 3;
+
+	// Free-text labels.
+	$validated['ai_summary_label']                 = isset( $input['ai_summary_label'] ) ? sanitize_text_field( $input['ai_summary_label'] ) : '';
+	$validated['ai_summary_generate_button_label'] = isset( $input['ai_summary_generate_button_label'] ) ? sanitize_text_field( $input['ai_summary_generate_button_label'] ) : '';
+
+	// Custom colors.
+	$validated['ai_summary_custom_bg']   = isset( $input['ai_summary_custom_bg'] ) ? sanitize_hex_color( sanitize_text_field( $input['ai_summary_custom_bg'] ) ) : '#ffffff';
+	$validated['ai_summary_custom_text'] = isset( $input['ai_summary_custom_text'] ) ? sanitize_hex_color( sanitize_text_field( $input['ai_summary_custom_text'] ) ) : '#1a1a1a';
+
+	// Booleans (unchecked checkboxes are simply absent from the POST).
+	$validated['ai_summary_collapsed_default']         = ! empty( $input['ai_summary_collapsed_default'] );
+	$validated['ai_summary_frontend_button']           = ! empty( $input['ai_summary_frontend_button'] );
+	$validated['ai_summary_frontend_force_extractive'] = ! empty( $input['ai_summary_frontend_force_extractive'] );
 
 	return $validated;
+}
+
+/**
+ * Read the AI-summary options (v2.3.0)
+ *
+ * Single accessor for `ayudawp_aiss_summary_options`, the dedicated option
+ * that holds every `ai_summary_*` setting since 2.3.0. When the option does
+ * not exist yet (the first request after updating, before the init-time
+ * migration has run) the value is derived on the fly from the legacy
+ * combined option, so readers never see a half-migrated state.
+ *
+ * @since 2.3.0
+ * @return array<string,mixed> Summary options.
+ */
+function ayudawp_aiss_get_summary_options() {
+	$options = get_option( 'ayudawp_aiss_summary_options', false );
+
+	if ( is_array( $options ) ) {
+		return $options;
+	}
+
+	return ayudawp_aiss_derive_summary_options_from_legacy();
+}
+
+/**
+ * Derive the AI-summary options from the legacy combined option (v2.3.0)
+ *
+ * Builds the `ayudawp_aiss_summary_options` payload out of the pre-2.3.0
+ * `ayudawp_aiss_options` keys. Used by the 2.3.0 migration to materialize
+ * the new option, and by ayudawp_aiss_get_summary_options() as a live
+ * fallback until that migration runs. Two implicit legacy behaviours are
+ * made explicit here, once and for all:
+ *
+ * - the generation mode is resolved from the pre-2.2.0 boolean pair when
+ *   `ai_summary_mode` was never materialized, and
+ * - the content-type list inherits the buttons' list when the dedicated
+ *   selector was never set (the old cross-option fallback this release
+ *   removes from the runtime resolver).
+ *
+ * @since 2.3.0
+ * @return array<string,mixed> Derived summary options.
+ */
+function ayudawp_aiss_derive_summary_options_from_legacy() {
+	$legacy = get_option( 'ayudawp_aiss_options', array() );
+	if ( ! is_array( $legacy ) ) {
+		$legacy = array();
+	}
+
+	$keys = array(
+		'ai_summary_mode',
+		'ai_summary_model',
+		'ai_summary_content_types',
+		'ai_summary_position',
+		'ai_summary_collapsed_default',
+		'ai_summary_label',
+		'ai_summary_style',
+		'ai_summary_custom_bg',
+		'ai_summary_custom_text',
+		'ai_summary_icon_position',
+		'ai_summary_sentences',
+		'ai_summary_frontend_button',
+		'ai_summary_generate_button_label',
+		'ai_summary_frontend_force_extractive',
+	);
+
+	$derived = array();
+	foreach ( $keys as $key ) {
+		if ( isset( $legacy[ $key ] ) ) {
+			$derived[ $key ] = $legacy[ $key ];
+		}
+	}
+
+	// Pre-2.2.0 sites never materialized the explicit mode: resolve it from
+	// the legacy boolean pair (same rules as the 2.2.0 migration).
+	if ( ! isset( $derived['ai_summary_mode'] ) ) {
+		$enabled = ! isset( $legacy['ai_summary_enabled'] ) || ! empty( $legacy['ai_summary_enabled'] );
+		if ( ! $enabled ) {
+			$derived['ai_summary_mode'] = 'disabled';
+		} else {
+			$fallback                   = ! isset( $legacy['ai_summary_use_extractive_fallback'] ) || ! empty( $legacy['ai_summary_use_extractive_fallback'] );
+			$derived['ai_summary_mode'] = $fallback ? 'ai_fallback' : 'ai_only';
+		}
+	}
+
+	// Sites where the dedicated selector was never set inherited the buttons'
+	// content-type list at read time. Materialize that inheritance so the new
+	// option starts from the exact behaviour the site had.
+	if ( ! isset( $derived['ai_summary_content_types'] ) || ! is_array( $derived['ai_summary_content_types'] ) ) {
+		$derived['ai_summary_content_types'] = isset( $legacy['auto_insert_content_types'] ) && is_array( $legacy['auto_insert_content_types'] )
+			? array_values( array_map( 'strval', $legacy['auto_insert_content_types'] ) )
+			: array( 'post' );
+	}
+
+	return $derived;
 }
 
 /**
@@ -360,9 +514,11 @@ function ayudawp_aiss_should_display_buttons() {
 }
 
 /**
- * Check if a specific post is excluded from showing buttons
+ * Check if a specific post is excluded from showing the share buttons
  *
- * Checks both the meta box exclusion and SEO noindex status.
+ * Checks both the meta box exclusion and SEO noindex status. Since 2.3.0
+ * this governs the share buttons only; the AI summary has its own per-post
+ * control — see ayudawp_aiss_is_summary_excluded().
  *
  * @since 1.4.0
  * @param int $post_id Post ID to check.
@@ -378,7 +534,46 @@ function ayudawp_aiss_is_post_excluded( $post_id ) {
 		return true;
 	}
 
-	// Check SEO noindex exclusion if enabled.
+	return ayudawp_aiss_is_noindex_excluded( $post_id );
+}
+
+/**
+ * Check if a post is excluded from showing (and generating) the AI summary (v2.3.0)
+ *
+ * Per-post summary control, independent from the buttons' exclusion since
+ * 2.3.0 (the single pre-2.3.0 checkbox silently switched off both; the
+ * migration materializes the new meta on every post that had it checked so
+ * existing exclusions keep working). The noindex rule stays common to both
+ * features: noindexed content should not spend AI tokens either.
+ *
+ * @since 2.3.0
+ * @param int $post_id Post ID to check.
+ * @return bool True if the summary is excluded for this post.
+ */
+function ayudawp_aiss_is_summary_excluded( $post_id ) {
+	if ( ! $post_id ) {
+		return false;
+	}
+
+	if ( class_exists( 'AyudaWP_AISS_Meta_Box' ) && AyudaWP_AISS_Meta_Box::ayudawp_is_summary_excluded( $post_id ) ) {
+		return true;
+	}
+
+	return ayudawp_aiss_is_noindex_excluded( $post_id );
+}
+
+/**
+ * Whether a post is excluded because it is noindexed (v2.3.0)
+ *
+ * Shared rule between the buttons and the AI summary: when the
+ * "Exclude noindex content" setting is on and the SEO integration reports
+ * the post as noindex, both features stay away from it.
+ *
+ * @since 2.3.0
+ * @param int $post_id Post ID to check.
+ * @return bool True when the noindex exclusion applies to this post.
+ */
+function ayudawp_aiss_is_noindex_excluded( $post_id ) {
 	$options         = get_option( 'ayudawp_aiss_options' );
 	$exclude_noindex = isset( $options['exclude_noindex'] ) ? $options['exclude_noindex'] : true;
 
@@ -415,23 +610,21 @@ function ayudawp_aiss_is_canonical_ai_plugin_active() {
 /**
  * Resolve the post types where the AI summary feature applies (v2.0.0)
  *
- * Independent from the buttons' `auto_insert_content_types` so the admin
- * can choose, for example, to render buttons on posts only but generate
- * summaries on posts + products. Falls back to the buttons list when the
- * dedicated option has not been set yet (covers pre-migration sites).
+ * Truly independent from the buttons' `auto_insert_content_types` since
+ * 2.3.0: the old read-time fallback to the buttons list is gone. The 2.3.0
+ * migration materialized the inherited value into the dedicated option, so
+ * an empty list here genuinely means "no content types" (a state the
+ * settings tab flags with a visible notice).
  *
  * @since 2.0.0
+ * @since 2.3.0 Reads the dedicated summary option; no buttons-list fallback.
  * @return array<int,string> List of post type slugs.
  */
 function ayudawp_aiss_get_summary_post_types() {
-	$options = get_option( 'ayudawp_aiss_options', array() );
+	$options = ayudawp_aiss_get_summary_options();
 
 	if ( isset( $options['ai_summary_content_types'] ) && is_array( $options['ai_summary_content_types'] ) ) {
 		return array_values( array_filter( array_map( 'strval', $options['ai_summary_content_types'] ) ) );
-	}
-
-	if ( isset( $options['auto_insert_content_types'] ) && is_array( $options['auto_insert_content_types'] ) ) {
-		return array_values( array_filter( array_map( 'strval', $options['auto_insert_content_types'] ) ) );
 	}
 
 	return array( 'post' );
@@ -440,12 +633,13 @@ function ayudawp_aiss_get_summary_post_types() {
 /**
  * Check whether the AI summary feature applies to a given post (v2.0.0)
  *
- * Combines the per-post exclusion (meta box / noindex) with the new
+ * Combines the per-post summary exclusion (meta box / noindex) with the
  * `ai_summary_content_types` post-type whitelist. Centralised here so
  * the meta registration, save-post handler, frontend renderer and REST
  * endpoint all agree on the rule.
  *
  * @since 2.0.0
+ * @since 2.3.0 Uses the summary-specific per-post exclusion.
  * @param int $post_id Post ID to check.
  * @return bool True when the summary should be generated and shown.
  */
@@ -454,7 +648,7 @@ function ayudawp_aiss_should_apply_summary( $post_id ) {
 	if ( ! $post_id ) {
 		return false;
 	}
-	if ( ayudawp_aiss_is_post_excluded( $post_id ) ) {
+	if ( ayudawp_aiss_is_summary_excluded( $post_id ) ) {
 		return false;
 	}
 	$post_type = get_post_type( $post_id );
@@ -468,15 +662,17 @@ function ayudawp_aiss_should_apply_summary( $post_id ) {
 /**
  * Resolve the AI summary generation mode (v2.2.0)
  *
- * Replaces the legacy ai_summary_enabled + ai_summary_use_extractive_fallback
- * boolean pair with a single explicit mode. Falls back to deriving the mode
- * from the old booleans for sites whose options have not been migrated yet.
+ * Single explicit mode that replaced the legacy boolean pair in 2.2.0.
+ * Reads the dedicated summary option; pre-migration states (including the
+ * pre-2.2.0 booleans) are resolved by the legacy derivation inside
+ * ayudawp_aiss_get_summary_options().
  *
  * @since 2.2.0
+ * @since 2.3.0 Reads the dedicated summary option.
  * @return string One of: ai_fallback, ai_only, extractive_only, disabled.
  */
 function ayudawp_aiss_get_summary_mode() {
-	$options = get_option( 'ayudawp_aiss_options', array() );
+	$options = ayudawp_aiss_get_summary_options();
 
 	if ( isset( $options['ai_summary_mode'] ) ) {
 		$mode = (string) $options['ai_summary_mode'];
@@ -485,13 +681,7 @@ function ayudawp_aiss_get_summary_mode() {
 		}
 	}
 
-	// Legacy fallback for pre-2.2.0 options not yet migrated.
-	$enabled = ! isset( $options['ai_summary_enabled'] ) || ! empty( $options['ai_summary_enabled'] );
-	if ( ! $enabled ) {
-		return 'disabled';
-	}
-	$fallback = ! isset( $options['ai_summary_use_extractive_fallback'] ) || ! empty( $options['ai_summary_use_extractive_fallback'] );
-	return $fallback ? 'ai_fallback' : 'ai_only';
+	return 'ai_fallback';
 }
 
 /**

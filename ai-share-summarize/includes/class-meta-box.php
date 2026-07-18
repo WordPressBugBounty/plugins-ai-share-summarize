@@ -22,9 +22,18 @@ if ( ! defined( 'ABSPATH' ) ) {
 class AyudaWP_AISS_Meta_Box {
 
 	/**
-	 * Meta key for exclusion
+	 * Meta key for the share-buttons exclusion
 	 */
 	const META_KEY = '_ayudawp_aiss_exclude';
+
+	/**
+	 * Meta key for the AI-summary exclusion (v2.3.0)
+	 *
+	 * Independent from META_KEY since 2.3.0: before that, the single
+	 * buttons checkbox silently hid the summary too. The 2.3.0 migration
+	 * stamps this meta on every post that had the old one checked.
+	 */
+	const META_KEY_SUMMARY = '_ayudawp_aiss_exclude_summary';
 
 	/**
 	 * Constructor
@@ -50,6 +59,19 @@ class AyudaWP_AISS_Meta_Box {
 			register_post_meta(
 				$post_type,
 				self::META_KEY,
+				array(
+					'show_in_rest'  => true,
+					'single'        => true,
+					'type'          => 'boolean',
+					'default'       => false,
+					'auth_callback' => function () {
+						return current_user_can( 'edit_posts' );
+					},
+				)
+			);
+			register_post_meta(
+				$post_type,
+				self::META_KEY_SUMMARY,
 				array(
 					'show_in_rest'  => true,
 					'single'        => true,
@@ -152,6 +174,25 @@ class AyudaWP_AISS_Meta_Box {
 				<?php endif; ?>
 			</p>
 			<p>
+				<label>
+					<?php
+					// The hidden marker tells the save handler this control was
+					// present in the submitted form, so an unchecked box can be
+					// told apart from a form rendered without the summary block.
+					?>
+					<input type="hidden" name="ayudawp_aiss_exclude_summary_present" value="1">
+					<input type="checkbox"
+						   name="ayudawp_aiss_exclude_summary"
+						   id="ayudawp_aiss_exclude_summary"
+						   value="1"
+						   <?php checked( self::ayudawp_is_summary_excluded( $post->ID ) ); ?>>
+					<?php esc_html_e( 'Hide AI summary on this content', 'ai-share-summarize' ); ?>
+				</label>
+			</p>
+			<p class="description" style="margin-top: 0; color: #646970;">
+				<?php esc_html_e( 'Prevents the summary from being generated and displayed for this specific content. Independent from the share buttons checkbox above.', 'ai-share-summarize' ); ?>
+			</p>
+			<p>
 				<label for="ayudawp_aiss_summary_manual" class="screen-reader-text"><?php esc_html_e( 'AI summary text', 'ai-share-summarize' ); ?></label>
 				<textarea name="ayudawp_aiss_summary_manual"
 				          id="ayudawp_aiss_summary_manual"
@@ -210,6 +251,18 @@ class AyudaWP_AISS_Meta_Box {
 			update_post_meta( $post_id, self::META_KEY, '1' );
 		} else {
 			delete_post_meta( $post_id, self::META_KEY );
+		}
+
+		// Summary exclusion (v2.3.0). Only touch the meta when its control was
+		// actually in the form (the hidden marker): the checkbox is rendered
+		// inside the AI Summary block, which is absent when the feature is
+		// globally disabled, and an absent control must not clear the meta.
+		if ( isset( $_POST['ayudawp_aiss_exclude_summary_present'] ) ) {
+			if ( isset( $_POST['ayudawp_aiss_exclude_summary'] ) ) {
+				update_post_meta( $post_id, self::META_KEY_SUMMARY, '1' );
+			} else {
+				delete_post_meta( $post_id, self::META_KEY_SUMMARY );
+			}
 		}
 
 		// Handle AI Summary fields (v2.0.0).
@@ -286,6 +339,8 @@ class AyudaWP_AISS_Meta_Box {
 			'panelTitle'         => __( 'AI Share & Summarize', 'ai-share-summarize' ),
 			'label'              => __( 'Hide share buttons on this content', 'ai-share-summarize' ),
 			'help'               => __( 'Check this box to prevent the share and AI buttons from appearing on this specific content.', 'ai-share-summarize' ),
+			'excludeSummaryLabel' => __( 'Hide AI summary on this content', 'ai-share-summarize' ),
+			'excludeSummaryHelp'  => __( 'Prevents the summary from being generated and displayed for this specific content. Independent from the share buttons toggle.', 'ai-share-summarize' ),
 			'summaryPanelTitle'  => __( 'AI Summary', 'ai-share-summarize' ),
 			'summaryEditLabel'   => __( 'Summary', 'ai-share-summarize' ),
 			'regenerateLabel'    => __( 'Regenerate now', 'ai-share-summarize' ),
@@ -312,5 +367,19 @@ class AyudaWP_AISS_Meta_Box {
 	 */
 	public static function ayudawp_is_post_excluded( $post_id ) {
 		return (bool) get_post_meta( $post_id, self::META_KEY, true );
+	}
+
+	/**
+	 * Check if a post has the AI summary excluded via meta box (v2.3.0)
+	 *
+	 * Same value semantics as ayudawp_is_post_excluded(): '1' from the
+	 * classic editor, boolean true through the REST meta.
+	 *
+	 * @since 2.3.0
+	 * @param int $post_id Post ID to check.
+	 * @return bool True if the summary is excluded, false otherwise.
+	 */
+	public static function ayudawp_is_summary_excluded( $post_id ) {
+		return (bool) get_post_meta( $post_id, self::META_KEY_SUMMARY, true );
 	}
 }

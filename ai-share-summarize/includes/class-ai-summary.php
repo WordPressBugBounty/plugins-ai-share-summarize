@@ -37,20 +37,20 @@ class AyudaWP_AISS_AI_Summary {
 	const META_HASH       = '_ayudawp_aiss_summary_hash';
 	const CRON_HOOK       = 'ayudawp_aiss_generate_summary_async';
 	const LOCK_PREFIX     = '_ayudawp_aiss_generating_';
-	const LOCK_RESCUE_AGE = 180; // Seconds before a lock with no queued event counts as orphaned (v2.3.0).
-	const RESCUE_WINDOW_DAYS = 14; // Recovery layers only touch posts newer than this (v2.3.0) — repairing lost events, never backfilling the archive.
+	const LOCK_RESCUE_AGE = 180; // Seconds before a lock with no queued event counts as orphaned (v2.2.2).
+	const RESCUE_WINDOW_DAYS = 14; // Recovery layers only touch posts newer than this (v2.2.2) — repairing lost events, never backfilling the archive.
 	const LAST_ERROR_OPT  = 'ayudawp_aiss_last_ai_error';
 
 	/**
 	 * Post IDs whose async event was scheduled during this request and must
-	 * be re-verified against the database at shutdown (v2.3.0).
+	 * be re-verified against the database at shutdown (v2.2.2).
 	 *
 	 * @var array<int,bool>
 	 */
 	private static $pending_events = array();
 
 	/**
-	 * Whether the shutdown re-verifier has been hooked already (v2.3.0).
+	 * Whether the shutdown re-verifier has been hooked already (v2.2.2).
 	 *
 	 * @var bool
 	 */
@@ -75,7 +75,7 @@ class AyudaWP_AISS_AI_Summary {
 
 		add_action( self::CRON_HOOK, array( __CLASS__, 'run' ), 10, 1 );
 
-		// Rescue sweep (v2.3.0): piggyback on the existing daily cron so
+		// Rescue sweep (v2.2.2): piggyback on the existing daily cron so
 		// posts whose async event was silently lost (a concurrent wp-cron
 		// runner clobbering the 'cron' option is a real, observed failure
 		// mode) eventually get their summary without any new cron of our own.
@@ -159,7 +159,7 @@ class AyudaWP_AISS_AI_Summary {
 	}
 
 	/**
-	 * Trigger generation when a scheduled post goes live (v2.3.0)
+	 * Trigger generation when a scheduled post goes live (v2.2.2)
 	 *
 	 * future_to_publish fires early inside wp_publish_post(), unlike
 	 * wp_after_insert_post which sits at the end of the chain and is skipped
@@ -171,7 +171,7 @@ class AyudaWP_AISS_AI_Summary {
 	 * 'future' — and the content hash), so this stays safe and idempotent next
 	 * to on_save_post for a scheduled post published from the editor.
 	 *
-	 * @since 2.3.0
+	 * @since 2.2.2
 	 * @param WP_Post $post The post transitioning from future to publish.
 	 * @return void
 	 */
@@ -185,7 +185,7 @@ class AyudaWP_AISS_AI_Summary {
 	}
 
 	/**
-	 * Central gate for automatic generation (v2.3.0)
+	 * Central gate for automatic generation (v2.2.2)
 	 *
 	 * Runs every eligibility check (feature active, post published, post type
 	 * allowed, not excluded, not manually edited, content actually changed,
@@ -205,7 +205,7 @@ class AyudaWP_AISS_AI_Summary {
 	 * Shared by the save-post handler, the frontend self-heal and the daily
 	 * rescue sweep so all entry points agree on the rules.
 	 *
-	 * @since 2.3.0
+	 * @since 2.2.2
 	 * @param int          $post_id      Post ID.
 	 * @param WP_Post|null $post         Optional post object to avoid a refetch.
 	 * @param bool         $prefer_async When true, schedule the async event even
@@ -276,7 +276,7 @@ class AyudaWP_AISS_AI_Summary {
 	}
 
 	/**
-	 * Schedule the async generation event, verifying it actually landed (v2.3.0)
+	 * Schedule the async generation event, verifying it actually landed (v2.2.2)
 	 *
 	 * The 'cron' option is rewritten wholesale by every process that touches
 	 * the queue (non-atomic read-modify-write), so a single-shot event can be
@@ -294,7 +294,7 @@ class AyudaWP_AISS_AI_Summary {
 	 *    cache cannot see other processes' writes) and reschedule if the
 	 *    event vanished mid-request.
 	 *
-	 * @since 2.3.0
+	 * @since 2.2.2
 	 * @param int $post_id Post ID.
 	 * @return bool True when the event is confirmed in the queue.
 	 */
@@ -319,14 +319,14 @@ class AyudaWP_AISS_AI_Summary {
 	}
 
 	/**
-	 * Shutdown re-check: reschedule events erased by concurrent processes (v2.3.0)
+	 * Shutdown re-check: reschedule events erased by concurrent processes (v2.2.2)
 	 *
 	 * wp_next_scheduled() reads the request-local option cache, which cannot
 	 * see a concurrent runner's clobbering write, so the caches for 'cron'
 	 * and 'alloptions' are dropped first to force a fresh read from the
 	 * database. The request is ending, so the invalidation is free.
 	 *
-	 * @since 2.3.0
+	 * @since 2.2.2
 	 * @return void
 	 */
 	public static function reverify_scheduled_events() {
@@ -349,7 +349,7 @@ class AyudaWP_AISS_AI_Summary {
 	}
 
 	/**
-	 * Daily rescue sweep for published posts left without a summary (v2.3.0)
+	 * Daily rescue sweep for published posts left without a summary (v2.2.2)
 	 *
 	 * Last safety net: even if the async event is lost after the request ends
 	 * and no visitor triggers the frontend self-heal, recent posts get their
@@ -358,7 +358,7 @@ class AyudaWP_AISS_AI_Summary {
 	 * posts from the last two weeks. Runs inside cron, so maybe_generate()
 	 * takes the inline path.
 	 *
-	 * @since 2.3.0
+	 * @since 2.2.2
 	 * @return void
 	 */
 	public static function rescue_sweep() {
@@ -404,14 +404,14 @@ class AyudaWP_AISS_AI_Summary {
 	}
 
 	/**
-	 * Frontend self-heal: recover posts whose generation event was lost (v2.3.0)
+	 * Frontend self-heal: recover posts whose generation event was lost (v2.2.2)
 	 *
 	 * Called from get_summary_html() when a post that should have a summary
 	 * has none. maybe_generate() re-runs every eligibility check (including
 	 * the manual-edit flag and the in-flight lock, so no scheduling storms),
 	 * making a lost event self-correct on the next visit instead of never.
 	 *
-	 * @since 2.3.0
+	 * @since 2.2.2
 	 * @param int $post_id Post ID.
 	 * @return void
 	 */
@@ -512,7 +512,7 @@ class AyudaWP_AISS_AI_Summary {
 				}
 			}
 
-			$options = get_option( 'ayudawp_aiss_options', array() );
+			$options = ayudawp_aiss_get_summary_options();
 
 			// Resolve the admin's generation mode (v2.2.0). "extractive_only"
 			// behaves like a forced-extractive call; "ai_only" disables the
@@ -648,7 +648,7 @@ class AyudaWP_AISS_AI_Summary {
 			return new WP_Error( 'no_wp_ai_client', __( 'WP AI Client is not available (requires WordPress 7.0+).', 'ai-share-summarize' ) );
 		}
 
-		$options     = get_option( 'ayudawp_aiss_options', array() );
+		$options     = ayudawp_aiss_get_summary_options();
 		$n_sentences = isset( $options['ai_summary_sentences'] ) ? max( 1, min( 5, (int) $options['ai_summary_sentences'] ) ) : 3;
 
 		$system  = 'You are a content summarizer. Return ONLY the summary in plain text, no markdown, no quotes, no preamble. Match the language of the input.';
@@ -1075,7 +1075,7 @@ class AyudaWP_AISS_AI_Summary {
 		$summary = get_post_meta( $post_id, self::META_SUMMARY, true );
 
 		if ( '' === $summary ) {
-			// Self-heal (v2.3.0): if this post should have an automatic
+			// Self-heal (v2.2.2): if this post should have an automatic
 			// summary and its generation event was lost, reschedule it now.
 			self::maybe_self_heal( $post_id );
 
@@ -1086,7 +1086,7 @@ class AyudaWP_AISS_AI_Summary {
 		}
 
 		$provider = get_post_meta( $post_id, self::META_PROVIDER, true );
-		$options  = get_option( 'ayudawp_aiss_options', array() );
+		$options  = ayudawp_aiss_get_summary_options();
 		$open     = empty( $options['ai_summary_collapsed_default'] ) ? ' open' : '';
 		$is_basic = 'extractive' === $provider;
 
@@ -1155,13 +1155,13 @@ class AyudaWP_AISS_AI_Summary {
 	 * @return string Button HTML or ''.
 	 */
 	public static function get_generate_button_html( $post_id ) {
-		$options = get_option( 'ayudawp_aiss_options', array() );
+		$options = ayudawp_aiss_get_summary_options();
 
 		if ( empty( $options['ai_summary_frontend_button'] ) ) {
 			return '';
 		}
 
-		if ( ayudawp_aiss_is_post_excluded( $post_id ) ) {
+		if ( ayudawp_aiss_is_summary_excluded( $post_id ) ) {
 			return '';
 		}
 

@@ -51,9 +51,10 @@ class AyudaWP_AISS_Frontend {
 	 */
 	public function ayudawp_enqueue_scripts() {
 		$options         = get_option( 'ayudawp_aiss_options' );
+		$summary_options = ayudawp_aiss_get_summary_options();
 		$insert_position = isset( $options['auto_insert_position'] ) ? $options['auto_insert_position'] : 'after_content';
 		$summary_enabled = ayudawp_aiss_is_summary_active();
-		$summary_pos     = isset( $options['ai_summary_position'] ) ? $options['ai_summary_position'] : 'before_buttons';
+		$summary_pos     = isset( $summary_options['ai_summary_position'] ) ? $summary_options['ai_summary_position'] : 'before_buttons';
 
 		// Determine if assets are needed on this page.
 		$should_load = false;
@@ -62,7 +63,9 @@ class AyudaWP_AISS_Frontend {
 		$summary_active = ( $summary_enabled && 'disabled' !== $summary_pos );
 
 		if ( $buttons_active || $summary_active ) {
-			// Auto-insert mode (buttons or summary): use the same display logic.
+			// Auto-insert mode (buttons or summary): the buttons' locations
+			// setting gates archives/home; singular pages get a second chance
+			// below through the summary's own content-type list.
 			$should_load = ayudawp_aiss_should_display_buttons();
 		} else {
 			// Shortcode-only mode: load on singular and archives
@@ -70,20 +73,39 @@ class AyudaWP_AISS_Frontend {
 			$should_load = is_singular() || is_archive() || is_home();
 		}
 
+		/*
+		 * Decoupled summary gate (v2.3.0): on singular pages the summary no
+		 * longer piggybacks on the buttons' locations/content-type settings —
+		 * its own content-type list decides. This is what lets summaries show
+		 * on post types the buttons are not configured for.
+		 */
+		if ( ! $should_load && $summary_active && is_singular() ) {
+			$queried_id  = get_queried_object_id();
+			$should_load = $queried_id && ayudawp_aiss_should_apply_summary( $queried_id );
+		}
+
 		if ( ! $should_load ) {
 			return;
 		}
 
 		/*
-		 * Fix #3: if buttons are disabled for this specific post via the meta box,
-		 * skip loading assets entirely on singular pages.
+		 * Per-post exclusions — independent for buttons and summary since
+		 * 2.3.0. Skip loading assets on singular pages only when NEITHER
+		 * feature will render for this post.
 		 * get_queried_object_id() is used instead of get_the_ID() because it is
 		 * reliable at wp_enqueue_scripts time (before the_content loop runs).
 		 */
 		if ( is_singular() ) {
 			$post_id = get_queried_object_id();
-			if ( $post_id && ayudawp_aiss_is_post_excluded( $post_id ) ) {
-				return;
+			if ( $post_id ) {
+				$buttons_shown = $buttons_active
+					&& ayudawp_aiss_should_display_buttons()
+					&& ! ayudawp_aiss_is_post_excluded( $post_id );
+				$summary_shown = $summary_active
+					&& ayudawp_aiss_should_apply_summary( $post_id );
+				if ( ! $buttons_shown && ! $summary_shown ) {
+					return;
+				}
 			}
 		}
 
@@ -123,10 +145,11 @@ class AyudaWP_AISS_Frontend {
 		}
 
 		$options         = get_option( 'ayudawp_aiss_options' );
+		$summary_options = ayudawp_aiss_get_summary_options();
 		$insert_position = isset( $options['auto_insert_position'] ) ? $options['auto_insert_position'] : 'after_content';
 		$summary_enabled = ayudawp_aiss_is_summary_active();
-		$frontend_button = ! empty( $options['ai_summary_frontend_button'] );
-		$summary_pos     = isset( $options['ai_summary_position'] ) ? $options['ai_summary_position'] : 'before_buttons';
+		$frontend_button = ! empty( $summary_options['ai_summary_frontend_button'] );
+		$summary_pos     = isset( $summary_options['ai_summary_position'] ) ? $summary_options['ai_summary_position'] : 'before_buttons';
 
 		// Buttons are this filter's job. When auto-insert is disabled there is
 		// nothing to do here — a standalone summary (if any) is rendered by
@@ -283,18 +306,22 @@ class AyudaWP_AISS_Frontend {
 			return $content;
 		}
 
-		if ( ! ayudawp_aiss_should_display_buttons() ) {
-			return $content;
-		}
-		if ( ayudawp_aiss_is_post_excluded( $post_id ) ) {
+		/*
+		 * The buttons' locations setting only gates non-singular contexts
+		 * since 2.3.0: on singular pages the summary is governed by its own
+		 * content-type list (checked below via should_apply_summary), so it
+		 * can render on post types the buttons are not configured for.
+		 */
+		if ( ! is_singular() && ! ayudawp_aiss_should_display_buttons() ) {
 			return $content;
 		}
 
 		$options         = get_option( 'ayudawp_aiss_options' );
+		$summary_options = ayudawp_aiss_get_summary_options();
 		$insert_position = isset( $options['auto_insert_position'] ) ? $options['auto_insert_position'] : 'after_content';
 		$summary_enabled = ayudawp_aiss_is_summary_active();
-		$frontend_button = ! empty( $options['ai_summary_frontend_button'] );
-		$summary_pos     = isset( $options['ai_summary_position'] ) ? $options['ai_summary_position'] : 'before_buttons';
+		$frontend_button = ! empty( $summary_options['ai_summary_frontend_button'] );
+		$summary_pos     = isset( $summary_options['ai_summary_position'] ) ? $summary_options['ai_summary_position'] : 'before_buttons';
 
 		$summary_active = ( 'disabled' !== $summary_pos ) && ( $summary_enabled || $frontend_button );
 		if ( ! $summary_active ) {
@@ -304,12 +331,17 @@ class AyudaWP_AISS_Frontend {
 		/*
 		 * Render standalone at the start of the content when the position is
 		 * 'before_content', or when the summary is anchored to the buttons but
-		 * the buttons are not being auto-inserted (so there is nothing to glue
-		 * it to). The glued cases live in ayudawp_add_share_buttons().
+		 * the buttons are not visible on THIS post (globally disabled, this
+		 * post type outside the buttons' locations, or excluded per post), so
+		 * there is nothing to glue it to. The glued cases live in
+		 * ayudawp_add_share_buttons(). The per-post summary exclusion itself
+		 * is enforced inside should_apply_summary().
 		 */
-		$buttons_active = ( 'disabled' !== $insert_position );
-		$standalone     = ( 'before_content' === $summary_pos )
-			|| ( ! $buttons_active && in_array( $summary_pos, array( 'before_buttons', 'after_buttons' ), true ) );
+		$buttons_visible = ( 'disabled' !== $insert_position )
+			&& ayudawp_aiss_should_display_buttons()
+			&& ! ayudawp_aiss_is_post_excluded( $post_id );
+		$standalone      = ( 'before_content' === $summary_pos )
+			|| ( ! $buttons_visible && in_array( $summary_pos, array( 'before_buttons', 'after_buttons' ), true ) );
 
 		if ( ! $standalone || ! ayudawp_aiss_should_apply_summary( $post_id ) ) {
 			return $content;
@@ -323,12 +355,12 @@ class AyudaWP_AISS_Frontend {
 		 * filter BEFORE the outer/visible render does. Without a discriminator it
 		 * would take the summary and mark the post processed, leaving the real
 		 * content without it (buttons survive because they inject at priority 10,
-		 * before any nesting). When buttons are auto-inserted, the visible main
-		 * content already carries the share-buttons block, while the skipped
-		 * nested render does not — so require that marker to make sure we prepend
-		 * to the stream the buttons filter already claimed.
+		 * before any nesting). When the buttons are visible on this post, the
+		 * visible main content already carries the share-buttons block, while the
+		 * skipped nested render does not — so require that marker to make sure we
+		 * prepend to the stream the buttons filter already claimed.
 		 */
-		if ( $buttons_active && false === strpos( $content, 'ayudawp-share-buttons' ) ) {
+		if ( $buttons_visible && false === strpos( $content, 'ayudawp-share-buttons' ) ) {
 			return $content;
 		}
 
@@ -359,14 +391,16 @@ class AyudaWP_AISS_Frontend {
 		}
 
 		$post_id = get_queried_object_id();
-		if ( ! $post_id || ! ayudawp_aiss_should_display_buttons() ) {
+		if ( ! $post_id ) {
 			return;
 		}
 
-		$options         = get_option( 'ayudawp_aiss_options', array() );
-		$summary_pos     = isset( $options['ai_summary_position'] ) ? $options['ai_summary_position'] : 'before_buttons';
+		// No buttons-locations gate here (v2.3.0): whether the summary shows
+		// on this singular page is decided by its own rules alone.
+		$summary_options = ayudawp_aiss_get_summary_options();
+		$summary_pos     = isset( $summary_options['ai_summary_position'] ) ? $summary_options['ai_summary_position'] : 'before_buttons';
 		$summary_enabled = ayudawp_aiss_is_summary_active();
-		$frontend_button = ! empty( $options['ai_summary_frontend_button'] );
+		$frontend_button = ! empty( $summary_options['ai_summary_frontend_button'] );
 
 		if ( 'disabled' === $summary_pos || ( ! $summary_enabled && ! $frontend_button ) ) {
 			return;

@@ -141,7 +141,6 @@ class AyudaWP_AISS_Promo_Banner {
 		?>
 		<!-- Promotional notice -->
 		<div class="<?php echo esc_attr( $prefix ); ?>-promo-notice">
-			<h4><?php esc_html_e( 'WordPress help from AyudaWP', 'ai-share-summarize' ); ?></h4>
 			<div class="<?php echo esc_attr( $prefix ); ?>-promo-columns">
 
 				<?php foreach ( $services as $service ) : ?>

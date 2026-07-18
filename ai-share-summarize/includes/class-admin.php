@@ -65,36 +65,6 @@ class AyudaWP_AISS_Admin {
 
 		// Settings page inline styles (form-specific, not needed globally).
 		wp_add_inline_style( 'aiss-admin-styles', '
-			.aiss-settings-subnav {
-				display: flex;
-				flex-wrap: wrap;
-				gap: 4px;
-				margin: 12px 0 18px;
-				padding: 6px;
-				background: #fff;
-				border: 1px solid #dcdcde;
-				border-radius: 4px;
-				box-shadow: 0 1px 0 rgba(0,0,0,0.04);
-			}
-			.aiss-settings-subnav-link {
-				padding: 6px 12px;
-				text-decoration: none;
-				color: #1d2327;
-				border-radius: 3px;
-				font-size: 13px;
-				font-weight: 500;
-				transition: background-color 0.15s ease;
-			}
-			.aiss-settings-subnav-link:hover,
-			.aiss-settings-subnav-link:focus {
-				background: #f0f0f1;
-				color: #135e96;
-			}
-			.aiss-anchor {
-				display: block;
-				/* Offset for the WP admin bar so the target is not hidden. */
-				scroll-margin-top: 50px;
-			}
 			.ayudawp-info-link {
 				font-style: italic;
 				color: #646970;
@@ -162,10 +132,13 @@ class AyudaWP_AISS_Admin {
 		// Determine active tab.
 		$tab = isset( $_GET['tab'] ) ? sanitize_key( $_GET['tab'] ) : 'analytics'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 
-		// Settings tab: load color picker and sortable.
-		if ( 'settings' === $tab ) {
+		// Settings + AI Summary tabs: both have custom-color pickers; only
+		// the buttons tab has the drag-and-drop ordering lists.
+		if ( 'settings' === $tab || 'ai-summary' === $tab ) {
 			wp_enqueue_style( 'wp-color-picker' );
 			wp_enqueue_script( 'wp-color-picker' );
+		}
+		if ( 'settings' === $tab ) {
 			wp_enqueue_script( 'jquery-ui-sortable' );
 		}
 
@@ -341,9 +314,14 @@ class AyudaWP_AISS_Admin {
 	public function ayudawp_admin_init() {
 		register_setting( 'ayudawp_aiss_settings', 'ayudawp_aiss_options', 'ayudawp_aiss_validate_options' );
 
+		// The AI Summary tab posts to its own option with its own sanitizer
+		// (v2.3.0), so each tab's form saves independently and can never
+		// clobber the other tab's keys.
+		register_setting( 'ayudawp_aiss_summary_settings', 'ayudawp_aiss_summary_options', 'ayudawp_aiss_validate_summary_options' );
+
 		add_settings_section(
 			'ayudawp_aiss_main',
-			esc_html__( 'General Settings', 'ai-share-summarize' ),
+			esc_html__( 'Share Buttons', 'ai-share-summarize' ),
 			array( $this, 'ayudawp_section_callback' ),
 			'ayudawp_aiss_settings'
 		);
@@ -352,7 +330,7 @@ class AyudaWP_AISS_Admin {
 			'ayudawp_aiss_ai_summary',
 			esc_html__( 'AI Summary', 'ai-share-summarize' ),
 			array( $this, 'ayudawp_ai_summary_section_callback' ),
-			'ayudawp_aiss_settings'
+			'ayudawp_aiss_summary_settings'
 		);
 
 		$this->ayudawp_register_settings_fields();
@@ -417,7 +395,7 @@ class AyudaWP_AISS_Admin {
 				$field_id,
 				$field_title,
 				array( $this, 'ayudawp_' . $field_id . '_callback' ),
-				'ayudawp_aiss_settings',
+				'ayudawp_aiss_summary_settings',
 				'ayudawp_aiss_ai_summary'
 			);
 		}
@@ -430,10 +408,16 @@ class AyudaWP_AISS_Admin {
 		$active_tab = isset( $_GET['tab'] ) ? sanitize_key( $_GET['tab'] ) : 'analytics'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
 		$page_url   = admin_url( 'options-general.php?page=ai-share-summarize' );
 
-		// Dynamic page title based on active tab.
+		// Dynamic page title based on active tab. The buttons tab keeps the
+		// legacy 'settings' slug so bookmarked/external links don't break;
+		// only its visible label says "Share Buttons".
 		$page_title = 'AI Share & Summarize';
 		if ( 'analytics' === $active_tab ) {
 			$page_title .= ' — ' . esc_html__( 'Analytics', 'ai-share-summarize' );
+		} elseif ( 'ai-summary' === $active_tab ) {
+			$page_title .= ' — ' . esc_html__( 'AI Summary', 'ai-share-summarize' );
+		} elseif ( 'settings' === $active_tab ) {
+			$page_title .= ' — ' . esc_html__( 'Share Buttons', 'ai-share-summarize' );
 		}
 		?>
 		<div class="wrap aiss-wrap">
@@ -444,13 +428,18 @@ class AyudaWP_AISS_Admin {
 				<?php esc_html_e( 'Analytics', 'ai-share-summarize' ); ?>
 			</a>
 			<a href="<?php echo esc_url( add_query_arg( 'tab', 'settings', $page_url ) ); ?>" class="nav-tab <?php echo 'settings' === $active_tab ? 'nav-tab-active' : ''; ?>">
-				<?php esc_html_e( 'Settings', 'ai-share-summarize' ); ?>
+				<?php esc_html_e( 'Share Buttons', 'ai-share-summarize' ); ?>
+			</a>
+			<a href="<?php echo esc_url( add_query_arg( 'tab', 'ai-summary', $page_url ) ); ?>" class="nav-tab <?php echo 'ai-summary' === $active_tab ? 'nav-tab-active' : ''; ?>">
+				<?php esc_html_e( 'AI Summary', 'ai-share-summarize' ); ?>
 			</a>
 			</nav>
 
 			<?php
 			if ( 'analytics' === $active_tab ) {
 				AyudaWP_AISS_Analytics_Page::ayudawp_render();
+			} elseif ( 'ai-summary' === $active_tab ) {
+				$this->ayudawp_render_summary_tab();
 			} else {
 				$this->ayudawp_render_settings_tab();
 			}
@@ -466,14 +455,10 @@ class AyudaWP_AISS_Admin {
 	}
 
 	/**
-	 * Render the settings tab content
+	 * Render the settings tab content (share buttons + general)
 	 */
 	private function ayudawp_render_settings_tab() {
 		?>
-		<nav class="aiss-settings-subnav" aria-label="<?php esc_attr_e( 'Settings sections', 'ai-share-summarize' ); ?>">
-			<a href="#ayudawp-aiss-general" class="aiss-settings-subnav-link"><?php esc_html_e( 'General settings', 'ai-share-summarize' ); ?></a>
-			<a href="#ayudawp-aiss-ai-summary" class="aiss-settings-subnav-link"><?php esc_html_e( 'AI Summary', 'ai-share-summarize' ); ?></a>
-		</nav>
 		<form action="options.php" method="post">
 			<?php
 			settings_fields( 'ayudawp_aiss_settings' );
@@ -485,19 +470,33 @@ class AyudaWP_AISS_Admin {
 	}
 
 	/**
-	 * Main section callback
+	 * Render the AI Summary tab content (v2.3.0)
 	 *
-	 * The leading anchor (`#ayudawp-aiss-general`) is the deep-link target
-	 * for the subnav at the top of the settings tab. Stable ID so future
-	 * features (command palette, Abilities API, external docs) can link
-	 * straight to this section.
+	 * Dedicated tab with its own option and Save button, so summary settings
+	 * save independently from the buttons/general form. Deep-linkable at
+	 * options-general.php?page=ai-share-summarize&tab=ai-summary (replaces
+	 * the pre-2.3.0 #ayudawp-aiss-ai-summary in-page anchor).
+	 */
+	private function ayudawp_render_summary_tab() {
+		?>
+		<form action="options.php" method="post">
+			<?php
+			settings_fields( 'ayudawp_aiss_summary_settings' );
+			do_settings_sections( 'ayudawp_aiss_summary_settings' );
+			submit_button();
+			?>
+		</form>
+		<?php
+	}
+
+	/**
+	 * Main section callback
 	 */
 	public function ayudawp_section_callback() {
 		/* translators: Plugin page URL. Change wordpress.org to your locale if needed (e.g., es.wordpress.org) */
 		$plugin_url = __( 'https://wordpress.org/plugins/ai-share-summarize/', 'ai-share-summarize' );
 
-		echo '<span id="ayudawp-aiss-general" class="aiss-anchor"></span>';
-		echo '<p>' . esc_html__( 'Configure how and where to display share buttons and generate summaries with AI.', 'ai-share-summarize' );
+		echo '<p>' . esc_html__( 'Configure how and where to display the share buttons. The inline AI summary has its own tab: AI Summary.', 'ai-share-summarize' );
 		echo ' <span class="ayudawp-info-link">(' . esc_html__( 'You can also customize display using shortcodes as described in the', 'ai-share-summarize' ) . ' <a href="' . esc_url( $plugin_url ) . '" target="_blank" rel="noopener">' . esc_html__( 'plugin page', 'ai-share-summarize' ) . '</a>)</span>';
 		echo '</p>';
 	}
@@ -1149,15 +1148,27 @@ class AyudaWP_AISS_Admin {
 	/**
 	 * AI Summary section callback — explains the feature and AI client status
 	 *
-	 * Carries a stable anchor ID (#ayudawp-aiss-ai-summary) so the subnav,
-	 * the command palette, the Abilities API and external docs can deep-link
-	 * straight here.
+	 * Since 2.3.0 this section lives on its own tab (&tab=ai-summary), which
+	 * is the stable deep-link target for the command palette, the Abilities
+	 * API and external docs (it replaces the old in-page anchor).
 	 */
 	public function ayudawp_ai_summary_section_callback() {
-		echo '<span id="ayudawp-aiss-ai-summary" class="aiss-anchor"></span>';
 		echo '<p>'
 			. esc_html__( 'Automatically generate a short summary of each post and display it inline alongside the share buttons.', 'ai-share-summarize' )
 			. '</p>';
+
+		// Loud, early warning when automatic generation is effectively off
+		// because the content-type list is empty: since the buttons-list
+		// fallback was removed (2.3.0), an empty list genuinely means "no
+		// content types", and without this notice the only symptom would be
+		// summaries silently not appearing.
+		if ( ayudawp_aiss_is_summary_active() && array() === ayudawp_aiss_get_summary_post_types() ) {
+			echo '<div style="margin:10px 0;padding:10px 14px;background:#fcf9e8;border-left:4px solid #dba617;">'
+				. '<p style="margin:0;"><strong>' . esc_html__( 'Automatic summaries are off for every content type.', 'ai-share-summarize' ) . '</strong> '
+				. esc_html__( 'No content type is selected in "Summaries by content type" below, so no summary will be generated or displayed automatically. Manual regeneration from the editor keeps working.', 'ai-share-summarize' )
+				. '</p>'
+				. '</div>';
+		}
 
 		echo '<div class="ayudawp-seo-integration" style="background:#f9f9f9;padding:15px;margin:10px 0;border-radius:4px;">';
 
@@ -1230,7 +1241,7 @@ class AyudaWP_AISS_Admin {
 		echo '</div>';
 
 		echo '<p class="description">'
-			. esc_html__( 'Summaries are generated asynchronously when a post is published or updated, on the post types selected in "Automatic insertion by content type".', 'ai-share-summarize' )
+			. esc_html__( 'Summaries are generated asynchronously when a post is published or updated, on the post types selected in "Summaries by content type" below. This tab saves independently from the share buttons settings.', 'ai-share-summarize' )
 			. '</p>';
 	}
 
@@ -1261,7 +1272,7 @@ class AyudaWP_AISS_Admin {
 			?>
 			<p style="margin:0 0 8px;">
 				<label>
-					<input type="radio" name="ayudawp_aiss_options[ai_summary_mode]" value="<?php echo esc_attr( $key ); ?>" <?php checked( $mode, $key ); ?>>
+					<input type="radio" name="ayudawp_aiss_summary_options[ai_summary_mode]" value="<?php echo esc_attr( $key ); ?>" <?php checked( $mode, $key ); ?>>
 					<strong><?php echo esc_html( $label ); ?></strong>
 				</label>
 				<span class="description" style="display:block;margin-left:24px;"><?php echo esc_html( $descriptions[ $key ] ); ?></span>
@@ -1279,7 +1290,7 @@ class AyudaWP_AISS_Admin {
 	 * to Settings > Connectors when no provider is configured.
 	 */
 	public function ayudawp_ai_summary_model_callback() {
-		$options   = get_option( 'ayudawp_aiss_options' );
+		$options   = ayudawp_aiss_get_summary_options();
 		$selected  = isset( $options['ai_summary_model'] ) ? (string) $options['ai_summary_model'] : '';
 		$available = ayudawp_aiss_get_available_models();
 
@@ -1294,7 +1305,7 @@ class AyudaWP_AISS_Admin {
 			return;
 		}
 		?>
-		<select name="ayudawp_aiss_options[ai_summary_model]">
+		<select name="ayudawp_aiss_summary_options[ai_summary_model]">
 			<option value="" <?php selected( $selected, '' ); ?>><?php esc_html_e( 'Automatic (recommended): cheapest model per provider', 'ai-share-summarize' ); ?></option>
 			<?php foreach ( $available as $provider_id => $data ) : ?>
 				<optgroup label="<?php echo esc_attr( $data['name'] ); ?>">
@@ -1315,7 +1326,7 @@ class AyudaWP_AISS_Admin {
 	 * AI summary position field
 	 */
 	public function ayudawp_ai_summary_position_callback() {
-		$options  = get_option( 'ayudawp_aiss_options' );
+		$options  = ayudawp_aiss_get_summary_options();
 		$position = isset( $options['ai_summary_position'] ) ? $options['ai_summary_position'] : 'before_buttons';
 
 		$positions = array(
@@ -1330,7 +1341,7 @@ class AyudaWP_AISS_Admin {
 		foreach ( $positions as $key => $label ) {
 			$checked = ( $position === $key ) ? 'checked="checked"' : '';
 			echo '<label style="display: block; margin-bottom: 5px;">
-					<input type="radio" name="ayudawp_aiss_options[ai_summary_position]" value="' . esc_attr( $key ) . '" ' . esc_attr( $checked ) . '>
+					<input type="radio" name="ayudawp_aiss_summary_options[ai_summary_position]" value="' . esc_attr( $key ) . '" ' . esc_attr( $checked ) . '>
 					' . esc_html( $label ) . '
 				  </label>';
 		}
@@ -1340,11 +1351,11 @@ class AyudaWP_AISS_Admin {
 	 * AI summary collapsed default field
 	 */
 	public function ayudawp_ai_summary_collapsed_default_callback() {
-		$options   = get_option( 'ayudawp_aiss_options' );
+		$options   = ayudawp_aiss_get_summary_options();
 		$collapsed = isset( $options['ai_summary_collapsed_default'] ) ? (bool) $options['ai_summary_collapsed_default'] : true;
 		?>
 		<label>
-			<input type="checkbox" name="ayudawp_aiss_options[ai_summary_collapsed_default]" value="1" <?php checked( $collapsed, true ); ?>>
+			<input type="checkbox" name="ayudawp_aiss_summary_options[ai_summary_collapsed_default]" value="1" <?php checked( $collapsed, true ); ?>>
 			<?php esc_html_e( 'Show summary collapsed by default (visitor expands it manually)', 'ai-share-summarize' ); ?>
 		</label>
 		<p class="description"><?php esc_html_e( 'When disabled, the summary is shown expanded as soon as the page loads.', 'ai-share-summarize' ); ?></p>
@@ -1355,10 +1366,10 @@ class AyudaWP_AISS_Admin {
 	 * AI summary sentence count field (applies to both AI and extractive)
 	 */
 	public function ayudawp_ai_summary_sentences_callback() {
-		$options   = get_option( 'ayudawp_aiss_options' );
+		$options   = ayudawp_aiss_get_summary_options();
 		$sentences = isset( $options['ai_summary_sentences'] ) ? (int) $options['ai_summary_sentences'] : 3;
 		?>
-		<input type="number" min="1" max="5" step="1" name="ayudawp_aiss_options[ai_summary_sentences]" value="<?php echo esc_attr( $sentences ); ?>" class="small-text">
+		<input type="number" min="1" max="5" step="1" name="ayudawp_aiss_summary_options[ai_summary_sentences]" value="<?php echo esc_attr( $sentences ); ?>" class="small-text">
 		<p class="description"><?php esc_html_e( 'Target sentence count for the summary (1-5). Sent to the AI provider as part of the prompt and used as the cap by the extractive fallback.', 'ai-share-summarize' ); ?></p>
 		<?php
 	}
@@ -1369,14 +1380,20 @@ class AyudaWP_AISS_Admin {
 	 * Independent of the buttons' content-type list so the admin can
 	 * generate summaries on different post types than where the share
 	 * buttons appear (e.g. summaries on posts + products, buttons on
-	 * posts only).
+	 * posts only). Since 2.3.0 the independence is real: the old read-time
+	 * fallback to the buttons list is gone, and the hidden marker below
+	 * lets an all-unchecked group express "no content types" (which the
+	 * section callback flags with a visible notice).
 	 */
 	public function ayudawp_ai_summary_content_types_callback() {
-		$options       = get_option( 'ayudawp_aiss_options' );
-		$selected      = ayudawp_aiss_get_summary_post_types();
-		$post_types    = get_post_types( array( 'public' => true ), 'objects' );
+		$selected   = ayudawp_aiss_get_summary_post_types();
+		$post_types = get_post_types( array( 'public' => true ), 'objects' );
 
 		echo '<p class="description">' . esc_html__( 'Select the post types where summaries should be generated and displayed:', 'ai-share-summarize' ) . '</p>';
+
+		// Marker so the sanitizer can tell "submitted with every checkbox
+		// unchecked" apart from input that did not include this field at all.
+		echo '<input type="hidden" name="ayudawp_aiss_summary_options[ai_summary_content_types_submitted]" value="1">';
 
 		echo '<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 6px; margin-top: 8px;">';
 		foreach ( $post_types as $post_type ) {
@@ -1385,14 +1402,14 @@ class AyudaWP_AISS_Admin {
 			}
 			$checked = in_array( $post_type->name, $selected, true ) ? 'checked="checked"' : '';
 			echo '<label style="display: flex; align-items: center; gap: 6px;">
-					<input type="checkbox" name="ayudawp_aiss_options[ai_summary_content_types][]" value="' . esc_attr( $post_type->name ) . '" ' . esc_attr( $checked ) . '>
+					<input type="checkbox" name="ayudawp_aiss_summary_options[ai_summary_content_types][]" value="' . esc_attr( $post_type->name ) . '" ' . esc_attr( $checked ) . '>
 					<span>' . esc_html( $post_type->label ) . ' <code style="font-size:10px;color:#646970;">' . esc_html( $post_type->name ) . '</code></span>
 				  </label>';
 		}
 		echo '</div>';
 
 		echo '<p class="description" style="margin-top: 10px;">'
-			. esc_html__( 'This has its own list, but while it is left empty, summaries fall back to the content types used by the share buttons. Select at least one type here to control summaries independently.', 'ai-share-summarize' )
+			. esc_html__( 'Fully independent from the share buttons content-type list. Unchecking every type turns automatic summaries off for the whole site.', 'ai-share-summarize' )
 			. '</p>';
 	}
 
@@ -1400,11 +1417,11 @@ class AyudaWP_AISS_Admin {
 	 * Frontend generation button field (v2.0.0)
 	 */
 	public function ayudawp_ai_summary_frontend_button_callback() {
-		$options = get_option( 'ayudawp_aiss_options' );
+		$options = ayudawp_aiss_get_summary_options();
 		$enabled = isset( $options['ai_summary_frontend_button'] ) ? (bool) $options['ai_summary_frontend_button'] : false;
 		?>
 		<label>
-			<input type="checkbox" name="ayudawp_aiss_options[ai_summary_frontend_button]" value="1" <?php checked( $enabled, true ); ?>>
+			<input type="checkbox" name="ayudawp_aiss_summary_options[ai_summary_frontend_button]" value="1" <?php checked( $enabled, true ); ?>>
 			<?php esc_html_e( 'Show a "Generate summary" button to visitors when a post has no summary yet', 'ai-share-summarize' ); ?>
 		</label>
 		<p class="description"><?php esc_html_e( 'Useful for old posts that were published before this feature existed. Each visitor can trigger one generation per minute per post (rate-limited by IP).', 'ai-share-summarize' ); ?></p>
@@ -1415,11 +1432,11 @@ class AyudaWP_AISS_Admin {
 	 * Frontend force-extractive field (v2.0.0)
 	 */
 	public function ayudawp_ai_summary_frontend_force_extractive_callback() {
-		$options = get_option( 'ayudawp_aiss_options' );
+		$options = ayudawp_aiss_get_summary_options();
 		$forced  = isset( $options['ai_summary_frontend_force_extractive'] ) ? (bool) $options['ai_summary_frontend_force_extractive'] : true;
 		?>
 		<label>
-			<input type="checkbox" name="ayudawp_aiss_options[ai_summary_frontend_force_extractive]" value="1" <?php checked( $forced, true ); ?>>
+			<input type="checkbox" name="ayudawp_aiss_summary_options[ai_summary_frontend_force_extractive]" value="1" <?php checked( $forced, true ); ?>>
 			<?php esc_html_e( 'Restrict visitor-triggered generation to the PHP extractive summarizer (zero cost)', 'ai-share-summarize' ); ?>
 		</label>
 		<p class="description"><?php esc_html_e( 'When disabled, visitor clicks can call the WP AI Client, which consumes credits from your configured provider. Leave enabled to keep costs predictable.', 'ai-share-summarize' ); ?></p>
@@ -1430,10 +1447,10 @@ class AyudaWP_AISS_Admin {
 	 * AI summary block label field (v2.1.0)
 	 */
 	public function ayudawp_ai_summary_label_callback() {
-		$options = get_option( 'ayudawp_aiss_options' );
+		$options = ayudawp_aiss_get_summary_options();
 		$value   = isset( $options['ai_summary_label'] ) ? $options['ai_summary_label'] : '';
 		?>
-		<input type="text" name="ayudawp_aiss_options[ai_summary_label]" value="<?php echo esc_attr( $value ); ?>" class="regular-text" placeholder="<?php echo esc_attr_x( 'AI Summary', 'default summary block label', 'ai-share-summarize' ); ?>">
+		<input type="text" name="ayudawp_aiss_summary_options[ai_summary_label]" value="<?php echo esc_attr( $value ); ?>" class="regular-text" placeholder="<?php echo esc_attr_x( 'AI Summary', 'default summary block label', 'ai-share-summarize' ); ?>">
 		<p class="description"><?php esc_html_e( 'Heading shown on the collapsible summary block. Leave empty to use the default ("AI Summary").', 'ai-share-summarize' ); ?></p>
 		<?php
 	}
@@ -1442,7 +1459,7 @@ class AyudaWP_AISS_Admin {
 	 * AI summary block style field (v2.1.0)
 	 */
 	public function ayudawp_ai_summary_style_callback() {
-		$options = get_option( 'ayudawp_aiss_options' );
+		$options = ayudawp_aiss_get_summary_options();
 		$style   = isset( $options['ai_summary_style'] ) ? $options['ai_summary_style'] : 'minimal';
 
 		$styles = array(
@@ -1456,7 +1473,7 @@ class AyudaWP_AISS_Admin {
 		foreach ( $styles as $key => $label ) {
 			$checked = ( $style === $key ) ? 'checked="checked"' : '';
 			echo '<label style="display: block; margin-bottom: 5px;">
-					<input type="radio" name="ayudawp_aiss_options[ai_summary_style]" value="' . esc_attr( $key ) . '" ' . esc_attr( $checked ) . '>
+					<input type="radio" name="ayudawp_aiss_summary_options[ai_summary_style]" value="' . esc_attr( $key ) . '" ' . esc_attr( $checked ) . '>
 					' . esc_html( $label ) . '
 				  </label>';
 		}
@@ -1467,11 +1484,11 @@ class AyudaWP_AISS_Admin {
 		<div class="ayudawp-color-picker-row" id="ayudawp-aiss-summary-custom-colors" style="<?php echo 'custom' !== $style ? 'display:none;' : ''; ?>">
 			<div>
 				<label for="ayudawp_aiss_summary_bg"><?php esc_html_e( 'Background color:', 'ai-share-summarize' ); ?></label>
-				<input type="text" id="ayudawp_aiss_summary_bg" name="ayudawp_aiss_options[ai_summary_custom_bg]" value="<?php echo esc_attr( $custom_bg ); ?>" class="ayudawp-color-field" data-default-color="#ffffff">
+				<input type="text" id="ayudawp_aiss_summary_bg" name="ayudawp_aiss_summary_options[ai_summary_custom_bg]" value="<?php echo esc_attr( $custom_bg ); ?>" class="ayudawp-color-field" data-default-color="#ffffff">
 			</div>
 			<div>
 				<label for="ayudawp_aiss_summary_text"><?php esc_html_e( 'Text color:', 'ai-share-summarize' ); ?></label>
-				<input type="text" id="ayudawp_aiss_summary_text" name="ayudawp_aiss_options[ai_summary_custom_text]" value="<?php echo esc_attr( $custom_text ); ?>" class="ayudawp-color-field" data-default-color="#1a1a1a">
+				<input type="text" id="ayudawp_aiss_summary_text" name="ayudawp_aiss_summary_options[ai_summary_custom_text]" value="<?php echo esc_attr( $custom_text ); ?>" class="ayudawp-color-field" data-default-color="#1a1a1a">
 			</div>
 		</div>
 		<?php
@@ -1482,7 +1499,7 @@ class AyudaWP_AISS_Admin {
 	 * AI summary icon position field (v2.1.0)
 	 */
 	public function ayudawp_ai_summary_icon_position_callback() {
-		$options  = get_option( 'ayudawp_aiss_options' );
+		$options  = ayudawp_aiss_get_summary_options();
 		$position = isset( $options['ai_summary_icon_position'] ) ? $options['ai_summary_icon_position'] : 'left';
 
 		$positions = array(
@@ -1494,7 +1511,7 @@ class AyudaWP_AISS_Admin {
 		foreach ( $positions as $key => $label ) {
 			$checked = ( $position === $key ) ? 'checked="checked"' : '';
 			echo '<label style="display: block; margin-bottom: 5px;">
-					<input type="radio" name="ayudawp_aiss_options[ai_summary_icon_position]" value="' . esc_attr( $key ) . '" ' . esc_attr( $checked ) . '>
+					<input type="radio" name="ayudawp_aiss_summary_options[ai_summary_icon_position]" value="' . esc_attr( $key ) . '" ' . esc_attr( $checked ) . '>
 					' . esc_html( $label ) . '
 				  </label>';
 		}
@@ -1505,10 +1522,10 @@ class AyudaWP_AISS_Admin {
 	 * AI summary frontend button label field (v2.1.0)
 	 */
 	public function ayudawp_ai_summary_generate_button_label_callback() {
-		$options = get_option( 'ayudawp_aiss_options' );
+		$options = ayudawp_aiss_get_summary_options();
 		$value   = isset( $options['ai_summary_generate_button_label'] ) ? $options['ai_summary_generate_button_label'] : '';
 		?>
-		<input type="text" name="ayudawp_aiss_options[ai_summary_generate_button_label]" value="<?php echo esc_attr( $value ); ?>" class="regular-text" placeholder="<?php echo esc_attr_x( 'Generate AI summary', 'default frontend generate button label', 'ai-share-summarize' ); ?>">
+		<input type="text" name="ayudawp_aiss_summary_options[ai_summary_generate_button_label]" value="<?php echo esc_attr( $value ); ?>" class="regular-text" placeholder="<?php echo esc_attr_x( 'Generate AI summary', 'default frontend generate button label', 'ai-share-summarize' ); ?>">
 		<p class="description"><?php esc_html_e( 'Text of the visitor-facing button that generates the summary on demand. Leave empty to use the default ("Generate AI summary").', 'ai-share-summarize' ); ?></p>
 		<?php
 	}

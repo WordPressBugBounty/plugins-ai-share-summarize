@@ -43,10 +43,11 @@
 	/* Translations from PHP via wp_localize_script(). */
 	var i18n = window.aissI18n || {};
 
-	var META_EXCLUDE  = '_ayudawp_aiss_exclude';
-	var META_SUMMARY  = '_ayudawp_aiss_summary';
-	var META_PROVIDER = '_ayudawp_aiss_summary_provider';
-	var META_HASH     = '_ayudawp_aiss_summary_hash';
+	var META_EXCLUDE         = '_ayudawp_aiss_exclude';
+	var META_EXCLUDE_SUMMARY = '_ayudawp_aiss_exclude_summary';
+	var META_SUMMARY         = '_ayudawp_aiss_summary';
+	var META_PROVIDER        = '_ayudawp_aiss_summary_provider';
+	var META_HASH            = '_ayudawp_aiss_summary_hash';
 
 	/**
 	 * Combined sidebar panel: exclusion + AI summary
@@ -73,9 +74,10 @@
 
 		var editPost = useDispatch( 'core/editor' ).editPost;
 
-		var isExcluded = meta[ META_EXCLUDE ] ? true : false;
-		var summary    = meta[ META_SUMMARY ]  || '';
-		var provider   = meta[ META_PROVIDER ] || '';
+		var isExcluded        = meta[ META_EXCLUDE ] ? true : false;
+		var isSummaryExcluded = meta[ META_EXCLUDE_SUMMARY ] ? true : false;
+		var summary           = meta[ META_SUMMARY ]  || '';
+		var provider          = meta[ META_PROVIDER ] || '';
 
 		var stateBusy     = useState( false );
 		var stateError    = useState( '' );
@@ -139,6 +141,12 @@
 		function setExclusion( value ) {
 			var update = {};
 			update[ META_EXCLUDE ] = value;
+			editPost( { meta: update } );
+		}
+
+		function setSummaryExclusion( value ) {
+			var update = {};
+			update[ META_EXCLUDE_SUMMARY ] = value;
 			editPost( { meta: update } );
 		}
 
@@ -223,6 +231,16 @@
 			key:   'summary-heading',
 			style: { margin: '0 0 4px', fontWeight: 600 },
 		}, i18n.summaryPanelTitle || 'AI Summary' ) );
+
+		// 3.1) Summary exclusion toggle (v2.3.0) — independent from the
+		// buttons checkbox above; mirrors the classic meta box layout.
+		children.push( el( CheckboxControl, {
+			key:      'exclude-summary',
+			label:    i18n.excludeSummaryLabel || 'Hide AI summary on this content',
+			help:     i18n.excludeSummaryHelp  || 'Prevents the summary from being generated and displayed for this specific content. Independent from the share buttons toggle.',
+			checked:  isSummaryExcluded,
+			onChange: setSummaryExclusion,
+		} ) );
 
 		if ( providerLabel ) {
 			children.push( el( 'p', {

@@ -3,6 +3,11 @@ AI Share & Summarize — Full changelog
 For each release, see the entries below. The latest version is always at the top.
 The current release notes also live in readme.txt under "== Changelog ==".
 
+= 2.3.0 =
+* New: Dedicated "AI Summary" settings tab. The summary settings now live on their own screen with their own Save button, stored in their own option and saved independently from the share buttons settings. The former "Settings" tab is now called "Share Buttons", which is what it configures. Existing configuration is migrated automatically.
+* New: Per-post "Hide AI summary on this content" control in the block editor sidebar and the classic meta box. Until now the single "Hide share buttons" checkbox silently hid the summary too; each feature now has its own independent control (posts excluded before this version keep both hidden).
+* Improved: The summary content-type list is now truly independent from the share buttons. The silent fallback to the buttons' list is gone (the inherited value is migrated as-is), summaries can display on post types the buttons are not configured for, unchecking every type genuinely turns automatic summaries off, and the AI Summary tab shows a clear warning when that happens.
+
 = 2.2.2 =
 * Improved: Caches are refreshed right after an automatic summary is generated, so it shows up without waiting for a page cache to expire. New `ayudawp_aiss_summary_generated` action lets cache plugins purge the affected URLs.
 * Fix: The automatic AI summary was not generated when a scheduled post went live (and could be missed on some interrupted publishes) on certain hosts. It is now generated reliably as soon as the post publishes, with self-healing on the first view and a daily rescue sweep as safety nets.

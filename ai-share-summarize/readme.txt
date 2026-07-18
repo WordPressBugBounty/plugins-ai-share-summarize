@@ -3,7 +3,7 @@ Contributors: fernandot,ayudawp
 Tags: claude, chatgpt, social share, ai, perplexity
 Requires at least: 6.1
 Tested up to: 7.0
-Stable tag: 2.2.2
+Stable tag: 2.3.0
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -21,7 +21,7 @@ Among the **first plugins to integrate the native WordPress 7.0 AI Connectors AP
 * **Two-tier cascade**: Level A uses the WordPress 7.0 AI Client; Level C is a built-in PHP extractive fallback with zero API cost on any WP 6.1+ install.
 * **Choose your AI model and mode**: pick the provider and model used to generate summaries, or leave it on Automatic to use a fast, cost-effective model instead of the newest, most expensive one. Set how generation behaves too: AI with extractive fallback, AI only, extractive only, or disabled.
 * **Collapsible inline block** with native `<details>`, `data-nosnippet` and Schema.org `CreativeWork` microdata so search engines treat it as derived content, not competition.
-* **Editor controls** in the block sidebar and the classic meta box: view, edit manually, regenerate on demand.
+* **Editor controls** in the block sidebar and the classic meta box: view, edit manually, regenerate on demand, hide per post (independently from the buttons).
 * **Visitor-facing "Generate AI summary" button** for posts without a stored summary, restrictable to extractive-only or open to the AI Client.
 * **Async generation via WP-Cron**. `[ayudawp_aiss_summary]` shortcode also available.
 
@@ -80,13 +80,13 @@ Among the **first plugins to integrate the native WordPress 7.0 AI Connectors AP
 15. **Set button order**: Social first, AI first, or mixed — drag & drop to reorder within each group
 16. **Configure SEO settings**: Choose between links with nofollow or button elements
 17. **Configure data retention**: Set retention period and optionally delete all data when plugin is uninstalled
-18. **Configure AI Summary**:
-    - Enable the inline AI summary feature
+18. **Configure the AI Summary** in its own tab:
+    - Choose the generation mode (AI with extractive fallback, AI only, extractive only, or disabled) and, optionally, the AI model
     - Choose position (before / after the buttons, before the content, or disabled)
-    - Pick the post types where summaries should be generated (independent from the buttons' list)
+    - Pick the post types where summaries should be generated (fully independent from the buttons' list)
     - Optionally enable the visitor-facing "Generate AI summary" button for posts without a stored summary
     - On WordPress 7.0+, configure your AI provider in **Settings > Connectors** (the plugin reuses those credentials — no API keys to manage here)
-19. **Save changes**
+19. **Save changes** (the Share Buttons and AI Summary tabs each save their own options)
 
 **Manual insertion with shortcode:**
 - Share buttons: `[ayudawp_share_buttons]`
@@ -103,6 +103,7 @@ Among the **first plugins to integrate the native WordPress 7.0 AI Connectors AP
 
 **Per-post controls (block editor sidebar / classic meta box):**
 - Hide share buttons on this specific post
+- Hide the AI summary on this specific post (independent from the buttons control)
 - View, edit and regenerate the AI summary on demand
 - Manually-edited summaries are locked against auto-regeneration
 
@@ -115,6 +116,10 @@ Yes, AI Share & Summarize is 100% free with all features included, including sup
 = How does the inline AI summary work? =
 
 When you publish or update a post, the plugin generates a short summary asynchronously (in a background WP-Cron event, to avoid blocking the editor save). The summary then appears inline next to the share buttons, inside a collapsible block. Visitors can expand it without leaving the page. You can disable the feature globally in **Settings > AI Share & Summarize > AI Summary**, choose where the summary is placed (before/after the buttons, or before the content), and override or edit the text per post from the editor sidebar.
+
+= Where are the AI Summary settings? =
+
+Since 2.3.0 they live in their own tab: **Settings > AI Share & Summarize > AI Summary**, with its own Save button, separate from the share buttons settings. Your existing configuration is migrated automatically on update.
 
 = How do I choose the AI generation mode and model? =
 
@@ -154,11 +159,11 @@ In the Analytics tab, use the date filter to select the period you want, then cl
 
 = Will it slow down my website? =
 
-No. The plugin is ultra-optimized with a modular structure and lightweight SVG icons that load instantly. Frontend CSS and JavaScript only load on pages where share buttons are actually displayed — posts with buttons disabled via the meta box do not load any plugin assets.
+No. The plugin is ultra-optimized with a modular structure and lightweight SVG icons that load instantly. Frontend CSS and JavaScript only load on pages where the share buttons or the AI summary actually display — posts where both are hidden via the meta box do not load any plugin assets.
 
 = How do I hide buttons on specific pages? =
 
-Edit the post or page where you want to hide buttons, find the "AI Share & Summarize" meta box in the sidebar, and check "Hide share buttons on this content". This works with both the classic editor and the block editor.
+Edit the post or page where you want to hide buttons, find the "AI Share & Summarize" meta box in the sidebar, and check "Hide share buttons on this content". The AI summary has its own independent checkbox ("Hide AI summary on this content"), so you can hide either feature — or both — on any post. This works with both the classic editor and the block editor.
 
 = Can I automatically hide buttons on noindex content? =
 
@@ -347,8 +352,9 @@ If you do not configure any Connector, or your WordPress version is below 7.0, t
 
 = How to opt out =
 
-- Disable the feature in **Settings > AI Share & Summarize > AI Summary** (uncheck "Enable AI Summary").
-- Or keep AI Summary enabled but uncheck "Use extractive fallback" while leaving no Connector configured — no requests will be sent, and summaries simply won't be generated.
+- Set **AI Summary generation** to *Disabled* in the **AI Summary** tab of the plugin settings.
+- Or choose *Extractive only* to keep summaries fully local — zero external requests, ever.
+- Or choose *AI only* while leaving no Connector configured — no requests will be sent, and summaries simply won't be generated.
 - The visitor-facing "Generate AI summary" button is off by default; if enabled, you can additionally restrict it to the extractive PHP path so visitor clicks never reach an external provider.
 
 = Sharing buttons =
@@ -371,28 +377,17 @@ The social and AI sharing buttons render as `<a>` / `<button>` elements that ope
 
 == Changelog ==
 
-= 2.2.2 =
-* Improved: Caches are refreshed right after an automatic summary is generated, so it shows up without waiting for a page cache to expire. New `ayudawp_aiss_summary_generated` action lets cache plugins purge the affected URLs.
-* Fix: The automatic AI summary was not generated when a scheduled post went live (and could be missed on some interrupted publishes) on certain hosts. It is now generated reliably as soon as the post publishes, with self-healing on the first view and a daily rescue sweep as safety nets.
-* Fix: In the classic editor, emptying the manual summary field left the content hash behind, so automatic generation never refilled it. The hash is now cleared too.
-
-= 2.2.1 =
-* Improved: the "Automatic" model setting now uses each provider's cheapest model (Haiku on Anthropic) instead of a mid-tier one, and keeps the rest of the provider's catalog as an ordered fallback chain, so summaries stay cheap and keep working when a model is unavailable.
-* Fix: AI summaries could stop generating after the active provider changed its available models — a listed model that is not actually usable, or a corrupted cached model list on sites with a persistent object cache. Generation now degrades to the next model and refreshes the cached model list automatically instead of failing until the cache expires.
-* Fix: corrected the summary "content types" help text, which claimed to be fully independent from the share buttons list while it actually falls back to that list when left empty.
-
-= 2.2.0 =
-* New: AI model selector for the summary. Pick the provider and model used for generation, or leave it on Automatic to use a fast, cost-effective model per provider instead of the newest, most expensive flagship.
-* Improved: AI Summary generation is now a single, explicit mode selector (AI with extractive fallback / AI only / Extractive only / Disabled), replacing the two checkboxes. Extractive-only is now a real choice without removing your AI provider.
-* Fix: summaries could fail when the configured provider's newest model was not available to your account (for example a limited-access flagship). Generation now defaults to a sensible model and no longer breaks in that case.
-* Fix: prevented a possible fatal error during analytics cleanup on WordPress older than 6.1, so the minimum is now WordPress 6.1. The AI summary needs WordPress 7.0; on earlier versions you can still use the extractive summary.
+= 2.3.0 =
+* New: Dedicated "AI Summary" settings tab. The summary settings now live on their own screen with their own Save button, stored in their own option and saved independently from the share buttons settings. The former "Settings" tab is now called "Share Buttons", which is what it configures. Existing configuration is migrated automatically.
+* New: Per-post "Hide AI summary on this content" control in the block editor sidebar and the classic meta box. Until now the single "Hide share buttons" checkbox silently hid the summary too; each feature now has its own independent control (posts excluded before this version keep both hidden).
+* Improved: The summary content-type list is now truly independent from the share buttons. The silent fallback to the buttons' list is gone (the inherited value is migrated as-is), summaries can display on post types the buttons are not configured for, unchecking every type genuinely turns automatic summaries off, and the AI Summary tab shows a clear warning when that happens.
 
 For older changelog entries, please check the [changelog.txt](https://plugins.svn.wordpress.org/ai-share-summarize/trunk/changelog.txt) file
 
 == Upgrade Notice ==
 
-= 2.2.2 =
-Fixes the AI summary not being generated on scheduled posts on some hosts, and refreshes caches right after generating so it appears immediately. Recommended for everyone using automatic summaries.
+= 2.3.0 =
+AI Summary settings move to their own tab with independent saving, and the per-post exclusion splits into two controls (buttons / summary). The summary content-type list no longer falls back to the buttons' list; your current behavior is migrated automatically.
 
 == Advanced Usage ==
 
@@ -560,7 +555,7 @@ Replace with your own style:
 == Technical Details ==
 
 = System requirements =
-* WordPress 5.0 or higher
+* WordPress 6.1 or higher (7.0+ for AI-generated summaries)
 * PHP 7.4 or higher (compatible up to PHP 8.4)
 * Theme compatible with wp_head() and wp_footer()
 

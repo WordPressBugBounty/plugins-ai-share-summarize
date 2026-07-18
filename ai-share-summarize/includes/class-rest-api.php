@@ -816,13 +816,13 @@ class AyudaWP_AISS_Rest_API {
 			return self::ayudawp_nocache_response( array( 'error' => 'class_missing' ), 500 );
 		}
 
-		$options = get_option( 'ayudawp_aiss_options', array() );
+		$options = ayudawp_aiss_get_summary_options();
 
 		if ( empty( $options['ai_summary_frontend_button'] ) ) {
 			return self::ayudawp_nocache_response( array( 'error' => 'frontend_disabled' ), 403 );
 		}
 
-		if ( ayudawp_aiss_is_post_excluded( $post_id ) ) {
+		if ( ayudawp_aiss_is_summary_excluded( $post_id ) ) {
 			return self::ayudawp_nocache_response( array( 'error' => 'post_excluded' ), 403 );
 		}
 
