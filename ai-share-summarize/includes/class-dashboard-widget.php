@@ -40,7 +40,7 @@ class AyudaWP_AISS_Dashboard_Widget {
 
 		wp_add_dashboard_widget(
 			'aiss_dashboard_widget',
-			__( 'AI Share & Summarize - Click Analytics', 'ai-share-summarize' ),
+			__( 'Share Buttons & AI-powered Summaries - Click Analytics', 'ai-share-summarize' ),
 			array( __CLASS__, 'ayudawp_render_widget' )
 		);
 	}

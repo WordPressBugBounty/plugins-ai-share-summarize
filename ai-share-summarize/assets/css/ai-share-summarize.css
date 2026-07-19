@@ -1,7 +1,7 @@
 /**
- * AI Share & Summarize Plugin - CSS Styles
+ * Share Buttons & AI-powered Summaries Plugin - CSS Styles
  * Refactored with CSS custom properties, no !important overrides.
- * Version: 1.9.1
+ * Version: 2.4.0
  */
 
 /* =============================================
@@ -70,6 +70,15 @@
 	border-top: 1px solid #e0e0e0;
 	border-bottom: 1px solid #e0e0e0;
 	clear: both;
+}
+
+/* Separator line toggles (v2.4.0) */
+.ayudawp-share-buttons.no-separator-top {
+	border-top: none;
+}
+
+.ayudawp-share-buttons.no-separator-bottom {
+	border-bottom: none;
 }
 
 /* Centered alignment */
@@ -597,6 +606,22 @@ button.ayudawp-share-btn:focus {
 }
 
 .ayudawp-aiss-summary-content .ayudawp-aiss-summary-text > p:last-child {
+	margin-bottom: 0;
+}
+
+/* Bullet-list format (v2.4.0): opt-in from settings, one <li> per point.
+   list-style is explicit because many themes reset it inside articles. */
+.ayudawp-aiss-summary-content .ayudawp-aiss-summary-text > ul {
+	margin: 0;
+	padding-left: 1.2em;
+	list-style: disc;
+}
+
+.ayudawp-aiss-summary-content .ayudawp-aiss-summary-text > ul > li {
+	margin: 0 0 0.6em;
+}
+
+.ayudawp-aiss-summary-content .ayudawp-aiss-summary-text > ul > li:last-child {
 	margin-bottom: 0;
 }
 

@@ -1,6 +1,6 @@
 <?php
 /**
- * Helper functions for AI Share & Summarize plugin
+ * Helper functions for Share Buttons & AI-powered Summaries plugin
  *
  * @package AiShareSummarize
  * @since 1.2.0
@@ -168,6 +168,8 @@ function ayudawp_aiss_validate_options( $input ) {
 		'show_icons',
 		'delete_data_on_uninstall',
 		'exclude_noindex',
+		'separator_top',
+		'separator_bottom',
 	);
 
 	foreach ( $text_fields as $field ) {
@@ -372,6 +374,7 @@ function ayudawp_aiss_validate_summary_options( $input ) {
 
 	// Booleans (unchecked checkboxes are simply absent from the POST).
 	$validated['ai_summary_collapsed_default']         = ! empty( $input['ai_summary_collapsed_default'] );
+	$validated['ai_summary_bullets']                   = ! empty( $input['ai_summary_bullets'] );
 	$validated['ai_summary_frontend_button']           = ! empty( $input['ai_summary_frontend_button'] );
 	$validated['ai_summary_frontend_force_extractive'] = ! empty( $input['ai_summary_frontend_force_extractive'] );
 

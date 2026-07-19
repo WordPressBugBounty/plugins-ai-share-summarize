@@ -1,5 +1,5 @@
 /**
- * AI Share & Summarize - Admin Scripts
+ * Share Buttons & AI-powered Summaries - Admin Scripts
  *
  * Reusable paginator class, analytics dashboard with period comparison,
  * chart rendering (per-platform + comparison modes), export dropdown.
@@ -1244,7 +1244,7 @@ window.AissPaginator = (function($) {
 				var endDate   = response.end_date || '';
 
 				var siteName = aissAdminData.siteName || '';
-				var csvTitle = siteName + ' - AI Share & Summarize Analytics - ' + startDate + ' to ' + endDate;
+				var csvTitle = siteName + ' - Share Buttons & AI-powered Summaries Analytics - ' + startDate + ' to ' + endDate;
 				var csvLines = [];
 				csvLines.push(csvEscapeField(csvTitle));
 				csvLines.push('');

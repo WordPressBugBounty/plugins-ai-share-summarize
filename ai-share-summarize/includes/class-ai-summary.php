@@ -1,6 +1,6 @@
 <?php
 /**
- * AI Summary class for AI Share & Summarize plugin
+ * AI Summary class for Share Buttons & AI-powered Summaries plugin
  *
  * Generates an inline summary of post content using the WordPress 7.0
  * AI Client (wp_ai_client_prompt()) when available, with a PHP extractive
@@ -650,6 +650,7 @@ class AyudaWP_AISS_AI_Summary {
 
 		$options     = ayudawp_aiss_get_summary_options();
 		$n_sentences = isset( $options['ai_summary_sentences'] ) ? max( 1, min( 5, (int) $options['ai_summary_sentences'] ) ) : 3;
+		$bullets     = ! empty( $options['ai_summary_bullets'] );
 
 		$system  = 'You are a content summarizer. Return ONLY the summary in plain text, no markdown, no quotes, no preamble. Match the language of the input.';
 		$clean   = ayudawp_aiss_clean_html_for_summary( (string) $content );
@@ -657,12 +658,24 @@ class AyudaWP_AISS_AI_Summary {
 			? mb_substr( $clean, 0, 3000 )
 			: substr( $clean, 0, 3000 );
 
-		$prompt = sprintf(
-			"Summarize the following content in exactly %d sentences:\n\n%s\n\n%s",
-			$n_sentences,
-			$title,
-			$excerpt
-		);
+		if ( $bullets ) {
+			// Bullet-list mode (v2.4.0): one point per line; the renderer splits
+			// on newlines and prints one <li> per point.
+			$system .= ' Write each point on its own line, with no list markers or numbering.';
+			$prompt  = sprintf(
+				"Summarize the following content in exactly %d concise key points, one per line:\n\n%s\n\n%s",
+				$n_sentences,
+				$title,
+				$excerpt
+			);
+		} else {
+			$prompt = sprintf(
+				"Summarize the following content in exactly %d sentences:\n\n%s\n\n%s",
+				$n_sentences,
+				$title,
+				$excerpt
+			);
+		}
 
 		// Resolve the ordered candidate chain of [providerId, modelId] tuples to
 		// try, cheapest tier first. A manual selection yields a single candidate;
@@ -995,12 +1008,48 @@ class AyudaWP_AISS_AI_Summary {
 			. '.ayudawp-aiss-summary-details>summary::-webkit-details-marker{display:none}'
 			. '.ayudawp-aiss-summary-content{margin-top:8px}'
 			. '.ayudawp-aiss-summary-content p{margin:0;line-height:1.5}'
+			. '.ayudawp-aiss-summary-content ul{margin:0;padding-left:1.2em;list-style:disc}'
+			. '.ayudawp-aiss-summary-content li{line-height:1.5}'
 			. '.ayudawp-aiss-summary--placeholder{padding:0;border:none;background:transparent}'
 			. '.ayudawp-aiss-summary-generate-btn{display:inline-flex;align-items:center;gap:8px;padding:8px 14px;background:transparent;border:1px solid #e0e0e0;border-radius:6px;font-weight:600;font-size:.95em;color:inherit;cursor:pointer}'
 			. '.ayudawp-aiss-summary-icon{display:inline-flex;align-items:center}'
 			. '.ayudawp-aiss-summary-icon svg{width:16px;height:16px}'
 			. '</style>';
 		// phpcs:enable
+	}
+
+	/**
+	 * Split a stored summary into bullet-list items (v2.4.0)
+	 *
+	 * Bullet-mode summaries are stored one point per line, so newlines are
+	 * the primary separator (stray list markers the model may emit despite
+	 * the instruction are stripped). Summaries generated in paragraph mode
+	 * or by the extractive fallback have no newlines: fall back to sentence
+	 * segmentation so each sentence becomes one item without regenerating.
+	 *
+	 * @since 2.4.0
+	 * @param string $summary Stored summary text.
+	 * @return array<int,string> Trimmed, non-empty list items.
+	 */
+	private static function split_summary_lines( $summary ) {
+		$lines = preg_split( '/\r\n|\r|\n/', (string) $summary );
+		if ( ! is_array( $lines ) ) {
+			$lines = array();
+		}
+
+		$lines = array_map(
+			static function ( $line ) {
+				return trim( (string) preg_replace( '/^\s*(?:[-*•–]|\d+[.)])\s+/u', '', $line ) );
+			},
+			$lines
+		);
+		$lines = array_values( array_filter( $lines, 'strlen' ) );
+
+		if ( count( $lines ) > 1 ) {
+			return $lines;
+		}
+
+		return ayudawp_aiss_split_sentences( $summary );
 	}
 
 	/**
@@ -1105,10 +1154,15 @@ class AyudaWP_AISS_AI_Summary {
 		// Split into sentences so each renders on its own line (v2.1.0). The
 		// AI provider usually returns sentences glued with a single space, so
 		// the split happens at render time and also fixes already-stored
-		// summaries without regenerating them.
-		$sentences = ayudawp_aiss_split_sentences( $summary );
-		if ( empty( $sentences ) ) {
-			$sentences = array( $summary );
+		// summaries without regenerating them. In bullet-list mode (v2.4.0)
+		// the split prefers the stored newlines, falling back to sentence
+		// segmentation for summaries generated in paragraph mode.
+		$bullets_mode = ! empty( $options['ai_summary_bullets'] );
+		$items        = $bullets_mode
+			? self::split_summary_lines( $summary )
+			: ayudawp_aiss_split_sentences( $summary );
+		if ( empty( $items ) ) {
+			$items = array( $summary );
 		}
 
 		ob_start();
@@ -1130,9 +1184,17 @@ class AyudaWP_AISS_AI_Summary {
 				</summary>
 				<div class="ayudawp-aiss-summary-content">
 					<div class="ayudawp-aiss-summary-text" itemprop="abstract">
-						<?php foreach ( $sentences as $sentence ) : ?>
-							<p><?php echo esc_html( $sentence ); ?></p>
-						<?php endforeach; ?>
+						<?php if ( $bullets_mode ) : ?>
+							<ul class="ayudawp-aiss-summary-list">
+								<?php foreach ( $items as $item ) : ?>
+									<li><?php echo esc_html( $item ); ?></li>
+								<?php endforeach; ?>
+							</ul>
+						<?php else : ?>
+							<?php foreach ( $items as $item ) : ?>
+								<p><?php echo esc_html( $item ); ?></p>
+							<?php endforeach; ?>
+						<?php endif; ?>
 					</div>
 					<?php if ( $is_basic ) : ?>
 						<small class="ayudawp-aiss-summary-attribution"><?php esc_html_e( 'Basic summary', 'ai-share-summarize' ); ?></small>

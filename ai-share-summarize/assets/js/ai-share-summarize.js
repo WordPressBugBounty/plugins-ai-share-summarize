@@ -1,5 +1,5 @@
 /**
- * AI Share & Summarize Plugin - JavaScript
+ * Share Buttons & AI-powered Summaries Plugin - JavaScript
  * Advanced functionality for tooltips, hover effects, responsive behavior, click tracking
  * and the visitor-facing AI summary generation button (v2.0.0).
  * Version: 2.0.1

@@ -1,6 +1,6 @@
 <?php
 /**
- * Shortcode functionality for AI Share & Summarize plugin
+ * Shortcode functionality for Share Buttons & AI-powered Summaries plugin
  *
  * @package AiShareSummarize
  * @since 1.2.0

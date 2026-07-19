@@ -1,9 +1,9 @@
-=== AI Share & Summarize ===
+=== Share Buttons & AI-powered Summaries ===
 Contributors: fernandot,ayudawp
 Tags: claude, chatgpt, social share, ai, perplexity
 Requires at least: 6.1
 Tested up to: 7.0
-Stable tag: 2.3.0
+Stable tag: 2.4.0
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -12,7 +12,7 @@ Inline AI summary on every post + one-click sharing to social networks and 11 AI
 
 == Description ==
 
-**AI Share & Summarize** turns every post into an AI-aware destination. It generates an **inline AI summary** readers can expand next to the share buttons, and offers one-click sharing to every major social network and the leading AI assistants.
+**Share Buttons & AI-powered Summaries** turns every post into an AI-aware destination. It generates an **inline AI summary** readers can expand next to the share buttons, and offers one-click sharing to every major social network and the leading AI assistants.
 
 Among the **first plugins to integrate the native WordPress 7.0 AI Connectors API**: configure your AI provider once in **Settings > Connectors** (OpenAI, Anthropic, Google) and the plugin reuses those credentials — no API keys to manage, no extra accounts.
 
@@ -20,6 +20,7 @@ Among the **first plugins to integrate the native WordPress 7.0 AI Connectors AP
 
 * **Two-tier cascade**: Level A uses the WordPress 7.0 AI Client; Level C is a built-in PHP extractive fallback with zero API cost on any WP 6.1+ install.
 * **Choose your AI model and mode**: pick the provider and model used to generate summaries, or leave it on Automatic to use a fast, cost-effective model instead of the newest, most expensive one. Set how generation behaves too: AI with extractive fallback, AI only, extractive only, or disabled.
+* **Paragraph or bullet-list format**: show the summary as prose (one paragraph per sentence) or as a concise bullet list, with configurable length (1-5 sentences or points).
 * **Collapsible inline block** with native `<details>`, `data-nosnippet` and Schema.org `CreativeWork` microdata so search engines treat it as derived content, not competition.
 * **Editor controls** in the block sidebar and the classic meta box: view, edit manually, regenerate on demand, hide per post (independently from the buttons).
 * **Visitor-facing "Generate AI summary" button** for posts without a stored summary, restrictable to extractive-only or open to the AI Client.
@@ -47,9 +48,9 @@ Among the **first plugins to integrate the native WordPress 7.0 AI Connectors AP
 = Automatic installation =
 
 1. Go to Plugins > Add New in your WordPress admin
-2. Search for "AI Share & Summarize"
+2. Search for "Share Buttons & AI-powered Summaries"
 3. Click "Install Now" and then "Activate"
-4. Go to Settings > AI Share & Summarize to configure
+4. Go to Settings > Share Buttons & AI-powered Summaries to configure
 
 = Manual installation =
 
@@ -57,11 +58,11 @@ Among the **first plugins to integrate the native WordPress 7.0 AI Connectors AP
 2. Go to Plugins > Add New > Upload Plugin
 3. Select the ZIP file and click "Install Now"
 4. Activate the plugin
-5. Configure in Settings > AI Share & Summarize
+5. Configure in Settings > Share Buttons & AI-powered Summaries
 
 = Complete setup =
 
-1. **Go to Settings > AI Share & Summarize**
+1. **Go to Settings > Share Buttons & AI-powered Summaries**
 2. **Select enabled buttons**: Choose which social networks and AIs to display
 3. **Configure automatic insertion**:
    - Choose position: Before content, after, both, or disabled (shortcode only)
@@ -111,15 +112,11 @@ Among the **first plugins to integrate the native WordPress 7.0 AI Connectors AP
 
 = Is this plugin completely free? =
 
-Yes, AI Share & Summarize is 100% free with all features included, including support for all social networks, AI platforms, and the full analytics dashboard with CSV export.
+Yes, Share Buttons & AI-powered Summaries is 100% free with all features included, including support for all social networks, AI platforms, and the full analytics dashboard with CSV export.
 
 = How does the inline AI summary work? =
 
-When you publish or update a post, the plugin generates a short summary asynchronously (in a background WP-Cron event, to avoid blocking the editor save). The summary then appears inline next to the share buttons, inside a collapsible block. Visitors can expand it without leaving the page. You can disable the feature globally in **Settings > AI Share & Summarize > AI Summary**, choose where the summary is placed (before/after the buttons, or before the content), and override or edit the text per post from the editor sidebar.
-
-= Where are the AI Summary settings? =
-
-Since 2.3.0 they live in their own tab: **Settings > AI Share & Summarize > AI Summary**, with its own Save button, separate from the share buttons settings. Your existing configuration is migrated automatically on update.
+When you publish or update a post, the plugin generates a short summary asynchronously (in a background WP-Cron event, to avoid blocking the editor save). The summary then appears inline next to the share buttons, inside a collapsible block. Visitors can expand it without leaving the page. You can disable the feature globally in **Settings > Share Buttons & AI-powered Summaries > AI Summary**, choose where the summary is placed (before/after the buttons, or before the content), and override or edit the text per post from the editor sidebar.
 
 = How do I choose the AI generation mode and model? =
 
@@ -143,7 +140,7 @@ Only when the WP AI Client integration is active. In that case, the post content
 
 = AI generation worked before, now everything falls back to "Basic summary". What changed? =
 
-If you have the canonical **AI** plugin from wordpress.org installed, go to **Tools > Connector Approvals** and make sure the toggle next to "AI Share & Summarize" is enabled for your provider. That plugin's approval system intercepts outbound AI requests and silently blocks any plugin it hasn't approved yet. When this is the likely cause, the plugin's settings page surfaces a direct link to the approvals screen alongside the standard error message.
+If you have the canonical **AI** plugin from wordpress.org installed, go to **Tools > Connector Approvals** and make sure the toggle next to "Share Buttons & AI-powered Summaries" is enabled for your provider. That plugin's approval system intercepts outbound AI requests and silently blocks any plugin it hasn't approved yet. When this is the likely cause, the plugin's settings page surfaces a direct link to the approvals screen alongside the standard error message.
 
 = How does the analytics dashboard work? =
 
@@ -155,7 +152,7 @@ In the Analytics tab, use the date filter to select the period you want, then cl
 
 = What is VigIA and how does the integration work? =
 
-[VigIA](https://wordpress.org/plugins/vigia/) is a free WordPress plugin by AyudaWP that monitors AI crawler visits to your site — tracking bots like GPTBot (ChatGPT), ClaudeBot, PerplexityBot and 50+ more. When VigIA is active alongside AI Share & Summarize, the analytics dashboard shows an additional panel where you can cross-reference your share button clicks with AI crawler activity. This lets you see, for example, whether a spike in Claude clicks correlates with increased ClaudeBot crawling of that content. You can install VigIA directly from the plugin screen.
+[VigIA](https://wordpress.org/plugins/vigia/) is a free WordPress plugin by AyudaWP that monitors AI crawler visits to your site — tracking bots like GPTBot (ChatGPT), ClaudeBot, PerplexityBot and 50+ more. When VigIA is active alongside Share Buttons & AI-powered Summaries, the analytics dashboard shows an additional panel where you can cross-reference your share button clicks with AI crawler activity. This lets you see, for example, whether a spike in Claude clicks correlates with increased ClaudeBot crawling of that content. You can install VigIA directly from the plugin screen.
 
 = Will it slow down my website? =
 
@@ -163,11 +160,11 @@ No. The plugin is ultra-optimized with a modular structure and lightweight SVG i
 
 = How do I hide buttons on specific pages? =
 
-Edit the post or page where you want to hide buttons, find the "AI Share & Summarize" meta box in the sidebar, and check "Hide share buttons on this content". The AI summary has its own independent checkbox ("Hide AI summary on this content"), so you can hide either feature — or both — on any post. This works with both the classic editor and the block editor.
+Edit the post or page where you want to hide buttons, find the "Share Buttons & AI-powered Summaries" meta box in the sidebar, and check "Hide share buttons on this content". The AI summary has its own independent checkbox ("Hide AI summary on this content"), so you can hide either feature — or both — on any post. This works with both the classic editor and the block editor.
 
 = Can I automatically hide buttons on noindex content? =
 
-Yes! The plugin integrates with major SEO plugins (Yoast, Rank Math, All in One SEO, SEOPress, The SEO Framework) and the NoIndexer plugin. Enable the "Exclude noindex content" option in settings to automatically hide buttons on content marked as noindex.
+Yes! The plugin integrates with major SEO plugins (Yoast, Rank Math, All in One SEO, SEOPress, The SEO Framework, Visibility). Enable the "Exclude noindex content" option in settings to automatically hide buttons on content marked as noindex.
 
 = What's the difference between Google AI and Gemini buttons? =
 
@@ -242,7 +239,7 @@ Absolutely. You can select from all post types registered in your WordPress:
 
 = How do I customize the AI prompt? =
 
-In Settings > AI Share & Summarize you'll find:
+In Settings > Share Buttons & AI-powered Summaries you'll find:
 - **Default prompt**: Pre-optimized for best results with citation
 - **Custom text field**: Add personalized text to all AI prompts
 - **X handle**: Configure automatic mentions in social shares
@@ -276,7 +273,7 @@ LINE is extremely popular in Asian markets (Japan, Taiwan, Thailand). The plugin
 
 Google AI Mode has a default behavior of responding in English regardless of browser or site language. To get responses in your preferred language, add a custom instruction in the plugin settings.
 
-Go to Settings > AI Share & Summarize > "Custom text in prompts" and add:
+Go to Settings > Share Buttons & AI-powered Summaries > "Custom text in prompts" and add:
 `Deliver the response in Spanish` (or your preferred language)
 
 This instruction will be added to all AI prompts, ensuring responses match your language preference.
@@ -322,9 +319,9 @@ The plugin detects and integrates with:
 - All in One SEO
 - SEOPress
 - The SEO Framework
-- NoIndexer
+- Visibility
 
-When enabled, buttons will automatically be hidden on content marked as noindex in any of these plugins.
+When enabled, buttons will automatically be hidden on content marked as noindex in any of these plugins. With Visibility, both the per-post noindex and its bulk per-content-type rules (with their per-post exceptions) are respected.
 
 == External services ==
 
@@ -377,17 +374,17 @@ The social and AI sharing buttons render as `<a>` / `<button>` elements that ope
 
 == Changelog ==
 
-= 2.3.0 =
-* New: Dedicated "AI Summary" settings tab. The summary settings now live on their own screen with their own Save button, stored in their own option and saved independently from the share buttons settings. The former "Settings" tab is now called "Share Buttons", which is what it configures. Existing configuration is migrated automatically.
-* New: Per-post "Hide AI summary on this content" control in the block editor sidebar and the classic meta box. Until now the single "Hide share buttons" checkbox silently hid the summary too; each feature now has its own independent control (posts excluded before this version keep both hidden).
-* Improved: The summary content-type list is now truly independent from the share buttons. The silent fallback to the buttons' list is gone (the inherited value is migrated as-is), summaries can display on post types the buttons are not configured for, unchecking every type genuinely turns automatic summaries off, and the AI Summary tab shows a clear warning when that happens.
+= 2.4.0 =
+* New: Bullet-list format for the AI summary. A new "Summary format" checkbox in the AI Summary tab renders the summary as a concise bullet list instead of paragraphs: new AI summaries are generated as one key point per line, and already stored summaries are split into one item per sentence without regenerating. Works with the extractive fallback and every visual style.
+* New: Separator lines setting. Two checkboxes under Share Buttons let you show or hide the thin horizontal lines above and below the buttons block, which until now could only be removed with custom CSS. Both stay on by default, keeping the previous look.
+* Improved: The noindex exclusion now recognizes the Visibility SEO plugin (native-aeo-pack). Content marked noindex by Visibility — per post or through its bulk per-content-type rules with their per-post exceptions — hides the share buttons and the AI summary like with any other supported SEO plugin, and the settings screen reports it as detected.
 
 For older changelog entries, please check the [changelog.txt](https://plugins.svn.wordpress.org/ai-share-summarize/trunk/changelog.txt) file
 
 == Upgrade Notice ==
 
-= 2.3.0 =
-AI Summary settings move to their own tab with independent saving, and the per-post exclusion splits into two controls (buttons / summary). The summary content-type list no longer falls back to the buttons' list; your current behavior is migrated automatically.
+= 2.4.0 =
+The noindex exclusion now recognizes the Visibility SEO plugin, the AI summary can render as a bullet list (new Summary format checkbox), and new settings can hide the separator lines around the buttons block without custom CSS.
 
 == Advanced Usage ==
 
@@ -526,20 +523,7 @@ The plugin uses CSS custom properties for all brand colors. You can override the
 }`
 
 **Customize or remove separator lines:**
-The main container has top and bottom border lines. You can hide or replace them:
-
-`.ayudawp-share-buttons {
-    border-top: none;
-    border-bottom: none;
-}`
-
-Hide only the top separator:
-
-`.ayudawp-share-buttons {
-    border-top: none;
-}`
-
-Replace with your own style:
+The main container has top and bottom border lines. You can hide either of them from the settings (Share Buttons → Separator lines) with no code. CSS is only needed to replace them with your own style:
 
 `.ayudawp-share-buttons {
     border-top: 2px dashed #ccc;
@@ -547,7 +531,7 @@ Replace with your own style:
 }`
 
 **Important notes:**
-- Since v1.6.0, `!important` is no longer needed for most overrides
+- The use of `!important` is no longer needed for most overrides
 - Use CSS custom properties to change brand colors cleanly
 - Test on both desktop and mobile viewports
 - Icons-only buttons have fixed dimensions (44px default, 36px compact, 54px large)

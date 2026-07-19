@@ -1,5 +1,5 @@
 /**
- * AI Share & Summarize — Block editor sidebar panel
+ * Share Buttons & AI-powered Summaries — Block editor sidebar panel
  *
  * Registers a single PluginDocumentSettingPanel in the post sidebar that
  * holds both controls (exclusion + AI summary). Uses useSelect to read meta
@@ -313,7 +313,7 @@
 			PluginDocumentSettingPanel,
 			{
 				name:  'aiss-panel',
-				title: i18n.panelTitle || 'AI Share & Summarize',
+				title: i18n.panelTitle || 'Share Buttons & AI-powered Summaries',
 				icon:  'format-status',
 			},
 			el( Fragment, null, children )

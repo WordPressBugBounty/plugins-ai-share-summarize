@@ -688,7 +688,7 @@ class AyudaWP_AISS_Rest_API {
 		$lines     = array();
 
 		$lines[] = self::ayudawp_csv_escape(
-			$site_name . ' - AI Share & Summarize Timeline - ' . $range['start_date'] . ' to ' . $range['end_date']
+			$site_name . ' - Share Buttons & AI-powered Summaries Timeline - ' . $range['start_date'] . ' to ' . $range['end_date']
 		);
 		$lines[] = '';
 

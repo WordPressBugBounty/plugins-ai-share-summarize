@@ -1,6 +1,6 @@
 <?php
 /**
- * Buttons generation class for AI Share & Summarize plugin
+ * Buttons generation class for Share Buttons & AI-powered Summaries plugin
  *
  * @package AiShareSummarize
  * @since 1.2.0
@@ -56,6 +56,10 @@ class AyudaWP_AISS_Buttons {
 		$seo_button_type = isset( $options['seo_button_type'] ) ? $options['seo_button_type'] : 'link';
 		$button_size     = isset( $options['button_size'] ) ? $options['button_size'] : 'normal';
 
+		// Separator lines (v2.4.0): both on by default, the pre-2.4.0 look.
+		$separator_top    = isset( $options['separator_top'] ) ? $options['separator_top'] : true;
+		$separator_bottom = isset( $options['separator_bottom'] ) ? $options['separator_bottom'] : true;
+
 		// Section titles (v1.6.0).
 		$ai_section_title     = isset( $options['ai_section_title'] ) ? $options['ai_section_title'] : '';
 		$social_section_title = isset( $options['social_section_title'] ) ? $options['social_section_title'] : '';
@@ -83,6 +87,13 @@ class AyudaWP_AISS_Buttons {
 
 		if ( 'center' === $button_alignment ) {
 			$container_classes[] = 'ayudawp-aiss-centered';
+		}
+
+		if ( ! $separator_top ) {
+			$container_classes[] = 'no-separator-top';
+		}
+		if ( ! $separator_bottom ) {
+			$container_classes[] = 'no-separator-bottom';
 		}
 
 		// Size class.

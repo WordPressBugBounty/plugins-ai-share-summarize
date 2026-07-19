@@ -1,6 +1,6 @@
 <?php
 /**
- * SEO Integration class for AI Share & Summarize plugin
+ * SEO Integration class for Share Buttons & AI-powered Summaries plugin
  *
  * Handles detection of SEO plugins and noindex status checking.
  *
@@ -87,6 +87,14 @@ class AyudaWP_AISS_SEO_Integration {
     public static function ayudawp_is_post_noindex($post_id) {
         // Check NoIndexer plugin first (preferred static method).
         if ( class_exists( 'Noindexer_Frontend' ) && Noindexer_Frontend::is_noindex( $post_id ) ) {
+            return true;
+        }
+
+        // Check Visibility (native-aeo-pack) via the same static-method pattern.
+        // Its resolver covers the per-post meta and the bulk per-post-type rules
+        // with their per-post exceptions. When the class is absent the plugin is
+        // inactive or its Indexing module is off, so it emits no noindex.
+        if ( class_exists( 'Native_AEO_Pack_Frontend_Robots' ) && Native_AEO_Pack_Frontend_Robots::is_noindex( $post_id ) ) {
             return true;
         }
 
@@ -191,6 +199,23 @@ class AyudaWP_AISS_SEO_Integration {
         return false;
     }
     
+    /**
+     * Check if the Visibility plugin (native-aeo-pack) is active
+     *
+     * Used by the settings screen to report the integration. The runtime
+     * noindex check relies on its Native_AEO_Pack_Frontend_Robots class
+     * instead, which only exists while its Indexing module is enabled.
+     *
+     * @since 2.4.0
+     * @return bool True when Visibility is active
+     */
+    public static function ayudawp_has_visibility() {
+        if (!function_exists('is_plugin_active')) {
+            include_once ABSPATH . 'wp-admin/includes/plugin.php';
+        }
+        return is_plugin_active('native-aeo-pack/native-aeo-pack.php');
+    }
+
     /**
      * Get list of supported SEO plugins
      *

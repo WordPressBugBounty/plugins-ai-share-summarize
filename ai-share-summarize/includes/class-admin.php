@@ -1,6 +1,6 @@
 <?php
 /**
- * Admin functionality for AI Share & Summarize plugin
+ * Admin functionality for Share Buttons & AI-powered Summaries plugin
  *
  * @package AiShareSummarize
  * @since 1.2.0
@@ -260,7 +260,7 @@ class AyudaWP_AISS_Admin {
 			?>
 			<div class="notice notice-success is-dismissible" data-notice="ayudawp-aiss-activation">
 				<p>
-					<strong><?php esc_html_e( 'AI Share & Summarize is active!', 'ai-share-summarize' ); ?></strong>
+					<strong><?php esc_html_e( 'Share Buttons & AI-powered Summaries is active!', 'ai-share-summarize' ); ?></strong>
 					<?php esc_html_e( 'You can now start getting traffic from the main social networks and artificial intelligences!', 'ai-share-summarize' ); ?>
 					<a href="<?php echo esc_url( admin_url( 'options-general.php?page=ai-share-summarize' ) ); ?>" class="button button-primary" style="margin-left: 10px;">
 						<?php esc_html_e( 'Go to settings page', 'ai-share-summarize' ); ?>
@@ -300,8 +300,8 @@ class AyudaWP_AISS_Admin {
 	 */
 	public function ayudawp_add_admin_menu() {
 		add_options_page(
-			esc_html__( 'AI Share & Summarize', 'ai-share-summarize' ),
-			esc_html__( 'AI Share & Summarize', 'ai-share-summarize' ),
+			esc_html__( 'Share Buttons & AI-powered Summaries', 'ai-share-summarize' ),
+			esc_html__( 'Share Buttons & AI-powered Summaries', 'ai-share-summarize' ),
 			'manage_options',
 			'ai-share-summarize',
 			array( $this, 'ayudawp_admin_page' )
@@ -355,6 +355,7 @@ class AyudaWP_AISS_Admin {
 			'title_style'                => esc_html__( 'Title style', 'ai-share-summarize' ),
 			'button_order'               => esc_html__( 'Buttons order', 'ai-share-summarize' ),
 			'button_alignment'           => esc_html__( 'Button alignment', 'ai-share-summarize' ),
+			'separators'                 => esc_html__( 'Separator lines', 'ai-share-summarize' ),
 			'button_colors'              => esc_html__( 'Button style', 'ai-share-summarize' ),
 			'dark_mode_adaptation'       => esc_html__( 'Dark mode adaptation', 'ai-share-summarize' ),
 			'button_size'                => esc_html__( 'Button size', 'ai-share-summarize' ),
@@ -384,7 +385,8 @@ class AyudaWP_AISS_Admin {
 			'ai_summary_label'                     => esc_html__( 'Summary block label', 'ai-share-summarize' ),
 			'ai_summary_style'                     => esc_html__( 'Summary block style', 'ai-share-summarize' ),
 			'ai_summary_icon_position'             => esc_html__( 'Summary icon position', 'ai-share-summarize' ),
-			'ai_summary_sentences'                 => esc_html__( 'Summary sentence count', 'ai-share-summarize' ),
+			'ai_summary_sentences'                 => esc_html__( 'Summary length', 'ai-share-summarize' ),
+			'ai_summary_bullets'                   => esc_html__( 'Summary format', 'ai-share-summarize' ),
 			'ai_summary_frontend_button'           => esc_html__( 'Frontend generation button', 'ai-share-summarize' ),
 			'ai_summary_generate_button_label'     => esc_html__( 'Frontend button label', 'ai-share-summarize' ),
 			'ai_summary_frontend_force_extractive' => esc_html__( 'Frontend uses extractive only', 'ai-share-summarize' ),
@@ -411,7 +413,7 @@ class AyudaWP_AISS_Admin {
 		// Dynamic page title based on active tab. The buttons tab keeps the
 		// legacy 'settings' slug so bookmarked/external links don't break;
 		// only its visible label says "Share Buttons".
-		$page_title = 'AI Share & Summarize';
+		$page_title = 'Share Buttons & AI-powered Summaries';
 		if ( 'analytics' === $active_tab ) {
 			$page_title .= ' — ' . esc_html__( 'Analytics', 'ai-share-summarize' );
 		} elseif ( 'ai-summary' === $active_tab ) {
@@ -639,6 +641,7 @@ class AyudaWP_AISS_Admin {
 		$exclude_noindex = isset( $options['exclude_noindex'] ) ? $options['exclude_noindex'] : true;
 		$seo_plugin      = AyudaWP_AISS_SEO_Integration::ayudawp_detect_seo_plugin();
 		$has_noindexer   = class_exists( 'Noindexer_Frontend' );
+		$has_visibility  = AyudaWP_AISS_SEO_Integration::ayudawp_has_visibility();
 		?>
 		<div class="ayudawp-seo-integration">
 			<label style="display: flex; align-items: center; gap: 8px;">
@@ -647,13 +650,16 @@ class AyudaWP_AISS_Admin {
 			</label>
 			<p class="description" style="margin-top: 8px; margin-left: 24px;">
 				<?php esc_html_e( 'Automatically exclude content marked as noindex in your SEO plugin.', 'ai-share-summarize' ); ?>
-				<?php if ( $seo_plugin || $has_noindexer ) : ?>
+				<?php if ( $seo_plugin || $has_noindexer || $has_visibility ) : ?>
 					<span class="ayudawp-seo-detected">
 						<span class="dashicons dashicons-yes-alt"></span>
 						<?php
 						$detected = array();
 						if ( $seo_plugin ) {
 							$detected[] = $seo_plugin['name'];
+						}
+						if ( $has_visibility ) {
+							$detected[] = 'Visibility';
 						}
 						if ( $has_noindexer ) {
 							$detected[] = 'NoIndexer';
@@ -670,7 +676,7 @@ class AyudaWP_AISS_Admin {
 			</p>
 		</div>
 		<p class="description" style="margin-top: 10px;">
-			<?php esc_html_e( 'Compatible with:', 'ai-share-summarize' ); ?> Yoast SEO, Rank Math, All in One SEO, SEOPress, The SEO Framework, NoIndexer
+			<?php esc_html_e( 'Compatible with:', 'ai-share-summarize' ); ?> Yoast SEO, Rank Math, All in One SEO, SEOPress, The SEO Framework, Visibility, NoIndexer
 		</p>
 		<?php
 	}
@@ -868,6 +874,26 @@ class AyudaWP_AISS_Admin {
 		}
 
 		echo '<p class="description" style="margin-top: 10px;">' . esc_html__( 'This setting does not affect mobile devices, where buttons adapt automatically for better usability.', 'ai-share-summarize' ) . '</p>';
+	}
+
+	/**
+	 * Separator lines field (v2.4.0)
+	 */
+	public function ayudawp_separators_callback() {
+		$options          = get_option( 'ayudawp_aiss_options' );
+		$separator_top    = isset( $options['separator_top'] ) ? $options['separator_top'] : true;
+		$separator_bottom = isset( $options['separator_bottom'] ) ? $options['separator_bottom'] : true;
+		?>
+		<label style="display: block; margin-bottom: 5px;">
+			<input type="checkbox" name="ayudawp_aiss_options[separator_top]" value="1" <?php checked( $separator_top, true ); ?>>
+			<?php esc_html_e( 'Show top separator line', 'ai-share-summarize' ); ?>
+		</label>
+		<label style="display: block; margin-bottom: 5px;">
+			<input type="checkbox" name="ayudawp_aiss_options[separator_bottom]" value="1" <?php checked( $separator_bottom, true ); ?>>
+			<?php esc_html_e( 'Show bottom separator line', 'ai-share-summarize' ); ?>
+		</label>
+		<p class="description" style="margin-top: 10px;"><?php esc_html_e( 'The thin horizontal lines above and below the buttons block. Uncheck to remove either of them without custom CSS.', 'ai-share-summarize' ); ?></p>
+		<?php
 	}
 
 	/**
@@ -1216,7 +1242,7 @@ class AyudaWP_AISS_Admin {
 							. '<strong>' . esc_html__( 'Possible cause:', 'ai-share-summarize' ) . '</strong> '
 							. sprintf(
 								/* translators: %1$s/%2$s wrap a link to Tools > Connector Approvals. */
-								esc_html__( 'The canonical AI plugin is active. Its Connector Approval system can silently block calls from plugins it has not approved yet. Open %1$sTools > Connector Approvals%2$s and enable the toggle next to "AI Share & Summarize".', 'ai-share-summarize' ),
+								esc_html__( 'The canonical AI plugin is active. Its Connector Approval system can silently block calls from plugins it has not approved yet. Open %1$sTools > Connector Approvals%2$s and enable the toggle next to "Share Buttons & AI-powered Summaries".', 'ai-share-summarize' ),
 								'<a href="' . esc_url( $approvals_url ) . '" target="_blank" rel="noopener">',
 								'</a>'
 							)
@@ -1363,14 +1389,29 @@ class AyudaWP_AISS_Admin {
 	}
 
 	/**
-	 * AI summary sentence count field (applies to both AI and extractive)
+	 * AI summary length field (applies to both AI and extractive)
 	 */
 	public function ayudawp_ai_summary_sentences_callback() {
 		$options   = ayudawp_aiss_get_summary_options();
 		$sentences = isset( $options['ai_summary_sentences'] ) ? (int) $options['ai_summary_sentences'] : 3;
 		?>
 		<input type="number" min="1" max="5" step="1" name="ayudawp_aiss_summary_options[ai_summary_sentences]" value="<?php echo esc_attr( $sentences ); ?>" class="small-text">
-		<p class="description"><?php esc_html_e( 'Target sentence count for the summary (1-5). Sent to the AI provider as part of the prompt and used as the cap by the extractive fallback.', 'ai-share-summarize' ); ?></p>
+		<p class="description"><?php esc_html_e( 'Target number of sentences, or list points in bullet format, for the summary (1-5). Sent to the AI provider as part of the prompt and used as the cap by the extractive fallback.', 'ai-share-summarize' ); ?></p>
+		<?php
+	}
+
+	/**
+	 * AI summary bullet-list format field (v2.4.0)
+	 */
+	public function ayudawp_ai_summary_bullets_callback() {
+		$options = ayudawp_aiss_get_summary_options();
+		$bullets = ! empty( $options['ai_summary_bullets'] );
+		?>
+		<label>
+			<input type="checkbox" name="ayudawp_aiss_summary_options[ai_summary_bullets]" value="1" <?php checked( $bullets, true ); ?>>
+			<?php esc_html_e( 'Show the summary as a bullet list', 'ai-share-summarize' ); ?>
+		</label>
+		<p class="description"><?php esc_html_e( 'Renders each point as a list item instead of a paragraph. New AI summaries are generated as concise key points; summaries generated before enabling this are split into one item per sentence, without regenerating.', 'ai-share-summarize' ); ?></p>
 		<?php
 	}
 

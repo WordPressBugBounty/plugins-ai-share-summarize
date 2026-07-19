@@ -1,7 +1,12 @@
-AI Share & Summarize — Full changelog
+Share Buttons & AI-powered Summaries — Full changelog
 
 For each release, see the entries below. The latest version is always at the top.
 The current release notes also live in readme.txt under "== Changelog ==".
+
+= 2.4.0 =
+* New: Bullet-list format for the AI summary. A new "Summary format" checkbox in the AI Summary tab renders the summary as a concise bullet list instead of paragraphs: new AI summaries are generated as one key point per line, and already stored summaries are split into one item per sentence without regenerating. Works with the extractive fallback and every visual style.
+* New: Separator lines setting. Two checkboxes under Share Buttons let you show or hide the thin horizontal lines above and below the buttons block, which until now could only be removed with custom CSS. Both stay on by default, keeping the previous look.
+* Improved: The noindex exclusion now recognizes the Visibility SEO plugin (native-aeo-pack). Content marked noindex by Visibility — per post or through its bulk per-content-type rules with their per-post exceptions — hides the share buttons and the AI summary like with any other supported SEO plugin, and the settings screen reports it as detected.
 
 = 2.3.0 =
 * New: Dedicated "AI Summary" settings tab. The summary settings now live on their own screen with their own Save button, stored in their own option and saved independently from the share buttons settings. The former "Settings" tab is now called "Share Buttons", which is what it configures. Existing configuration is migrated automatically.
