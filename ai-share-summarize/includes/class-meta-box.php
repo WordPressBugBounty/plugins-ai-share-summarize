@@ -336,7 +336,7 @@ class AyudaWP_AISS_Meta_Box {
 
 		// Pass translated strings from PHP to JS.
 		wp_localize_script( 'ayudawp-aiss-editor-sidebar', 'aissI18n', array(
-			'panelTitle'         => __( 'AI Share & Summarize', 'ai-share-summarize' ),
+			'panelTitle'         => __( 'Share Buttons & AI-powered Summaries', 'ai-share-summarize' ),
 			'label'              => __( 'Hide share buttons on this content', 'ai-share-summarize' ),
 			'help'               => __( 'Check this box to prevent the share and AI buttons from appearing on this specific content.', 'ai-share-summarize' ),
 			'excludeSummaryLabel' => __( 'Hide AI summary on this content', 'ai-share-summarize' ),

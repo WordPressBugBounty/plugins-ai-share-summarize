@@ -270,7 +270,56 @@ function ayudawp_aiss_validate_options( $input ) {
 		}
 	}
 
+	/*
+	 * A prompt identical to the bundled default is not stored at all (v2.4.1),
+	 * so it keeps being resolved from the language pack on every request and
+	 * the AI is asked for the summary in the language of each reader. An empty
+	 * prompt is a different thing and is stored: it means send no instructions,
+	 * only the source URL.
+	 */
+	if ( isset( $validated['default_prompt'] ) && ayudawp_aiss_is_default_prompt( $validated['default_prompt'] ) ) {
+		unset( $validated['default_prompt'] );
+	}
+
 	return $validated;
+}
+
+/**
+ * Whether a stored prompt is just a copy of the bundled default.
+ *
+ * Until 2.4.1 the prompt was stored verbatim: activation wrote it, and the
+ * settings field came pre-filled, so the first save on the Share Buttons tab
+ * stored whatever the admin was seeing. From then on the buttons sent that
+ * exact text to the AI, so the prompt stopped going through translation and
+ * stayed in one language. On a multilingual site that means every reader gets
+ * the summary requested in the language of whoever saved the settings.
+ *
+ * Every locale installed on the site is checked, plus the original English,
+ * which covers the language the admin could have been using. A prompt the site
+ * actually wrote never matches and is left untouched.
+ *
+ * @since 2.4.1
+ * @param string $prompt Stored prompt.
+ * @return bool True when the prompt is a bundled default in some locale.
+ */
+function ayudawp_aiss_is_default_prompt( $prompt ) {
+	$locales = array_unique( array_merge( array( 'en_US', get_locale() ), get_available_languages() ) );
+
+	foreach ( $locales as $locale ) {
+
+		$switched = switch_to_locale( $locale );
+		$default  = ayudawp_aiss_get_default_prompt();
+
+		if ( $switched ) {
+			restore_previous_locale();
+		}
+
+		if ( $prompt === $default ) {
+			return true;
+		}
+	}
+
+	return false;
 }
 
 /**

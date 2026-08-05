@@ -3,7 +3,7 @@
  * Plugin Name: Share Buttons & AI-powered Summaries
  * Plugin URI: https://servicios.ayudawp.com/
  * Description: Inline AI summary on every post + one-click sharing to social networks and 11 AI assistants (Claude, ChatGPT, Gemini, Grok, Perplexity, DeepSeek, Mistral, Copilot, Qwen, Meta AI). Powered by the new WordPress 7.x AI Connectors.
- * Version: 2.4.0
+ * Version: 2.4.1
  * Author: Fernando Tellado
  * Author URI: https://ayudawp.com/
  * Text Domain: ai-share-summarize
@@ -22,7 +22,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Define plugin constants.
-define( 'AYUDAWP_AISS_VERSION', '2.4.0' );
+define( 'AYUDAWP_AISS_VERSION', '2.4.1' );
 define( 'AYUDAWP_AISS_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'AYUDAWP_AISS_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'AYUDAWP_AISS_PLUGIN_BASENAME', plugin_basename( __FILE__ ) );
@@ -237,6 +237,22 @@ class AyudaWP_AI_Share_Summarize {
 			unset( $options['ai_summary_enabled'], $options['ai_summary_use_extractive_fallback'] );
 		}
 
+		/*
+		 * Migration for v2.4.1: drop a prompt that only holds a copy of the
+		 * bundled default, so it goes back to being resolved from the language
+		 * pack on every request and the AI is asked for the summary in the
+		 * language of each reader. Activation used to store it, and the settings
+		 * field came pre-filled, so the first save froze it in the language of
+		 * the admin. A prompt the site wrote itself never matches any of the
+		 * bundled defaults and is left untouched, and so is an empty one, which
+		 * means send no instructions at all.
+		 */
+		if ( version_compare( $from_version, '2.4.1', '<' ) ) {
+			if ( isset( $options['default_prompt'] ) && ayudawp_aiss_is_default_prompt( $options['default_prompt'] ) ) {
+				unset( $options['default_prompt'] );
+			}
+		}
+
 		// Persist before the 2.3.0 block: its derivation helper reads this
 		// option back from the database, so earlier in-memory migrations
 		// (mode materialization above) must already be stored.
@@ -297,8 +313,11 @@ class AyudaWP_AI_Share_Summarize {
 	 * Plugin activation
 	 */
 	public function ayudawp_activate() {
+		// `default_prompt` is left out on purpose: it is resolved at read time
+		// from the language pack, so storing it here would freeze it in one
+		// language. Translations are not even loaded during activation, which
+		// is what made the old code store plain English.
 		$default_options = array(
-			'default_prompt'             => ayudawp_aiss_get_default_prompt(),
 			'enabled_buttons'            => array( 'chatgpt', 'claude', 'twitter', 'linkedin' ),
 			'display_locations'          => array( 'posts' ),
 			'auto_insert_position'       => 'after_content',

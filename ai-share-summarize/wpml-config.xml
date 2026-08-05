@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+	Multilingual configuration for Share Buttons & AI-powered Summaries.
+
+	Read automatically by WPML (and by Polylang, which supports the same file),
+	so nothing has to be configured by hand on a multilingual site.
+
+	Only the settings that end up in front of the reader are listed: the labels
+	printed around the buttons and the summary, and the prompt sent to the AI,
+	which decides the language the summary comes back in. The prompt shipped by
+	the plugin is a regular translatable string resolved on every request, so it
+	already follows the language of each reader and comes from the language pack
+	instead. These entries are what makes the wording the site writes itself
+	translatable too.
+
+	The keys are nested because the settings live inside two serialized option
+	arrays, one per settings tab.
+-->
+<wpml-config>
+
+	<admin-texts>
+		<key name="ayudawp_aiss_options">
+			<key name="default_prompt" />
+			<key name="custom_text" />
+			<key name="title_text" />
+			<key name="ai_section_title" />
+			<key name="social_section_title" />
+		</key>
+		<key name="ayudawp_aiss_summary_options">
+			<key name="ai_summary_label" />
+			<key name="ai_summary_generate_button_label" />
+		</key>
+	</admin-texts>
+
+</wpml-config>
