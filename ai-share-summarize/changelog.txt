@@ -3,6 +3,9 @@ Share Buttons & AI-powered Summaries — Full changelog
 For each release, see the entries below. The latest version is always at the top.
 The current release notes also live in readme.txt under "== Changelog ==".
 
+= 2.4.2 =
+* Improved: Tested up to WordPress 7.1, with no changes needed. The editor sidebar panel already works inside the always-iframed post editor, and the settings screen was reviewed against the jQuery UI 1.14.2 update that ships with this release.
+
 = 2.4.1 =
 * Improved: A prompt, a custom text or any of the section titles you write yourself can now be translated from WPML String Translation or Polylang, through the multilingual configuration the plugin ships
 * Fix: The AI prompt no longer gets stuck in the language of whoever saved the settings. It was written to the database on activation and again on the first save, so on a multilingual site every reader was asking the AI for a summary in that one language. It is resolved per reader again, and a stored copy of the bundled prompt is cleaned up on update. A prompt you wrote yourself is kept untouched, and an empty one still means send no instructions

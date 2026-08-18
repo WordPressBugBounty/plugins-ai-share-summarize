@@ -2,8 +2,8 @@
 Contributors: fernandot,ayudawp
 Tags: claude, chatgpt, social share, ai, perplexity
 Requires at least: 6.1
-Tested up to: 7.0
-Stable tag: 2.4.1
+Tested up to: 7.1
+Stable tag: 2.4.2
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -374,6 +374,9 @@ The social and AI sharing buttons render as `<a>` / `<button>` elements that ope
 
 == Changelog ==
 
+= 2.4.2 =
+* Improved: Tested up to WordPress 7.1, with no changes needed. The editor sidebar panel already works inside the always-iframed post editor, and the settings screen was reviewed against the jQuery UI 1.14.2 update that ships with this release.
+
 = 2.4.1 =
 * Improved: A prompt, a custom text or any of the section titles you write yourself can now be translated from WPML String Translation or Polylang, through the multilingual configuration the plugin ships
 * Fix: The AI prompt no longer gets stuck in the language of whoever saved the settings. It was written to the database on activation and again on the first save, so on a multilingual site every reader was asking the AI for a summary in that one language. It is resolved per reader again, and a stored copy of the bundled prompt is cleaned up on update. A prompt you wrote yourself is kept untouched, and an empty one still means send no instructions
@@ -388,8 +391,8 @@ For older changelog entries, please check the [changelog.txt](https://plugins.sv
 
 == Upgrade Notice ==
 
-= 2.4.1 =
-Fixes the AI prompt getting stuck in one language on multilingual sites, so readers stop getting summaries in the language of whoever saved the settings. Any stored copy of the bundled prompt is cleaned up on update, and a prompt you wrote yourself is kept untouched.
+= 2.4.2 =
+Compatibility release for WordPress 7.1. Nothing changes in how the plugin works, so you can update safely. The editor panel and the settings screen were reviewed against the always-iframed editor and the jQuery UI update, and needed no changes.
 
 == Advanced Usage ==
 
