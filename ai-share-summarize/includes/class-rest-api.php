@@ -817,8 +817,20 @@ class AyudaWP_AISS_Rest_API {
 	 */
 	public static function ayudawp_public_generate_summary( $request ) {
 		$post_id = (int) $request->get_param( 'post_id' );
+		$post    = $post_id ? get_post( $post_id ) : null;
 
-		if ( ! $post_id || ! get_post( $post_id ) ) {
+		// This endpoint is public by design: the "Generate summary" button is
+		// meant for visitors reading a post. It must therefore only ever reach
+		// content those visitors can already read. Without this gate, any
+		// anonymous request could have a summary built from a draft, pending,
+		// private or trashed post, or from a password-protected one without
+		// supplying the password, and get that text back in the response.
+		// Unreadable content is reported exactly like a non-existent post so
+		// the endpoint cannot be used to probe which IDs exist.
+		if ( ! $post
+			|| 'publish' !== $post->post_status
+			|| '' !== (string) $post->post_password
+		) {
 			return self::ayudawp_nocache_response( array( 'error' => 'invalid_post' ), 400 );
 		}
 
@@ -862,6 +874,33 @@ class AyudaWP_AISS_Rest_API {
 		}
 		set_transient( $rate_key, 1, MINUTE_IN_SECONDS );
 
+		// Site-wide ceiling on visitor-triggered generations. The per-IP limit
+		// above only slows down a single visitor: because its key includes the
+		// post ID, anyone can still walk the archive one post at a time, and
+		// each first generation of a post is a paid provider call when the
+		// summary mode is not extractive. This caps how large that bill can get
+		// in an hour, no matter how many addresses the traffic comes from.
+		// Cached summaries are returned before this point, so normal reading is
+		// unaffected; only brand-new generations count.
+		$hourly_cap = (int) apply_filters( 'ayudawp_aiss_frontend_hourly_cap', 60 );
+
+		if ( $hourly_cap > 0 ) {
+			$cap_key = 'ayudawp_aiss_pub_hourly';
+			$used    = (int) get_transient( $cap_key );
+
+			if ( $used >= $hourly_cap ) {
+				return self::ayudawp_nocache_response(
+					array(
+						'error'   => 'rate_limited',
+						'message' => __( 'Summary generation is busy right now. Please try again later.', 'ai-share-summarize' ),
+					),
+					429
+				);
+			}
+
+			set_transient( $cap_key, $used + 1, HOUR_IN_SECONDS );
+		}
+
 		$force_extractive = ! empty( $options['ai_summary_frontend_force_extractive'] );
 
 		$result = AyudaWP_AISS_AI_Summary::run( $post_id, true, $force_extractive );
@@ -891,17 +930,37 @@ class AyudaWP_AISS_Rest_API {
 	 * @return string IP address, or '0.0.0.0' as fallback.
 	 */
 	private static function ayudawp_visitor_ip() {
-		$candidates = array( 'HTTP_CF_CONNECTING_IP', 'HTTP_X_FORWARDED_FOR', 'HTTP_X_REAL_IP', 'REMOTE_ADDR' );
-		foreach ( $candidates as $key ) {
-			if ( empty( $_SERVER[ $key ] ) ) {
-				continue;
-			}
-			$raw   = sanitize_text_field( wp_unslash( $_SERVER[ $key ] ) );
-			$first = trim( explode( ',', $raw )[0] );
-			if ( filter_var( $first, FILTER_VALIDATE_IP ) ) {
-				return $first;
+		// REMOTE_ADDR is the only value the visitor cannot choose: it is set by
+		// the web server from the actual TCP connection. The forwarding headers
+		// below are sent by the client, so trusting them by default turns the
+		// rate limit into a suggestion (send a different X-Forwarded-For on each
+		// request and every call looks like a new visitor).
+		//
+		// Sites genuinely behind a reverse proxy or CDN do need those headers,
+		// because there REMOTE_ADDR is the proxy. That is opt-in: return the
+		// header name to trust from the filter below, and only then is it read.
+		// Trust it only if the proxy is known to overwrite the header, otherwise
+		// the same bypass comes back.
+		$trusted_header = apply_filters( 'ayudawp_aiss_trusted_proxy_header', '' );
+
+		if ( is_string( $trusted_header ) && '' !== $trusted_header ) {
+			$key = 'HTTP_' . strtoupper( str_replace( '-', '_', $trusted_header ) );
+			if ( ! empty( $_SERVER[ $key ] ) ) {
+				$raw   = sanitize_text_field( wp_unslash( $_SERVER[ $key ] ) );
+				$first = trim( explode( ',', $raw )[0] );
+				if ( filter_var( $first, FILTER_VALIDATE_IP ) ) {
+					return $first;
+				}
 			}
 		}
+
+		if ( ! empty( $_SERVER['REMOTE_ADDR'] ) ) {
+			$remote = sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) );
+			if ( filter_var( $remote, FILTER_VALIDATE_IP ) ) {
+				return $remote;
+			}
+		}
+
 		return '0.0.0.0';
 	}
 }

@@ -3,7 +3,7 @@ Contributors: fernandot,ayudawp
 Tags: claude, chatgpt, social share, ai, perplexity
 Requires at least: 6.1
 Tested up to: 7.1
-Stable tag: 2.4.3
+Stable tag: 2.4.4
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -374,6 +374,10 @@ The social and AI sharing buttons render as `<a>` / `<button>` elements that ope
 
 == Changelog ==
 
+= 2.4.4 =
+* Fix: Security. The visitor-facing summary generation endpoint now only works on published, publicly readable posts. Until now it accepted any post ID, so a summary could be built and returned for a draft, a pending or private post, an item in the trash, or a password-protected post without its password. Updating is recommended if you have the frontend generation button enabled.
+* Improved: Visitor-triggered summary generation is harder to abuse. The per-visitor limit is now based on the real connection address instead of forwarding headers a client can set, and a site-wide ceiling caps how many new summaries visitors can trigger per hour. Both matter because each new summary can be a paid call to your AI provider. Already generated summaries are still served from cache and are unaffected, so normal reading does not change. Sites behind a reverse proxy or CDN can declare which header to trust with the new ayudawp_aiss_trusted_proxy_header filter, and the hourly ceiling is adjustable with ayudawp_aiss_frontend_hourly_cap.
+
 = 2.4.3 =
 * Fix: Security. Post titles are now escaped for attribute position when the analytics dashboard renders the "most shared content" table, so a title containing quotes is shown as written instead of affecting the surrounding markup. As added hardening, click tracking records only published content, so titles from unpublished drafts stay out of the analytics data. Updating is recommended.
 
@@ -394,8 +398,8 @@ For older changelog entries, please check the [changelog.txt](https://plugins.sv
 
 == Upgrade Notice ==
 
-= 2.4.3 =
-Security and hardening fix for the analytics dashboard: post titles are now escaped in attribute position, and click tracking records only published content. Updating is recommended.
+= 2.4.4 =
+Security fix for the visitor summary button: it now works only on published, publicly readable posts, and visitor-triggered generation is rate limited per site. Update if you have that button enabled.
 
 == Advanced Usage ==
 
