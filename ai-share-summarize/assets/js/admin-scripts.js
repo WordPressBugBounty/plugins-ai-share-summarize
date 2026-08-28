@@ -984,18 +984,18 @@ window.AissPaginator = (function($) {
 
 		var html = '<div class="aiss-tooltip-header">' +
 			'<span>' + formatDateForTooltip(currentDate) + '</span>' +
-			'<span class="aiss-tooltip-vs">' + escapeHtml(vsText) + '</span>' +
+			'<span class="aiss-tooltip-vs">' + escHtml(vsText) + '</span>' +
 			'<span>' + formatDateForTooltip(compareDate) + '</span>' +
 			'</div>';
 
 		html += '<div class="aiss-tooltip-body">';
 		html += '<div class="aiss-tooltip-row">' +
 			'<span class="aiss-tooltip-label"><span class="aiss-tooltip-dot" style="background:' + brandColor + '"></span>' +
-			escapeHtml(aissAdminData.strings.currentPeriod || 'Current period') + '</span>' +
+			escHtml(aissAdminData.strings.currentPeriod || 'Current period') + '</span>' +
 			'<span class="aiss-tooltip-value">' + formatNumber(currentVal) + '</span></div>';
 		html += '<div class="aiss-tooltip-row">' +
 			'<span class="aiss-tooltip-label"><span class="aiss-tooltip-dot" style="background:#999"></span>' +
-			escapeHtml(aissAdminData.strings.previousPeriod || 'Previous period') + '</span>' +
+			escHtml(aissAdminData.strings.previousPeriod || 'Previous period') + '</span>' +
 			'<span class="aiss-tooltip-value">' + formatNumber(compareVal) + '</span></div>';
 		html += '</div>';
 
@@ -1093,11 +1093,11 @@ window.AissPaginator = (function($) {
 		var html = '<tr>';
 		html += '<td><span class="aiss-platform-name">';
 		html += '<span class="aiss-platform-dot" style="background-color:' + color + '"></span>';
-		html += escapeHtml(label);
+		html += escHtml(label);
 		html += '</span></td>';
 		html += '<td class="aiss-col-type"><span class="' + typeCss + '">';
 		html += '<span class="dashicons ' + typeIcon + '"></span>';
-		html += escapeHtml(typeLabel);
+		html += escHtml(typeLabel);
 		html += '</span></td>';
 		html += '<td class="num">' + formatNumber(row.click_count) + '</td>';
 		html += '</tr>';
@@ -1175,8 +1175,8 @@ window.AissPaginator = (function($) {
 		var editUrl   = aissAdminData.adminUrl + 'post.php?post=' + row.post_id + '&action=edit';
 
 		var html = '<tr>';
-		html += '<td title="' + escapeHtml(title) + '">';
-		html += '<strong>' + escapeHtml(truncTitle) + '</strong>';
+		html += '<td title="' + escAttr(title) + '">';
+		html += '<strong>' + escHtml(truncTitle) + '</strong>';
 		html += ' <a href="' + editUrl + '" class="aiss-edit-link" target="_blank" rel="noopener noreferrer">';
 		html += aissAdminData.strings.edit || 'Edit';
 		html += '</a>';
@@ -1331,12 +1331,27 @@ window.AissPaginator = (function($) {
 	}
 
 	/**
-	 * Escape HTML entities
+	 * Escape a value for HTML *text* position (between tags).
+	 *
+	 * WARNING: this does NOT encode quotes, so it is unsafe inside an
+	 * attribute value. For attributes (title="...", etc.) use escAttr().
 	 */
-	function escapeHtml(text) {
+	function escHtml(text) {
 		var div = document.createElement('div');
-		div.textContent = text;
+		div.appendChild(document.createTextNode(text));
 		return div.innerHTML;
+	}
+
+	/**
+	 * Escape a value for use inside a quoted HTML attribute.
+	 *
+	 * Encodes quotes as well as & < >, which escHtml() does not, so an
+	 * attacker-controlled value cannot break out of the attribute.
+	 */
+	function escAttr(str) {
+		return String(str).replace(/[&"'<>]/g, function (m) {
+			return { '&': '&amp;', '"': '&quot;', "'": '&#39;', '<': '&lt;', '>': '&gt;' }[m];
+		});
 	}
 
 	/**

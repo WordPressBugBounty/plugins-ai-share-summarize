@@ -452,8 +452,18 @@ class AyudaWP_AISS_Rest_API {
 			return new WP_REST_Response( array( 'error' => 'Invalid platform' ), 400 );
 		}
 
+		// Only record clicks that reference published content. Share buttons are
+		// rendered on the public front end of published posts, so a click naming a
+		// non-published post_id (e.g. an unsaved draft) is never a legitimate
+		// share. Rejecting it keeps unpublished titles authored by lower-privileged
+		// roles out of the analytics store entirely, as defense in depth behind
+		// the admin-side attribute escaping. post_id 0 (site-level clicks with no
+		// post) stays allowed and is stored with an empty title.
 		$post_title = '';
 		if ( $post_id > 0 ) {
+			if ( 'publish' !== get_post_status( $post_id ) ) {
+				return new WP_REST_Response( array( 'error' => 'Invalid post' ), 400 );
+			}
 			$post_title = get_the_title( $post_id );
 		}
 

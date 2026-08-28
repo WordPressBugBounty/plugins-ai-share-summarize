@@ -3,6 +3,9 @@ Share Buttons & AI-powered Summaries — Full changelog
 For each release, see the entries below. The latest version is always at the top.
 The current release notes also live in readme.txt under "== Changelog ==".
 
+= 2.4.3 =
+* Fix: Security. Post titles are now escaped for attribute position when the analytics dashboard renders the "most shared content" table, so a title containing quotes is shown as written instead of affecting the surrounding markup. As added hardening, click tracking records only published content, so titles from unpublished drafts stay out of the analytics data. Updating is recommended.
+
 = 2.4.2 =
 * Improved: Tested up to WordPress 7.1, with no changes needed. The editor sidebar panel already works inside the always-iframed post editor, and the settings screen was reviewed against the jQuery UI 1.14.2 update that ships with this release.
 

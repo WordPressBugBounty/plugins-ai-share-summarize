@@ -3,7 +3,7 @@
  * Plugin Name: Share Buttons & AI-powered Summaries
  * Plugin URI: https://servicios.ayudawp.com/
  * Description: Inline AI summary on every post + one-click sharing to social networks and 11 AI assistants (Claude, ChatGPT, Gemini, Grok, Perplexity, DeepSeek, Mistral, Copilot, Qwen, Meta AI). Powered by the new WordPress 7.x AI Connectors.
- * Version: 2.4.2
+ * Version: 2.4.3
  * Author: Fernando Tellado
  * Author URI: https://ayudawp.com/
  * Text Domain: ai-share-summarize
@@ -22,7 +22,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Define plugin constants.
-define( 'AYUDAWP_AISS_VERSION', '2.4.2' );
+define( 'AYUDAWP_AISS_VERSION', '2.4.3' );
 define( 'AYUDAWP_AISS_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'AYUDAWP_AISS_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'AYUDAWP_AISS_PLUGIN_BASENAME', plugin_basename( __FILE__ ) );

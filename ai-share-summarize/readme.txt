@@ -3,7 +3,7 @@ Contributors: fernandot,ayudawp
 Tags: claude, chatgpt, social share, ai, perplexity
 Requires at least: 6.1
 Tested up to: 7.1
-Stable tag: 2.4.2
+Stable tag: 2.4.3
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -374,6 +374,9 @@ The social and AI sharing buttons render as `<a>` / `<button>` elements that ope
 
 == Changelog ==
 
+= 2.4.3 =
+* Fix: Security. Post titles are now escaped for attribute position when the analytics dashboard renders the "most shared content" table, so a title containing quotes is shown as written instead of affecting the surrounding markup. As added hardening, click tracking records only published content, so titles from unpublished drafts stay out of the analytics data. Updating is recommended.
+
 = 2.4.2 =
 * Improved: Tested up to WordPress 7.1, with no changes needed. The editor sidebar panel already works inside the always-iframed post editor, and the settings screen was reviewed against the jQuery UI 1.14.2 update that ships with this release.
 
@@ -391,8 +394,8 @@ For older changelog entries, please check the [changelog.txt](https://plugins.sv
 
 == Upgrade Notice ==
 
-= 2.4.2 =
-Compatibility release for WordPress 7.1. Nothing changes in how the plugin works, so you can update safely. The editor panel and the settings screen were reviewed against the always-iframed editor and the jQuery UI update, and needed no changes.
+= 2.4.3 =
+Security and hardening fix for the analytics dashboard: post titles are now escaped in attribute position, and click tracking records only published content. Updating is recommended.
 
 == Advanced Usage ==
 
