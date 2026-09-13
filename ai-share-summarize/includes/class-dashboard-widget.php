@@ -55,8 +55,11 @@ class AyudaWP_AISS_Dashboard_Widget {
 		$cached_html = get_transient( self::CACHE_KEY );
 
 		if ( false !== $cached_html ) {
-			// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- HTML is escaped during generation and stored as a safe transient.
-			echo $cached_html;
+			// wp_kses_post() on the way out since 2.5.0: the HTML is escaped
+			// as it is built, but it travels through a transient, and anything
+			// that can write options could otherwise put markup on an admin's
+			// dashboard. Cheap belt to go with the braces.
+			echo wp_kses_post( $cached_html );
 			return;
 		}
 
@@ -67,8 +70,7 @@ class AyudaWP_AISS_Dashboard_Widget {
 
 		set_transient( self::CACHE_KEY, $html, self::CACHE_TTL );
 
-		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- HTML is escaped during generation in ayudawp_build_widget_html().
-		echo $html;
+		echo wp_kses_post( $html );
 	}
 
 	/**

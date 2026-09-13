@@ -3,7 +3,7 @@
  * Plugin Name: Share Buttons & AI-powered Summaries
  * Plugin URI: https://servicios.ayudawp.com/
  * Description: Inline AI summary on every post + one-click sharing to social networks and 11 AI assistants (Claude, ChatGPT, Gemini, Grok, Perplexity, DeepSeek, Mistral, Copilot, Qwen, Meta AI). Powered by the new WordPress 7.x AI Connectors.
- * Version: 2.4.4
+ * Version: 2.5.0
  * Author: Fernando Tellado
  * Author URI: https://ayudawp.com/
  * Text Domain: ai-share-summarize
@@ -22,7 +22,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Define plugin constants.
-define( 'AYUDAWP_AISS_VERSION', '2.4.4' );
+define( 'AYUDAWP_AISS_VERSION', '2.5.0' );
 define( 'AYUDAWP_AISS_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'AYUDAWP_AISS_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'AYUDAWP_AISS_PLUGIN_BASENAME', plugin_basename( __FILE__ ) );
@@ -67,6 +67,7 @@ class AyudaWP_AI_Share_Summarize {
 		require_once AYUDAWP_AISS_PLUGIN_DIR . 'includes/class-icons.php';
 		require_once AYUDAWP_AISS_PLUGIN_DIR . 'includes/class-buttons.php';
 		require_once AYUDAWP_AISS_PLUGIN_DIR . 'includes/class-frontend.php';
+		require_once AYUDAWP_AISS_PLUGIN_DIR . 'includes/class-floating-bar.php';
 		require_once AYUDAWP_AISS_PLUGIN_DIR . 'includes/class-shortcode.php';
 		require_once AYUDAWP_AISS_PLUGIN_DIR . 'includes/class-admin.php';
 		require_once AYUDAWP_AISS_PLUGIN_DIR . 'includes/class-seo-integration.php';
@@ -97,6 +98,7 @@ class AyudaWP_AI_Share_Summarize {
 		// Initialize classes.
 		new AyudaWP_AISS_Admin();
 		new AyudaWP_AISS_Frontend();
+		new AyudaWP_AISS_Floating_Bar();
 		new AyudaWP_AISS_Shortcode();
 		new AyudaWP_AISS_Meta_Box();
 		new AyudaWP_AISS_AI_Summary();
@@ -253,6 +255,41 @@ class AyudaWP_AI_Share_Summarize {
 			}
 		}
 
+		/*
+		 * Migration for v2.5.0: the three settings that governed where the
+		 * buttons appear collapse into one map of destination => position.
+		 *
+		 * Until 2.4.4 a post needed `display_locations` to contain "posts" AND
+		 * `auto_insert_content_types` to contain "post" AND
+		 * `auto_insert_position` to be something other than "disabled". The
+		 * first two listed overlapping things and nothing on screen said the
+		 * condition was an AND, so the usual outcome of ticking one of them was
+		 * no buttons and no explanation.
+		 *
+		 * What is migrated is the VISIBLE RESULT, not the literal settings: a
+		 * site with "Pages" ticked under locations but not under content types
+		 * was showing nothing on pages, so `page` is not written. Migrating the
+		 * settings literally would have made buttons appear where that site
+		 * never had them. The old keys are left in place as a rollback snapshot
+		 * (see the carry-over in ayudawp_aiss_validate_options()).
+		 */
+		if ( version_compare( $from_version, '2.5.0', '<' ) && ! isset( $options['placements'] ) ) {
+			$options['placements'] = self::ayudawp_derive_placements_from_legacy( $options );
+		}
+
+		/*
+		 * Same move for the summary: its content-type list and its single
+		 * position become one map, so a site can put the summary before the
+		 * content on pages and next to the buttons on posts.
+		 */
+		if ( version_compare( $from_version, '2.5.0', '<' ) ) {
+			$summary_options = get_option( 'ayudawp_aiss_summary_options' );
+			if ( is_array( $summary_options ) && ! isset( $summary_options['ai_summary_placements'] ) ) {
+				$summary_options['ai_summary_placements'] = self::ayudawp_derive_summary_placements_from_legacy( $summary_options );
+				update_option( 'ayudawp_aiss_summary_options', $summary_options );
+			}
+		}
+
 		// Persist before the 2.3.0 block: its derivation helper reads this
 		// option back from the database, so earlier in-memory migrations
 		// (mode materialization above) must already be stored.
@@ -274,6 +311,98 @@ class AyudaWP_AI_Share_Summarize {
 			}
 			$this->ayudawp_migrate_summary_exclusion_meta();
 		}
+	}
+
+	/**
+	 * Turn the pre-2.5.0 location settings into the unified placements map
+	 *
+	 * Static and side-effect free so the release harness can call it with
+	 * fabricated inputs and check every combination.
+	 *
+	 * @since 2.5.0
+	 * @param array $options Stored options, pre-migration.
+	 * @return array Destination key => position.
+	 */
+	public static function ayudawp_derive_placements_from_legacy( $options ) {
+		$position = isset( $options['auto_insert_position'] ) ? $options['auto_insert_position'] : 'after_content';
+
+		// "Shortcode only" becomes an empty map: no destination is ticked.
+		if ( 'disabled' === $position ) {
+			return array();
+		}
+
+		if ( ! in_array( $position, array( 'before_content', 'after_content', 'both' ), true ) ) {
+			$position = 'after_content';
+		}
+
+		$locations = isset( $options['display_locations'] ) && is_array( $options['display_locations'] )
+			? $options['display_locations']
+			: array();
+		$types     = isset( $options['auto_insert_content_types'] ) && is_array( $options['auto_insert_content_types'] )
+			? $options['auto_insert_content_types']
+			: array();
+
+		$placements = array();
+
+		foreach ( $types as $type ) {
+			$type = (string) $type;
+
+			if ( 'post' === $type ) {
+				$gate = in_array( 'posts', $locations, true );
+			} elseif ( 'page' === $type ) {
+				$gate = in_array( 'pages', $locations, true );
+			} else {
+				$gate = in_array( 'cpt', $locations, true );
+			}
+
+			if ( $gate ) {
+				$placements[ $type ] = $position;
+			}
+		}
+
+		if ( in_array( 'home', $locations, true ) ) {
+			$placements['home'] = $position;
+		}
+		if ( in_array( 'archives', $locations, true ) ) {
+			$placements['archive'] = $position;
+		}
+
+		return $placements;
+	}
+
+	/**
+	 * Turn the pre-2.5.0 summary settings into its placements map
+	 *
+	 * @since 2.5.0
+	 * @param array $options Stored summary options, pre-migration.
+	 * @return array Post type => position.
+	 */
+	public static function ayudawp_derive_summary_placements_from_legacy( $options ) {
+		$types = isset( $options['ai_summary_content_types'] ) && is_array( $options['ai_summary_content_types'] )
+			? $options['ai_summary_content_types']
+			: array();
+
+		if ( empty( $types ) ) {
+			return array();
+		}
+
+		$position = isset( $options['ai_summary_position'] ) ? $options['ai_summary_position'] : 'before_buttons';
+
+		// "Do not display" kept generating summaries, and so does its
+		// replacement, which is a position of its own rather than an off switch.
+		if ( 'disabled' === $position ) {
+			$position = 'hidden';
+		}
+		if ( ! in_array( $position, array( 'before_buttons', 'after_buttons', 'before_content', 'hidden' ), true ) ) {
+			$position = 'before_buttons';
+		}
+
+		$placements = array();
+		foreach ( $types as $type ) {
+			$placements[ (string) $type ] = $position;
+		}
+
+		return $placements;
 	}
 
 	/**
@@ -319,9 +448,8 @@ class AyudaWP_AI_Share_Summarize {
 		// is what made the old code store plain English.
 		$default_options = array(
 			'enabled_buttons'            => array( 'chatgpt', 'claude', 'twitter', 'linkedin' ),
-			'display_locations'          => array( 'posts' ),
-			'auto_insert_position'       => 'after_content',
-			'auto_insert_content_types'  => array( 'post' ),
+			// One map since 2.5.0: destination => position.
+			'placements'                 => array( 'post' => 'after_content' ),
 			'twitter_handle'             => '',
 			'mastodon_instance'          => '',
 			'custom_text'                => '',
@@ -343,6 +471,18 @@ class AyudaWP_AI_Share_Summarize {
 			'seo_button_type'            => 'link',
 			'exclude_noindex'            => true,
 			'button_custom_order'        => array(),
+			// v2.5.0. All three off by default, so a fresh install looks like
+			// every previous version until the admin turns them on.
+			'floating_bar_placements'    => array(),
+			'floating_bar_autohide'      => true,
+			'floating_bar_hide_mobile'   => true,
+			'floating_bar_hide_with_inline' => false,
+			// Compact mode on by default: a phone screen with fifteen buttons
+			// is the complaint this setting exists to answer.
+			'mobile_compact'             => 'single',
+			'mobile_compact_visible'     => 3,
+			'utm_enabled'                => false,
+			'utm_campaign'               => '',
 		);
 
 		// AI-summary settings live in their own option since 2.3.0.

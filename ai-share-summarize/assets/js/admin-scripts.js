@@ -277,7 +277,22 @@ window.AissPaginator = (function($) {
 
 		// Initialize color picker fields (v1.6.0).
 		if ($.fn.wpColorPicker) {
-			$('.ayudawp-color-field').wpColorPicker();
+			/*
+			 * The picker writes the value straight into the input without
+			 * firing an input/change event, so the live previews never saw the
+			 * new colour until the page was saved and reloaded. Its own change
+			 * and clear callbacks are the hook that does fire.
+			 */
+			$('.ayudawp-color-field').wpColorPicker({
+				change: function (event, ui) {
+					var field = $(event.target);
+					field.val(ui.color.toString());
+					field.trigger('aiss:colorchange');
+				},
+				clear: function (event) {
+					$(event.target).closest('.wp-picker-input-wrap').find('.ayudawp-color-field').trigger('aiss:colorchange');
+				}
+			});
 		}
 
 		// Toggle custom colors visibility when style changes (v1.6.0).
@@ -1366,3 +1381,200 @@ window.AissPaginator = (function($) {
 	}
 
 })(jQuery);
+/**
+ * Settings screen interactions (v2.5.0)
+ *
+ * Three small things, all optional: the form works with this file blocked.
+ *
+ *   1. The button picker repaints as the style, the icons or the corner shape
+ *      change, so you see the result before saving instead of saving to see it.
+ *   2. The floating bar's own destinations fold away until you ask for them.
+ *   3. A position whose destination is unticked is dimmed.
+ */
+(function () {
+	'use strict';
+
+	function init() {
+		var preview = document.querySelector('.aiss-picker-preview');
+
+		// --- 1. Live preview -------------------------------------------------
+		// Both places that show sample buttons: the picker and the order lists.
+		var orderPreview = document.getElementById('ayudawp-sortable-wrapper');
+		if (preview || orderPreview) {
+			var styleInputs = document.querySelectorAll('.aiss-style-input');
+			var iconsInput = document.querySelector('.aiss-icons-input');
+			var cornerInput = document.querySelector('.aiss-icon-style-input');
+
+			var repaint = function () {
+				var style = 'brand';
+				for (var i = 0; i < styleInputs.length; i++) {
+					if (styleInputs[i].checked) {
+						style = styleInputs[i].value;
+					}
+				}
+
+				var extra = [];
+				if ('icons-only' === style) {
+					extra.push('icons-only');
+					extra.push(cornerInput ? cornerInput.value : 'circular');
+				} else if ('minimal' !== style) {
+					extra.push(style);
+				}
+
+				// The "add icons" checkbox does not apply to icons-only, which
+				// is all icon by definition.
+				var hideIcons = iconsInput && !iconsInput.checked && 'icons-only' !== style;
+
+				if (preview) {
+					preview.className = ['ayudawp-share-buttons', 'aiss-picker-preview', 'with-icons'].concat(extra).join(' ');
+					preview.classList.toggle('aiss-hide-icons', !!hideIcons);
+				}
+
+				if (orderPreview) {
+					orderPreview.className = ['ayudawp-share-buttons', 'aiss-order-preview', 'with-icons'].concat(extra).join(' ');
+					orderPreview.classList.toggle('aiss-hide-icons', !!hideIcons);
+				}
+			};
+
+			for (var i = 0; i < styleInputs.length; i++) {
+				styleInputs[i].addEventListener('change', repaint);
+			}
+			if (iconsInput) { iconsInput.addEventListener('change', repaint); }
+			if (cornerInput) { cornerInput.addEventListener('change', repaint); }
+
+			// Custom colours: the WP colour picker is a jQuery widget, so its
+			// updates arrive as jQuery change events.
+			var applyCustomColours = function () {
+				var bg = document.getElementById('ayudawp_custom_bg');
+				var fg = document.getElementById('ayudawp_custom_text');
+				[preview, orderPreview].forEach(function (node) {
+					if (!node) { return; }
+					if (bg && bg.value) { node.style.setProperty('--ayudawp-custom-bg', bg.value); }
+					if (fg && fg.value) { node.style.setProperty('--ayudawp-custom-text', fg.value); }
+				});
+			};
+			if (window.jQuery) {
+				window.jQuery('#ayudawp_custom_bg, #ayudawp_custom_text').on('change keyup aiss:colorchange', applyCustomColours);
+			}
+
+			repaint();
+		}
+
+		// --- 2. The bar's own destinations -----------------------------------
+		var ownToggle = document.getElementById('aiss-bar-own-placements');
+		var ownBlock = document.getElementById('aiss-bar-placements');
+		if (ownToggle && ownBlock) {
+			ownToggle.addEventListener('change', function () {
+				ownBlock.hidden = !ownToggle.checked;
+			});
+		}
+
+		// The bar's other settings are noise while the bar is off.
+		var barInputs = document.querySelectorAll('input[name="ayudawp_aiss_options[floating_bar]"]');
+		if (barInputs.length && ownToggle) {
+			var barExtras = [];
+			var row = ownToggle.closest('td') || ownToggle.parentNode;
+			if (row) {
+				barExtras = [].slice.call(row.querySelectorAll('.aiss-stacked, .aiss-bar-placements'));
+			}
+
+			var syncBar = function () {
+				var off = true;
+				for (var b = 0; b < barInputs.length; b++) {
+					if (barInputs[b].checked && 'disabled' !== barInputs[b].value) {
+						off = false;
+					}
+				}
+				for (var e = 0; e < barExtras.length; e++) {
+					barExtras[e].style.opacity = off ? '.45' : '';
+				}
+			};
+
+			for (var b = 0; b < barInputs.length; b++) {
+				barInputs[b].addEventListener('change', syncBar);
+			}
+			syncBar();
+		}
+
+		// --- 3. Live preview of the summary block ----------------------------
+		var sample = document.getElementById('aiss-summary-sample');
+		if (sample) {
+			var styleRadios = document.querySelectorAll('.aiss-summary-style-input');
+			var iconRadios = document.querySelectorAll('.aiss-summary-icon-input');
+			var collapsedBox = document.querySelector('.aiss-summary-collapsed-input');
+			var labelField = document.querySelector('.aiss-summary-label-input');
+			var labelEl = sample.querySelector('.ayudawp-aiss-summary-label');
+			var details = sample.querySelector('details');
+			var defaultLabel = labelEl ? labelEl.textContent : '';
+
+			var repaintSummary = function () {
+				var style = 'minimal';
+				for (var i = 0; i < styleRadios.length; i++) {
+					if (styleRadios[i].checked) { style = styleRadios[i].value; }
+				}
+				var icon = 'left';
+				for (var j = 0; j < iconRadios.length; j++) {
+					if (iconRadios[j].checked) { icon = iconRadios[j].value; }
+				}
+
+				var classes = ['ayudawp-aiss-summary'];
+				if (['outline', 'brand', 'dark', 'custom'].indexOf(style) !== -1) {
+					classes.push('style-' + style);
+				}
+				if ('right' === icon) {
+					classes.push('icon-right');
+				} else if ('hidden' === icon) {
+					classes.push('icon-hidden');
+				}
+				sample.className = classes.join(' ');
+
+				if (details && collapsedBox) {
+					details.open = !collapsedBox.checked;
+				}
+
+				// The colour pickers only matter for the custom style, but
+				// keeping the variables in sync costs nothing.
+				var bg = document.getElementById('ayudawp_aiss_summary_bg');
+				var fg = document.getElementById('ayudawp_aiss_summary_text');
+                if (bg && bg.value) { sample.style.setProperty('--ayudawp-aiss-bg', bg.value); }
+                if (fg && fg.value) { sample.style.setProperty('--ayudawp-aiss-text', fg.value); }
+			};
+
+			for (var i = 0; i < styleRadios.length; i++) {
+				styleRadios[i].addEventListener('change', repaintSummary);
+			}
+			for (var j = 0; j < iconRadios.length; j++) {
+				iconRadios[j].addEventListener('change', repaintSummary);
+			}
+			if (collapsedBox) { collapsedBox.addEventListener('change', repaintSummary); }
+			if (labelField && labelEl) {
+				labelField.addEventListener('input', function () {
+					labelEl.textContent = labelField.value || defaultLabel;
+				});
+			}
+			if (window.jQuery) {
+				window.jQuery('#ayudawp_aiss_summary_bg, #ayudawp_aiss_summary_text').on('change keyup aiss:colorchange', repaintSummary);
+			}
+
+			repaintSummary();
+		}
+
+		// --- 4. Dim the position of an unticked destination -------------------
+		var rows = document.querySelectorAll('.aiss-placement-row');
+		for (var r = 0; r < rows.length; r++) {
+			(function (row) {
+				var box = row.querySelector('input[type="checkbox"]');
+				if (!box) { return; }
+				box.addEventListener('change', function () {
+					row.classList.toggle('is-on', box.checked);
+				});
+			})(rows[r]);
+		}
+	}
+
+	if ('loading' === document.readyState) {
+		document.addEventListener('DOMContentLoaded', init);
+	} else {
+		init();
+	}
+})();

@@ -17,6 +17,14 @@ if ( ! defined( 'ABSPATH' ) ) {
 class AyudaWP_AISS_Buttons {
 
 	/**
+	 * Sequence used to build unique ids for aria-labelledby / aria-controls
+	 *
+	 * @since 2.5.0
+	 * @var int
+	 */
+	private static $uid = 0;
+
+	/**
 	 * Generate complete buttons HTML
 	 *
 	 * @param array  $enabled_buttons List of enabled buttons.
@@ -50,7 +58,10 @@ class AyudaWP_AISS_Buttons {
 		$button_alignment = isset( $options['button_alignment'] ) ? $options['button_alignment'] : 'left';
 		$title_text      = isset( $options['title_text'] ) ? $options['title_text'] : '';
 		$title_style     = ayudawp_aiss_sanitize_title_style( isset( $options['title_style'] ) ? $options['title_style'] : 'span' );
-		$color_style     = isset( $options['button_colors'] ) ? $options['button_colors'] : 'brand';
+		// 'minimal' is what activation writes, and what the settings screen
+		// shows as selected when the key is missing; the renderer used to fall
+		// back to 'brand', so those two disagreed.
+		$color_style     = isset( $options['button_colors'] ) ? $options['button_colors'] : 'minimal';
 		$show_icons      = isset( $options['show_icons'] ) ? $options['show_icons'] : false;
 		$icon_style      = isset( $options['icon_style'] ) ? $options['icon_style'] : 'circular';
 		$seo_button_type = isset( $options['seo_button_type'] ) ? $options['seo_button_type'] : 'link';
@@ -59,6 +70,14 @@ class AyudaWP_AISS_Buttons {
 		// Separator lines (v2.4.0): both on by default, the pre-2.4.0 look.
 		$separator_top    = isset( $options['separator_top'] ) ? $options['separator_top'] : true;
 		$separator_bottom = isset( $options['separator_bottom'] ) ? $options['separator_bottom'] : true;
+
+		// Mobile compact mode (v2.5.0). Off by default: the pre-2.5.0 render.
+		$compact_mode    = isset( $options['mobile_compact'] ) ? $options['mobile_compact'] : 'disabled';
+		$compact_visible = isset( $options['mobile_compact_visible'] ) ? (int) $options['mobile_compact_visible'] : 3;
+		$compact_visible = max( 1, min( 5, $compact_visible ) );
+		if ( ! in_array( $compact_mode, array( 'single', 'partial' ), true ) ) {
+			$compact_mode = 'disabled';
+		}
 
 		// Section titles (v1.6.0).
 		$ai_section_title     = isset( $options['ai_section_title'] ) ? $options['ai_section_title'] : '';
@@ -113,7 +132,21 @@ class AyudaWP_AISS_Buttons {
 			$container_classes[] = 'with-icons';
 		}
 
+		/*
+		 * Mobile compact mode (v2.5.0). Everything is decided here in PHP and
+		 * applied by CSS inside the mobile breakpoint, so the desktop render is
+		 * byte-for-byte what it was and the extra markup costs one button. The
+		 * JS only flips `is-expanded` and the aria state.
+		 */
+		if ( 'disabled' !== $compact_mode ) {
+			$container_classes[] = 'is-mobile-compact';
+			$container_classes[] = 'compact-' . $compact_mode;
+		}
+
 		$style_class = implode( ' ', $container_classes );
+
+		self::$uid++;
+		$block_id = 'ayudawp-aiss-share-' . self::$uid;
 
 		// Custom color inline style.
 		$custom_style = '';
@@ -125,12 +158,27 @@ class AyudaWP_AISS_Buttons {
 			);
 		}
 
-		$html = '<div class="' . esc_attr( $style_class ) . '"' . $custom_style . '>';
+		/*
+		 * data-post-id (v2.5.0) so click tracking knows which post it is
+		 * counting without guessing from the theme's `article id="post-N"`,
+		 * which only some themes emit.
+		 */
+		$block_post_id = get_the_ID();
+		$post_id_attr  = $block_post_id ? ' data-post-id="' . esc_attr( (string) $block_post_id ) . '"' : '';
 
-		// Global title (only if no section titles).
+		$html = '<div id="' . esc_attr( $block_id ) . '" class="' . esc_attr( $style_class ) . '"' . $post_id_attr . $custom_style . '>';
+
+		// Global title (only if no section titles). Carries an id so the
+		// buttons group can point at it with aria-labelledby (v2.5.0).
+		$global_title_id = '';
 		if ( ! $use_section_titles && ! empty( trim( $title_text ) ) ) {
-			$html .= ayudawp_aiss_open_tag( $title_style, 'ayudawp-title' ) . esc_html( $title_text ) . ayudawp_aiss_close_tag( $title_style );
+			$global_title_id = $block_id . '-title';
+			$html           .= ayudawp_aiss_open_tag( $title_style, 'ayudawp-title', $global_title_id ) . esc_html( $title_text ) . ayudawp_aiss_close_tag( $title_style );
 		}
+
+		// Running index across every group, so "N visible + more" counts
+		// buttons in render order and not per section.
+		$rendered = 0;
 
 		// Split buttons into groups for section titles.
 		if ( $use_section_titles ) {
@@ -144,45 +192,130 @@ class AyudaWP_AISS_Buttons {
 			$groups = array();
 			if ( 'ayudawp_ai_first' === $button_order ) {
 				if ( ! empty( $ai_group ) ) {
-					$groups[] = array( 'title' => $ai_section_title, 'buttons' => $ai_group );
+					$groups[] = array( 'title' => $ai_section_title, 'buttons' => $ai_group, 'kind' => 'ai' );
 				}
 				if ( ! empty( $social_group ) ) {
-					$groups[] = array( 'title' => $social_section_title, 'buttons' => $social_group );
+					$groups[] = array( 'title' => $social_section_title, 'buttons' => $social_group, 'kind' => 'social' );
 				}
 			} else {
 				if ( ! empty( $social_group ) ) {
-					$groups[] = array( 'title' => $social_section_title, 'buttons' => $social_group );
+					$groups[] = array( 'title' => $social_section_title, 'buttons' => $social_group, 'kind' => 'social' );
 				}
 				if ( ! empty( $ai_group ) ) {
-					$groups[] = array( 'title' => $ai_section_title, 'buttons' => $ai_group );
+					$groups[] = array( 'title' => $ai_section_title, 'buttons' => $ai_group, 'kind' => 'ai' );
 				}
 			}
 
 			foreach ( $groups as $index => $group ) {
+				$group_id = $block_id . '-group-' . $index;
+				$title_id = '';
+
+				/*
+				 * A section whose every button falls past the visible count is
+				 * hidden along with its title, so the compact render never
+				 * leaves a heading standing over nothing.
+				 */
+				$group_hidden = ( 'partial' === $compact_mode && $rendered >= $compact_visible );
+
 				if ( ! empty( $group['title'] ) ) {
+					$title_id      = $group_id . '-title';
 					$section_class = $index > 0 ? ' ayudawp-section-title' : '';
-					$html .= ayudawp_aiss_open_tag( $title_style, 'ayudawp-title' . $section_class ) . esc_html( $group['title'] ) . ayudawp_aiss_close_tag( $title_style );
+					if ( $group_hidden ) {
+						$section_class .= ' aiss-overflow';
+					}
+					$html .= ayudawp_aiss_open_tag( $title_style, 'ayudawp-title' . $section_class, $title_id ) . esc_html( $group['title'] ) . ayudawp_aiss_close_tag( $title_style );
 				} elseif ( $index > 0 ) {
-					$html .= '<div class="ayudawp-section-separator"></div>';
+					$html .= '<div class="ayudawp-section-separator' . ( $group_hidden ? ' aiss-overflow' : '' ) . '"></div>';
 				}
 
-				$html .= '<div class="ayudawp-buttons-container">';
+				$html .= '<div id="' . esc_attr( $group_id ) . '" class="ayudawp-buttons-container" role="group"'
+					. self::ayudawp_group_label_attr( $title_id, $group['kind'] ) . '>';
 				foreach ( $group['buttons'] as $button ) {
-					$html .= self::ayudawp_get_button_html( $button, $url, $title, $options, $show_icons, $color_style, $seo_button_type );
+					$overflow = ( 'partial' === $compact_mode && $rendered >= $compact_visible );
+					$html    .= self::ayudawp_get_button_html( $button, $url, $title, $options, $show_icons, $color_style, $seo_button_type, $overflow );
+					$rendered++;
 				}
 				$html .= '</div>';
 			}
 		} else {
-			$html .= '<div class="ayudawp-buttons-container">';
+			$html .= '<div id="' . esc_attr( $block_id ) . '-group" class="ayudawp-buttons-container" role="group"'
+				. self::ayudawp_group_label_attr( $global_title_id, 'mixed' ) . '>';
 			foreach ( $enabled_buttons as $button ) {
-				$html .= self::ayudawp_get_button_html( $button, $url, $title, $options, $show_icons, $color_style, $seo_button_type );
+				$overflow = ( 'partial' === $compact_mode && $rendered >= $compact_visible );
+				$html    .= self::ayudawp_get_button_html( $button, $url, $title, $options, $show_icons, $color_style, $seo_button_type, $overflow );
+				$rendered++;
 			}
 			$html .= '</div>';
+		}
+
+		// The compact toggle is rendered whenever the mode is on, but CSS only
+		// shows it inside the mobile breakpoint — and, in "N visible" mode,
+		// only when there is something hidden behind it.
+		if ( 'disabled' !== $compact_mode && ( 'single' === $compact_mode || $rendered > $compact_visible ) ) {
+			$html .= self::ayudawp_compact_toggle_html( $compact_mode, $block_id );
 		}
 
 		$html .= '</div>';
 
 		return $html;
+	}
+
+	/**
+	 * Accessible name for a buttons group (v2.5.0)
+	 *
+	 * Points at the section title when there is one, so screen readers announce
+	 * the group with the same words sighted visitors read. Without a title the
+	 * group still needs a name, or `role="group"` announces an unnamed group.
+	 *
+	 * @since 2.5.0
+	 * @param string $title_id Id of the title element, or '' when there is none.
+	 * @param string $kind     'ai', 'social' or 'mixed'.
+	 * @return string Attribute string, starting with a space.
+	 */
+	private static function ayudawp_group_label_attr( $title_id, $kind ) {
+		if ( '' !== $title_id ) {
+			return ' aria-labelledby="' . esc_attr( $title_id ) . '"';
+		}
+
+		if ( 'ai' === $kind ) {
+			$label = __( 'Ask an AI assistant about this content', 'ai-share-summarize' );
+		} elseif ( 'social' === $kind ) {
+			$label = __( 'Share this content on social networks', 'ai-share-summarize' );
+		} else {
+			$label = __( 'Share this content', 'ai-share-summarize' );
+		}
+
+		return ' aria-label="' . esc_attr( $label ) . '"';
+	}
+
+	/**
+	 * Toggle that expands the compact mobile render (v2.5.0)
+	 *
+	 * Server-rendered so it works with page caching and needs no JS to exist;
+	 * the script only toggles `is-expanded` on the block and keeps
+	 * `aria-expanded` in sync. Hidden on desktop by CSS.
+	 *
+	 * @since 2.5.0
+	 * @param string $mode     'single' or 'partial'.
+	 * @param string $block_id Id of the share block it controls.
+	 * @return string Toggle HTML.
+	 */
+	private static function ayudawp_compact_toggle_html( $mode, $block_id ) {
+		$label = 'single' === $mode
+			? __( 'Share', 'ai-share-summarize' )
+			: __( 'More', 'ai-share-summarize' );
+
+		/*
+		 * No icon of its own: the caret comes from CSS, the same one the summary
+		 * block uses to say "there is more behind this", and it rotates when the
+		 * block opens. A share glyph here was indistinguishable from the native
+		 * Share button, and an ellipsis was one more symbol for a gesture the
+		 * interface already had a sign for.
+		 */
+		return '<div class="ayudawp-aiss-compact-toggle">'
+			. '<button type="button" class="ayudawp-share-btn ayudawp-aiss-more-btn" aria-expanded="false" aria-controls="' . esc_attr( $block_id ) . '">'
+			. '<span class="ayudawp-button-text">' . esc_html( $label ) . '</span>'
+			. '</button></div>';
 	}
 
 	/**
@@ -195,13 +328,23 @@ class AyudaWP_AISS_Buttons {
 	 * @param bool   $show_icons      Whether to show icons.
 	 * @param string $color_style     Color style.
 	 * @param string $seo_button_type Button HTML type ('link' or 'button').
+	 * @param bool   $overflow        Whether this button hides behind the mobile
+	 *                                compact toggle (v2.5.0).
 	 * @return string Button HTML.
 	 */
-	public static function ayudawp_get_button_html( $button, $url, $title, $options, $show_icons = false, $color_style = 'default', $seo_button_type = 'link' ) {
+	public static function ayudawp_get_button_html( $button, $url, $title, $options, $show_icons = false, $color_style = 'default', $seo_button_type = 'link', $overflow = false ) {
 		$twitter_handle    = isset( $options['twitter_handle'] ) ? $options['twitter_handle'] : '';
 		$custom_text       = isset( $options['custom_text'] ) ? $options['custom_text'] : '';
 		$prompt            = isset( $options['default_prompt'] ) ? $options['default_prompt'] : ayudawp_aiss_get_default_prompt();
 		$mastodon_instance = isset( $options['mastodon_instance'] ) ? $options['mastodon_instance'] : 'mastodon.social';
+
+		/*
+		 * UTM tagging (v2.5.0) applies to the site's own URL, the one that
+		 * travels to the destination, and is built per platform because
+		 * utm_source is the platform key. Off by default, in which case this
+		 * returns $url untouched.
+		 */
+		$url = ayudawp_aiss_add_utm( $url, $button, $options );
 
 		$full_prompt = $prompt;
 		if ( ! empty( $custom_text ) ) {
@@ -280,6 +423,20 @@ class AyudaWP_AISS_Buttons {
 				'label' => 'Pinterest',
 				'url'   => 'https://pinterest.com/pin/create/button/?url=' . urlencode( $url ) . '&description=' . urlencode( $title ),
 				'class' => 'pinterest',
+			),
+
+			// Browser actions (v2.5.0). Their "url" is the page itself: the
+			// script copies it to the clipboard or hands it to the operating
+			// system share sheet. They are always rendered as <button>.
+			'copy_link' => array(
+				'label' => __( 'Copy link', 'ai-share-summarize' ),
+				'url'   => $url,
+				'class' => 'copy-link',
+			),
+			'web_share' => array(
+				'label' => __( 'Share', 'ai-share-summarize' ),
+				'url'   => $url,
+				'class' => 'web-share',
 			),
 
 			// AI platforms.
@@ -365,29 +522,59 @@ class AyudaWP_AISS_Buttons {
 			}
 		}
 
-		// Generate HTML based on seo_button_type.
-		if ( 'button' === $seo_button_type ) {
-			return sprintf(
-				'<button type="button" class="ayudawp-share-btn %s" data-url="%s" data-platform="%s" aria-label="%s">%s</button>',
-				esc_attr( $config['class'] ),
-				esc_attr( $config['url'] ),
-				esc_attr( $button ),
-				/* translators: %s is the button label */
-				esc_attr( sprintf( __( 'Share in %s', 'ai-share-summarize' ), $config['label'] ) ),
-				$button_content
-			);
+		$classes = $config['class'];
+		if ( $overflow ) {
+			// Marked in PHP, hidden by CSS inside the mobile breakpoint only.
+			$classes .= ' aiss-overflow';
+		}
+
+		$is_action = in_array( $button, ayudawp_aiss_get_action_buttons(), true );
+
+		if ( 'copy_link' === $button ) {
+			$aria = __( 'Copy link to clipboard', 'ai-share-summarize' );
+		} elseif ( 'web_share' === $button ) {
+			$aria = __( 'Share using your device', 'ai-share-summarize' );
 		} else {
+			/* translators: %s is the button label */
+			$aria = sprintf( __( 'Share in %s', 'ai-share-summarize' ), $config['label'] );
+		}
+
+		/*
+		 * Native share is hidden until the script confirms navigator.share
+		 * exists, so desktop Firefox (and anything else without the API) never
+		 * shows a button that would do nothing. Rendering it hidden rather than
+		 * omitting it keeps the markup identical for every visitor, which is
+		 * what page caches store.
+		 */
+		if ( 'web_share' === $button ) {
+			$classes .= ' ayudawp-aiss-needs-share-api';
+		}
+
+		// Actions have no destination to follow, so they are buttons whatever
+		// the global "Button HTML type" setting says: an <a href> pointing at
+		// the current page would add a self-link to every post.
+		if ( $is_action || 'button' === $seo_button_type ) {
 			return sprintf(
-				'<a href="%s" class="ayudawp-share-btn %s" data-url="%s" data-platform="%s" target="_blank" rel="nofollow noopener" aria-label="%s">%s</a>',
-				esc_url( $config['url'] ),
-				esc_attr( $config['class'] ),
+				'<button type="button" class="ayudawp-share-btn %s"%s data-url="%s" data-platform="%s"%s aria-label="%s">%s</button>',
+				esc_attr( $classes ),
+				'web_share' === $button ? ' hidden' : '',
 				esc_attr( $config['url'] ),
 				esc_attr( $button ),
-				/* translators: %s is the button label */
-				esc_attr( sprintf( __( 'Share in %s', 'ai-share-summarize' ), $config['label'] ) ),
+				'web_share' === $button ? ' data-title="' . esc_attr( $title ) . '"' : '',
+				esc_attr( $aria ),
 				$button_content
 			);
 		}
+
+		return sprintf(
+			'<a href="%s" class="ayudawp-share-btn %s" data-url="%s" data-platform="%s" target="_blank" rel="nofollow noopener" aria-label="%s">%s</a>',
+			esc_url( $config['url'] ),
+			esc_attr( $classes ),
+			esc_attr( $config['url'] ),
+			esc_attr( $button ),
+			esc_attr( $aria ),
+			$button_content
+		);
 	}
 
 	/**

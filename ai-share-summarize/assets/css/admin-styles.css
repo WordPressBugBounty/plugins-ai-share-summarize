@@ -823,3 +823,416 @@
 		gap: 8px;
 	}
 }
+/* =============================================
+   Button picker (v2.5.0)
+   The "Enabled buttons" field renders each option as the real button, with
+   the front-end stylesheet loaded alongside this one. These rules neutralise
+   the block's own spacing inside the settings form and lay the options out.
+   ============================================= */
+.aiss-picker-preview {
+	margin: 0 0 10px;
+	padding: 0;
+	border: 0;
+}
+
+.aiss-picker-group-title {
+	margin: 16px 0 6px;
+	font-weight: 600;
+	color: #1d2327;
+}
+
+.aiss-picker-group-title:first-child {
+	margin-top: 0;
+}
+
+.aiss-picker-grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+	gap: 8px;
+	max-width: 900px;
+}
+
+.aiss-pick {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	padding: 6px 8px;
+	border: 1px solid #dcdcde;
+	border-radius: 6px;
+	background: #fff;
+	cursor: pointer;
+	transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.aiss-pick:hover {
+	border-color: #8c8f94;
+}
+
+/*
+ * No selected ring: the button preview inside the label already shows, in its
+ * own colours, what is on, and a blue frame around it only competed with it.
+ */
+.aiss-pick.is-on,
+.aiss-pick:has(input:checked) {
+	border-color: #c3c4c7;
+	background: #fbfbfc;
+}
+
+.aiss-pick input[type="checkbox"] {
+	margin: 0;
+	flex: none;
+}
+
+/* The preview is a sample, not a control: it must not swallow the click. */
+.aiss-pick .ayudawp-share-btn {
+	pointer-events: none;
+	flex: 1 1 auto;
+	width: auto;
+	min-width: 0;
+	min-height: 30px;
+	padding: 5px 10px;
+	font-size: 12px;
+	transform: none;
+}
+
+.aiss-picker-preview.icons-only .aiss-pick .ayudawp-share-btn {
+	flex: none;
+	width: 32px;
+	min-width: 32px;
+	height: 32px;
+	padding: 0;
+}
+
+.aiss-pick-name {
+	font-size: 12px;
+	color: #50575e;
+}
+
+.aiss-picker-note {
+	max-width: 900px;
+	margin-top: 10px;
+	padding: 10px 12px;
+	border-left: 4px solid #2271b1;
+	background: #f0f6fc;
+}
+
+.aiss-picker-note .dashicons {
+	color: #2271b1;
+	vertical-align: text-bottom;
+}
+
+/* =============================================
+   Settings layout (v2.5.0)
+   ============================================= */
+
+/* Two settings that belong together, side by side when there is room. */
+.aiss-two-col {
+	display: grid;
+	grid-template-columns: 1fr;
+	gap: 18px 32px;
+	max-width: 900px;
+}
+
+@media (min-width: 900px) {
+	.aiss-two-col { grid-template-columns: 1fr 1fr; }
+}
+
+.aiss-two-col > div > strong,
+.aiss-two-col > div > label > strong {
+	display: block;
+	margin-bottom: 6px;
+}
+
+.aiss-stacked {
+	display: block;
+	margin-bottom: 5px;
+}
+
+.aiss-inline-choices {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px 20px;
+	margin: 6px 0 10px;
+}
+
+.aiss-full { width: 100%; max-width: 340px; }
+
+/* --- Where the buttons appear ------------------------------------------- */
+.aiss-placements {
+	max-width: 980px;
+	border: 1px solid #dcdcde;
+	border-radius: 6px;
+	background: #fff;
+	padding: 14px 16px;
+}
+
+/* Single content and archives side by side: stacked, a site with several
+   public post types made a column tall enough to need its own scroll. */
+@media (min-width: 1100px) {
+	.aiss-placements.has-groups {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 4px 30px;
+		align-items: start;
+	}
+}
+
+.aiss-placements-group {
+	margin: 14px 0 8px;
+	padding-bottom: 6px;
+	border-bottom: 2px solid #2271b1;
+	display: inline-block;
+	font-weight: 600;
+}
+
+.aiss-placements-group:first-child { margin-top: 0; }
+
+/* Fixed tracks so every select lines up down the column. */
+.aiss-placement-row {
+	display: grid;
+	grid-template-columns: 20px minmax(0, 1fr) 190px;
+	align-items: center;
+	gap: 10px;
+	padding: 5px 0;
+}
+
+.aiss-placement-row input[type="checkbox"] { margin: 0; }
+.aiss-placement-row label { cursor: pointer; }
+.aiss-placement-row select { width: 100%; }
+
+/* A position whose destination is unticked is inert information. */
+.aiss-placement-row:not(.is-on):not(:has(input:checked)) select {
+	opacity: .45;
+}
+
+@media (max-width: 782px) {
+	.aiss-placement-row { grid-template-columns: 20px minmax(0, 1fr); }
+	.aiss-placement-row select { grid-column: 2; }
+}
+
+.aiss-hint-tag {
+	display: inline-block;
+	margin-left: 6px;
+	padding: 1px 7px;
+	border: 1px solid #c5d9ed;
+	border-radius: 3px;
+	background: #f0f6fc;
+	color: #0a4b78;
+	font-size: 11px;
+}
+
+.aiss-danger-button.button {
+	color: #b32d2e;
+	border-color: #b32d2e;
+}
+
+.aiss-danger-button.button:hover {
+	color: #8a2424;
+	border-color: #8a2424;
+	background: #fcf0f1;
+}
+
+/* --- Live preview of the picker ----------------------------------------- */
+/* The label lives in two places at once; the style in force decides which. */
+.aiss-picker-preview .aiss-pick-name { display: none; }
+.aiss-picker-preview.icons-only .aiss-pick .ayudawp-button-text { display: none; }
+.aiss-picker-preview.icons-only .aiss-pick-name { display: inline; }
+
+/* Live preview: the icons come and go with the "add icons" checkbox. */
+.aiss-picker-preview.aiss-hide-icons .aiss-pick .ayudawp-icon-wrapper { display: none; }
+
+/* --- Summary block preview (v2.5.0) ------------------------------------- */
+.aiss-preview-caption {
+	margin: 18px 0 6px;
+	font-size: 11px;
+	letter-spacing: .06em;
+	text-transform: uppercase;
+	color: #646970;
+}
+
+.aiss-summary-preview {
+	max-width: 640px;
+	padding: 16px;
+	border: 1px dashed #c3c4c7;
+	border-radius: 6px;
+	background: #fbfbfc;
+}
+
+/* The sample carries the front-end classes, so its own margins have to go. */
+.aiss-summary-preview .ayudawp-aiss-summary {
+	margin: 0;
+}
+
+.aiss-checklist {
+	max-height: 190px;
+	overflow-y: auto;
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+	background: #fff;
+	padding: 10px 12px;
+}
+
+/* --- Order lists (v2.5.0) ----------------------------------------------- */
+/* The wrapper carries the front-end classes so each row can show the real
+   button; these rules undo the block's own spacing inside the form. */
+.aiss-order-preview {
+	margin: 12px 0 0;
+	padding: 0;
+	border: 0;
+}
+
+.aiss-order-list {
+	margin: 6px 0 0;
+	padding: 0;
+	list-style: none;
+	min-height: 40px;
+}
+
+.aiss-order-list li {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	margin-bottom: 4px;
+	padding: 5px 8px;
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+	background: #fff;
+	cursor: grab;
+}
+
+.aiss-order-list li:active { cursor: grabbing; }
+
+.aiss-order-grip {
+	color: #b4b9be;
+	font-size: 16px;
+	width: 16px;
+	height: 16px;
+	line-height: 16px;
+	flex: none;
+}
+
+.aiss-order-list .ayudawp-share-btn {
+	pointer-events: none;
+	flex: 1 1 auto;
+	width: auto;
+	min-width: 0;
+	min-height: 28px;
+	padding: 4px 10px;
+	font-size: 12px;
+	transform: none;
+}
+
+.aiss-order-preview.icons-only .aiss-order-list .ayudawp-share-btn {
+	flex: none;
+	width: 30px;
+	min-width: 30px;
+	height: 30px;
+	padding: 0;
+}
+
+.aiss-order-list .aiss-pick-name { display: none; }
+.aiss-order-preview.icons-only .aiss-order-list .aiss-pick-name { display: inline; }
+.aiss-order-preview.icons-only .aiss-order-list .ayudawp-button-text { display: none; }
+
+/* =============================================
+   One width for the whole settings form (v2.5.0)
+   The screen had two: the grids stopped at 900px while descriptions, notes and
+   the promo banner ran the full width of the browser, so a long paragraph shot
+   past the fields it belonged to and the page read as two designs stacked.
+   ============================================= */
+.aiss-wrap {
+	/*
+	 * The form is bounded by the layout grid below, not by a figure of its own.
+	 * WordPress puts no maximum on `form-table`, so this was a choice, and a
+	 * narrow one: Visibility uses 1400px and Widget Visibility Control 1200px.
+	 */
+	--aiss-settings-width: 100%;
+}
+
+/* --- Content and promo rail (v2.5.0) ------------------------------------ */
+.aiss-layout {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) 300px;
+	gap: 26px;
+	align-items: start;
+	max-width: 1500px;
+	margin-top: 16px;
+}
+
+.aiss-layout-main { min-width: 0; }
+
+.aiss-layout-side {
+	position: sticky;
+	top: 42px;
+}
+
+@media screen and (max-width: 1200px) {
+	.aiss-layout {
+		grid-template-columns: 1fr;
+	}
+
+	.aiss-layout-side {
+		position: static;
+	}
+}
+
+.aiss-wrap .form-table td > p.description,
+.aiss-wrap .form-table td > .description,
+.aiss-wrap .aiss-two-col,
+.aiss-wrap .aiss-placements,
+.aiss-wrap .aiss-picker-grid,
+.aiss-wrap .aiss-picker-note,
+.aiss-wrap .aiss-summary-preview,
+.aiss-wrap .form-table td > .aiss-inline-choices {
+	max-width: var(--aiss-settings-width);
+}
+
+/*
+ * Promo cards down the rail. Same shape as Widget Visibility Control's, which
+ * is where this layout comes from, including the three-class specificity the
+ * banner contract needs to beat the 40px min-height that .wp-core-ui puts on
+ * every .button.
+ */
+.aiss-layout-side {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.aiss-wrap .aiss-layout-side .aiss-promo-box {
+	padding: 16px;
+	background: #fff;
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+}
+
+.aiss-layout-side .aiss-promo-box .aiss-promo-icon {
+	color: #2271b1;
+	font-size: 24px;
+	width: 24px;
+	height: 24px;
+}
+
+.aiss-layout-side .aiss-promo-box .aiss-promo-box-title {
+	margin: 8px 0 4px;
+	font-size: 14px;
+	line-height: 1.4;
+}
+
+.aiss-layout-side .aiss-promo-box .aiss-promo-box-description {
+	margin: 0 0 12px;
+	font-size: 13px;
+	color: #50575e;
+}
+
+.aiss-layout-side .aiss-promo-box .button {
+	white-space: normal;
+	height: auto;
+	min-height: auto;
+	line-height: 1.4;
+	padding: 6px 12px;
+	text-align: center;
+}
+
+/* The order lists follow the live style too, icons included. */
+.aiss-order-preview.aiss-hide-icons .aiss-order-list .ayudawp-icon-wrapper { display: none; }

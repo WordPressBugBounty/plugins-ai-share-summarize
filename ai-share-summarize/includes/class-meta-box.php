@@ -55,31 +55,43 @@ class AyudaWP_AISS_Meta_Box {
 	public function ayudawp_register_meta() {
 		$post_types = get_post_types( array( 'public' => true ), 'names' );
 
+		/*
+		 * Permission is checked over the post being written, not over the
+		 * "can this user edit posts at all" generic capability (v2.5.0).
+		 * Until 2.4.4 these two callbacks took no arguments and asked for
+		 * `edit_posts`, so any contributor could flip the exclusion flags on
+		 * somebody else's published post through the REST meta endpoint.
+		 * `edit_post` runs through map_meta_cap, which resolves ownership and
+		 * post status, and matches what the summary meta keys already did in
+		 * class-ai-summary.php.
+		 */
+		$auth_callback = function ( $allowed, $meta_key, $post_id ) {
+			return current_user_can( 'edit_post', $post_id );
+		};
+
 		foreach ( $post_types as $post_type ) {
 			register_post_meta(
 				$post_type,
 				self::META_KEY,
 				array(
-					'show_in_rest'  => true,
-					'single'        => true,
-					'type'          => 'boolean',
-					'default'       => false,
-					'auth_callback' => function () {
-						return current_user_can( 'edit_posts' );
-					},
+					'show_in_rest'      => true,
+					'single'            => true,
+					'type'              => 'boolean',
+					'default'           => false,
+					'auth_callback'     => $auth_callback,
+					'sanitize_callback' => 'rest_sanitize_boolean',
 				)
 			);
 			register_post_meta(
 				$post_type,
 				self::META_KEY_SUMMARY,
 				array(
-					'show_in_rest'  => true,
-					'single'        => true,
-					'type'          => 'boolean',
-					'default'       => false,
-					'auth_callback' => function () {
-						return current_user_can( 'edit_posts' );
-					},
+					'show_in_rest'      => true,
+					'single'            => true,
+					'type'              => 'boolean',
+					'default'           => false,
+					'auth_callback'     => $auth_callback,
+					'sanitize_callback' => 'rest_sanitize_boolean',
 				)
 			);
 		}
@@ -286,9 +298,17 @@ class AyudaWP_AISS_Meta_Box {
 				 */
 				AyudaWP_AISS_AI_Summary::run( $post_id, true );
 			} elseif ( isset( $_POST['ayudawp_aiss_summary_manual'] ) ) {
-				// phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- sanitized below via wp_kses_post.
-				$submitted = wp_unslash( $_POST['ayudawp_aiss_summary_manual'] );
-				$submitted = wp_kses_post( $submitted );
+				/*
+				 * sanitize_textarea_field() rather than wp_kses_post() since
+				 * 2.5.0, to match the sanitize_callback the meta key itself
+				 * carries (class-ai-summary.php:112). The summary is printed
+				 * one sentence per line through esc_html(), so markup never
+				 * rendered as markup anyway; keeping wp_kses_post() here would
+				 * promise HTML that the meta sanitizer strips on save. The
+				 * textarea variant is the right one because the bullet-list
+				 * format stores one item per line.
+				 */
+				$submitted = sanitize_textarea_field( wp_unslash( $_POST['ayudawp_aiss_summary_manual'] ) );
 				$stored    = (string) get_post_meta( $post_id, AyudaWP_AISS_AI_Summary::META_SUMMARY, true );
 
 				if ( $submitted !== $stored ) {

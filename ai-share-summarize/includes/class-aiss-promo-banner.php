@@ -93,6 +93,14 @@ class AyudaWP_AISS_Promo_Banner {
 				/* translators: SiteGround affiliate URL. Change this URL in translations to use a localized landing page. */
 				'url'         => __( 'https://stgrnd.co/telladowpbox', 'ai-share-summarize' ),
 			),
+			'plugins'     => array(
+				'icon'        => 'dashicons-admin-plugins',
+				'title'       => __( 'Premium WordPress plugins', 'ai-share-summarize' ),
+				'description' => __( 'Focused plugins for WordPress and WooCommerce, each solving one problem well. No bloated suites, no upsell nags, no telemetry.', 'ai-share-summarize' ),
+				'button'      => __( 'Browse plugins', 'ai-share-summarize' ),
+				/* translators: Plugin store URL. Change this URL in translations to use a localized landing page. */
+				'url'         => __( 'https://plugins.ayudawp.com/en/', 'ai-share-summarize' ),
+			),
 		);
 	}
 

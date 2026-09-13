@@ -51,6 +51,10 @@ function ayudawp_aiss_get_available_buttons() {
 		'copilot'   => 'Microsoft Copilot',
 		'qwen'      => 'Qwen',
 		'meta_ai'   => 'Meta AI',
+		// Browser actions (v2.5.0): no destination site, they act on the page.
+		// Translatable, unlike the platform names above, which are brands.
+		'copy_link' => __( 'Copy link', 'ai-share-summarize' ),
+		'web_share' => __( 'Native share', 'ai-share-summarize' ),
 	);
 }
 
@@ -60,7 +64,7 @@ function ayudawp_aiss_get_available_buttons() {
  * @return array Social media button keys.
  */
 function ayudawp_aiss_get_social_buttons() {
-	return array( 'twitter', 'linkedin', 'facebook', 'telegram', 'whatsapp', 'email', 'raindrop', 'reddit', 'bluesky', 'line', 'mastodon', 'threads', 'pinterest' );
+	return array( 'twitter', 'linkedin', 'facebook', 'telegram', 'whatsapp', 'email', 'raindrop', 'reddit', 'bluesky', 'line', 'mastodon', 'threads', 'pinterest', 'copy_link', 'web_share' );
 }
 
 /**
@@ -103,17 +107,27 @@ function ayudawp_aiss_sanitize_title_style( $value ) {
  * that recurring "looks vulnerable" pattern from the codebase.
  *
  * @since 2.1.0
+ * @since 2.5.0 Optional id, used to wire section titles to their button group
+ *              with aria-labelledby.
  * @param string $style Untrusted tag name (validated against the allowlist).
  * @param string $class CSS class(es) for the element (escaped here).
+ * @param string $id    Optional element id (escaped here).
  * @return string Opening tag, e.g. '<h3 class="ayudawp-title">'.
  */
-function ayudawp_aiss_open_tag( $style, $class = '' ) {
+function ayudawp_aiss_open_tag( $style, $class = '', $id = '' ) {
 	$tag   = ayudawp_aiss_sanitize_title_style( $style );
 	$class = trim( (string) $class );
+	$id    = trim( (string) $id );
 
-	return '' !== $class
-		? '<' . $tag . ' class="' . esc_attr( $class ) . '">'
-		: '<' . $tag . '>';
+	$attributes = '';
+	if ( '' !== $id ) {
+		$attributes .= ' id="' . esc_attr( $id ) . '"';
+	}
+	if ( '' !== $class ) {
+		$attributes .= ' class="' . esc_attr( $class ) . '"';
+	}
+
+	return '<' . $tag . $attributes . '>';
 }
 
 /**
@@ -144,7 +158,6 @@ function ayudawp_aiss_validate_options( $input ) {
 
 	// Text fields.
 	$text_fields = array(
-		'auto_insert_position',
 		'twitter_handle',
 		'title_text',
 		'title_style',
@@ -161,15 +174,22 @@ function ayudawp_aiss_validate_options( $input ) {
 		'custom_color_bg',
 		'custom_color_text',
 		'dark_mode_adaptation',
+		// Mobile compact mode and UTM tagging (v2.5.0).
+		'mobile_compact',
+		'utm_campaign',
 	);
 	$textarea_fields = array( 'default_prompt', 'custom_text' );
-	$array_fields    = array( 'enabled_buttons', 'display_locations', 'auto_insert_content_types', 'button_custom_order_ai', 'button_custom_order_social' );
+	$array_fields    = array( 'enabled_buttons', 'button_custom_order_ai', 'button_custom_order_social' );
 	$boolean_fields  = array(
 		'show_icons',
 		'delete_data_on_uninstall',
 		'exclude_noindex',
 		'separator_top',
 		'separator_bottom',
+		'floating_bar_autohide',
+		'floating_bar_hide_mobile',
+		'floating_bar_hide_with_inline',
+		'utm_enabled',
 	);
 
 	foreach ( $text_fields as $field ) {
@@ -229,6 +249,55 @@ function ayudawp_aiss_validate_options( $input ) {
 		$validated['button_colors'] = 'minimal';
 	}
 
+	/*
+	 * Placements (v2.5.0): a map of destination => position, where a key that
+	 * is not present means "not there". Both the destination and the position
+	 * are checked against the lists the screen paints, so a form that posts a
+	 * post type that no longer exists cannot write it.
+	 */
+	$targets = ayudawp_aiss_get_placement_targets();
+
+	foreach ( array( 'placements', 'floating_bar_placements' ) as $map_key ) {
+		$positions = ayudawp_aiss_get_placement_positions( $map_key );
+		$fallback  = ayudawp_aiss_get_default_placement_position( $map_key );
+		$validated[ $map_key ] = array();
+
+		// The form posts two halves: which destinations are ticked, and the
+		// position chosen for every row (ticked or not, so unticking and
+		// reticking a row does not lose the position). Only the intersection
+		// is stored.
+		$enabled = isset( $input[ $map_key . '_on' ] ) && is_array( $input[ $map_key . '_on' ] )
+			? array_map( 'sanitize_key', $input[ $map_key . '_on' ] )
+			: array();
+
+		$chosen = isset( $input[ $map_key ] ) && is_array( $input[ $map_key ] ) ? $input[ $map_key ] : array();
+
+		foreach ( $enabled as $target ) {
+			if ( ! isset( $targets[ $target ] ) ) {
+				continue;
+			}
+			$position = isset( $chosen[ $target ] ) ? sanitize_key( $chosen[ $target ] ) : $fallback;
+			$validated[ $map_key ][ $target ] = isset( $positions[ $position ] ) ? $position : $fallback;
+		}
+	}
+
+	// Validate mobile_compact (v2.5.0).
+	$valid_compact_modes = array( 'disabled', 'single', 'partial' );
+	if ( isset( $validated['mobile_compact'] ) && ! in_array( $validated['mobile_compact'], $valid_compact_modes, true ) ) {
+		$validated['mobile_compact'] = 'disabled';
+	}
+
+	/*
+	 * How many buttons stay visible in the "N visible + more" compact mode.
+	 * Clamped rather than rejected: the field is a number input, so an out of
+	 * range value is a typo, not an attack, and falling back to the default
+	 * would silently discard what the admin meant.
+	 */
+	if ( isset( $input['mobile_compact_visible'] ) ) {
+		$visible = (int) $input['mobile_compact_visible'];
+		$validated['mobile_compact_visible'] = max( 1, min( 5, $visible ) );
+	}
+
 	// Validate dark_mode_adaptation.
 	$valid_dark_modes = array( 'disabled', 'auto' );
 	if ( isset( $validated['dark_mode_adaptation'] ) && ! in_array( $validated['dark_mode_adaptation'], $valid_dark_modes, true ) ) {
@@ -266,6 +335,20 @@ function ayudawp_aiss_validate_options( $input ) {
 		foreach ( $stored as $key => $value ) {
 			if ( 0 === strpos( $key, 'ai_summary' ) && ! isset( $validated[ $key ] ) ) {
 				$validated[ $key ] = $value;
+			}
+		}
+
+		/*
+		 * Same idea for the three keys `placements` replaced in 2.5.0
+		 * (`display_locations`, `auto_insert_content_types` and
+		 * `auto_insert_position`). The form no longer posts them, so without
+		 * this they would disappear on the first save and a rollback to 2.4.x
+		 * would land on a site with no buttons anywhere. Scheduled for removal
+		 * with the rest of the legacy snapshot, entry 38 of the roadmap.
+		 */
+		foreach ( array( 'display_locations', 'auto_insert_content_types', 'auto_insert_position' ) as $legacy_key ) {
+			if ( isset( $stored[ $legacy_key ] ) && ! isset( $validated[ $legacy_key ] ) ) {
+				$validated[ $legacy_key ] = $stored[ $legacy_key ];
 			}
 		}
 	}
@@ -390,7 +473,33 @@ function ayudawp_aiss_validate_summary_options( $input ) {
 			: array( 'post' );
 	}
 
-	// Position — allowlist.
+	/*
+	 * Placements (v2.5.0): one row per content type with its own position,
+	 * same table and same sanitizing as the buttons. `ai_summary_content_types`
+	 * and `ai_summary_position` are kept below as a rollback snapshot.
+	 */
+	$summary_targets   = ayudawp_aiss_get_placement_targets( 'ai_summary_placements' );
+	$summary_positions = ayudawp_aiss_get_placement_positions( 'ai_summary_placements' );
+	$summary_fallback  = ayudawp_aiss_get_default_placement_position( 'ai_summary_placements' );
+
+	$validated['ai_summary_placements'] = array();
+
+	$summary_enabled = isset( $input['ai_summary_placements_on'] ) && is_array( $input['ai_summary_placements_on'] )
+		? array_map( 'sanitize_key', $input['ai_summary_placements_on'] )
+		: array();
+	$summary_chosen  = isset( $input['ai_summary_placements'] ) && is_array( $input['ai_summary_placements'] )
+		? $input['ai_summary_placements']
+		: array();
+
+	foreach ( $summary_enabled as $target ) {
+		if ( ! isset( $summary_targets[ $target ] ) ) {
+			continue;
+		}
+		$position = isset( $summary_chosen[ $target ] ) ? sanitize_key( $summary_chosen[ $target ] ) : $summary_fallback;
+		$validated['ai_summary_placements'][ $target ] = isset( $summary_positions[ $position ] ) ? $position : $summary_fallback;
+	}
+
+	// Position — allowlist. Legacy key, carried over for rollback.
 	$valid_summary_positions          = array( 'before_buttons', 'after_buttons', 'before_content', 'disabled' );
 	$validated['ai_summary_position'] = isset( $input['ai_summary_position'] ) && in_array( $input['ai_summary_position'], $valid_summary_positions, true )
 		? $input['ai_summary_position']
@@ -525,44 +634,199 @@ function ayudawp_aiss_derive_summary_options_from_legacy() {
 }
 
 /**
- * Check if buttons should be displayed in current context
+ * The places the buttons can be inserted into (v2.5.0)
  *
- * @return bool True if buttons should be displayed.
+ * One row per public post type, plus the blog home and the archive listings.
+ * This is the list the settings screen paints and the list the resolver walks.
+ *
+ * @since 2.5.0
+ * @return array Destination key => label.
  */
-function ayudawp_aiss_should_display_buttons() {
-	$options       = get_option( 'ayudawp_aiss_options' );
-	$locations     = isset( $options['display_locations'] ) ? $options['display_locations'] : array();
-	$content_types = isset( $options['auto_insert_content_types'] ) ? $options['auto_insert_content_types'] : array();
+function ayudawp_aiss_get_placement_targets( $key = 'placements' ) {
+	$targets = array();
 
-	if ( empty( $locations ) ) {
-		return false;
+	/*
+	 * Media is a public post type but not a place anybody shares from, and on a
+	 * site with a few plugins the list is long enough already. It is only left
+	 * out when it is not already configured: a site that had it ticked before
+	 * keeps seeing its row instead of losing the setting silently.
+	 */
+	$configured = array();
+	$options    = get_option( 'ayudawp_aiss_options' );
+	foreach ( array( 'placements', 'floating_bar_placements' ) as $map_key ) {
+		if ( isset( $options[ $map_key ] ) && is_array( $options[ $map_key ] ) ) {
+			$configured = array_merge( $configured, array_keys( $options[ $map_key ] ) );
+		}
+	}
+
+	foreach ( get_post_types( array( 'public' => true ), 'objects' ) as $post_type ) {
+		if ( 'attachment' === $post_type->name && ! in_array( 'attachment', $configured, true ) ) {
+			continue;
+		}
+		$targets[ $post_type->name ] = $post_type->label;
+	}
+
+	/*
+	 * The summary belongs to one post, so the listings are not destinations for
+	 * it; the buttons and the bar do work there.
+	 */
+	if ( 'ai_summary_placements' !== $key ) {
+		$targets['home']    = __( 'Blog home', 'ai-share-summarize' );
+		$targets['archive'] = __( 'Archives, categories and tags', 'ai-share-summarize' );
+	}
+
+	/**
+	 * Filter the destinations the buttons can be placed in.
+	 *
+	 * Useful on sites where plugins register public post types that never show
+	 * share buttons, to keep the settings table short.
+	 *
+	 * @since 2.5.0
+	 * @param array  $targets Destination key => label.
+	 * @param string $key     Which placements map is being painted.
+	 */
+	return apply_filters( 'ayudawp_aiss_placement_targets', $targets, $key );
+}
+
+/**
+ * Positions a destination can use, per feature (v2.5.0)
+ *
+ * The three features place themselves in their own terms: the inline block
+ * relative to the content, the floating bar against an edge of the viewport,
+ * and the summary relative to the buttons. Same table, same interaction, its
+ * own vocabulary in each.
+ *
+ * @since 2.5.0
+ * @param string $key Placements option key.
+ * @return array Position key => label.
+ */
+function ayudawp_aiss_get_placement_positions( $key = 'placements' ) {
+	if ( 'floating_bar_placements' === $key ) {
+		return array(
+			'left'   => __( 'Pinned to the left edge', 'ai-share-summarize' ),
+			'right'  => __( 'Pinned to the right edge', 'ai-share-summarize' ),
+			'bottom' => __( 'Along the bottom', 'ai-share-summarize' ),
+		);
+	}
+
+	if ( 'ai_summary_placements' === $key ) {
+		return array(
+			'before_buttons' => __( 'Right before the share buttons', 'ai-share-summarize' ),
+			'after_buttons'  => __( 'Right after the share buttons', 'ai-share-summarize' ),
+			'before_content' => __( 'Before the content', 'ai-share-summarize' ),
+			// Keeps what the old "Do not display" position did: the summary is
+			// generated and available to the shortcode and the REST API, but
+			// the post does not print it.
+			'hidden'         => __( 'Generate it, but do not display it', 'ai-share-summarize' ),
+		);
+	}
+
+	return array(
+		'before_content' => __( 'Before the content', 'ai-share-summarize' ),
+		'after_content'  => __( 'After the content', 'ai-share-summarize' ),
+		'both'           => __( 'Before and after', 'ai-share-summarize' ),
+	);
+}
+
+/**
+ * Default position for a placements map, used when a stored value is unusable
+ *
+ * @since 2.5.0
+ * @param string $key Placements option key.
+ * @return string
+ */
+function ayudawp_aiss_get_default_placement_position( $key = 'placements' ) {
+	if ( 'floating_bar_placements' === $key ) {
+		return 'right';
+	}
+	if ( 'ai_summary_placements' === $key ) {
+		return 'before_buttons';
+	}
+	return 'after_content';
+}
+
+/**
+ * Stored placements, cleaned of anything that is not a valid pair (v2.5.0)
+ *
+ * @since 2.5.0
+ * @param string $key Option key holding the placements.
+ * @return array Destination key => position.
+ */
+function ayudawp_aiss_get_placements( $key = 'placements' ) {
+	// The summary keeps its settings in its own option since 2.3.0.
+	$options = ( 'ai_summary_placements' === $key )
+		? ayudawp_aiss_get_summary_options()
+		: get_option( 'ayudawp_aiss_options' );
+
+	$stored = isset( $options[ $key ] ) && is_array( $options[ $key ] ) ? $options[ $key ] : array();
+
+	$targets   = ayudawp_aiss_get_placement_targets();
+	$positions = ayudawp_aiss_get_placement_positions( $key );
+	$clean     = array();
+
+	foreach ( $stored as $target => $position ) {
+		/*
+		 * A post type that no longer exists (its plugin was deactivated) is
+		 * skipped rather than dropped from the option: reactivating the plugin
+		 * brings the setting back instead of silently losing it.
+		 */
+		if ( ! isset( $targets[ $target ] ) ) {
+			continue;
+		}
+		$clean[ $target ] = isset( $positions[ $position ] ) ? $position : ayudawp_aiss_get_default_placement_position( $key );
+	}
+
+	return $clean;
+}
+
+/**
+ * Which position applies to the request being rendered (v2.5.0)
+ *
+ * Replaces the three-way condition that governed this until 2.4.4
+ * (`display_locations` AND `auto_insert_content_types` AND
+ * `auto_insert_position`), where the first two listed overlapping things and
+ * nothing on screen said the condition was an AND. One row per destination
+ * now carries both the "whether" and the "where".
+ *
+ * @since 2.5.0
+ * @param string $key Option key holding the placements.
+ * @return string 'before_content', 'after_content', 'both', or '' for nowhere.
+ */
+function ayudawp_aiss_get_placement_for_context( $key = 'placements' ) {
+	$placements = ayudawp_aiss_get_placements( $key );
+
+	if ( empty( $placements ) ) {
+		return '';
 	}
 
 	if ( is_singular() ) {
 		$post_type = get_post_type();
-
-		if ( 'post' === $post_type && in_array( 'posts', $locations, true ) && in_array( 'post', $content_types, true ) ) {
-			return true;
-		}
-
-		if ( 'page' === $post_type && in_array( 'pages', $locations, true ) && in_array( 'page', $content_types, true ) ) {
-			return true;
-		}
-
-		if ( 'post' !== $post_type && 'page' !== $post_type && in_array( 'cpt', $locations, true ) && in_array( $post_type, $content_types, true ) ) {
-			return true;
-		}
+		return isset( $placements[ $post_type ] ) ? $placements[ $post_type ] : '';
 	}
 
-	if ( ( is_archive() || is_category() || is_tag() ) && in_array( 'archives', $locations, true ) ) {
-		return true;
+	if ( is_home() ) {
+		return isset( $placements['home'] ) ? $placements['home'] : '';
 	}
 
-	if ( is_home() && in_array( 'home', $locations, true ) ) {
-		return true;
+	if ( is_archive() || is_category() || is_tag() ) {
+		return isset( $placements['archive'] ) ? $placements['archive'] : '';
 	}
 
-	return false;
+	return '';
+}
+
+/**
+ * Check if buttons should be displayed on current page
+ *
+ * Kept as a boolean helper for the callers that only need a yes or no; the
+ * position itself comes from ayudawp_aiss_get_placement_for_context().
+ *
+ * @since 1.2.0
+ * @since 2.5.0 Resolved from the unified `placements` option.
+ * @return bool True when the buttons block belongs on this request.
+ */
+function ayudawp_aiss_should_display_buttons() {
+	return '' !== ayudawp_aiss_get_placement_for_context();
 }
 
 /**
@@ -673,13 +937,47 @@ function ayudawp_aiss_is_canonical_ai_plugin_active() {
  * @return array<int,string> List of post type slugs.
  */
 function ayudawp_aiss_get_summary_post_types() {
-	$options = ayudawp_aiss_get_summary_options();
+	$placements = ayudawp_aiss_get_placements( 'ai_summary_placements' );
 
+	if ( ! empty( $placements ) ) {
+		return array_keys( $placements );
+	}
+
+	/*
+	 * Pre-2.5.0 shape, still read directly so a site whose migration has not
+	 * run yet (an update in flight, a partial restore) keeps generating.
+	 */
+	$options = ayudawp_aiss_get_summary_options();
 	if ( isset( $options['ai_summary_content_types'] ) && is_array( $options['ai_summary_content_types'] ) ) {
 		return array_values( array_filter( array_map( 'strval', $options['ai_summary_content_types'] ) ) );
 	}
 
-	return array( 'post' );
+	return array();
+}
+
+/**
+ * Where the summary goes on this request (v2.5.0)
+ *
+ * @since 2.5.0
+ * @return string Position key, or '' when the summary is not shown here.
+ */
+function ayudawp_aiss_get_summary_position_for_context() {
+	$position = ayudawp_aiss_get_placement_for_context( 'ai_summary_placements' );
+
+	if ( '' !== $position ) {
+		return ( 'hidden' === $position ) ? '' : $position;
+	}
+
+	// Pre-2.5.0 fallback, as above.
+	$placements = ayudawp_aiss_get_placements( 'ai_summary_placements' );
+	if ( ! empty( $placements ) ) {
+		return '';
+	}
+
+	$options = ayudawp_aiss_get_summary_options();
+	$legacy  = isset( $options['ai_summary_position'] ) ? $options['ai_summary_position'] : 'before_buttons';
+
+	return ( 'disabled' === $legacy ) ? '' : $legacy;
 }
 
 /**
@@ -966,7 +1264,419 @@ function ayudawp_aiss_get_platform_colors() {
 		'copilot'    => '#6264A7',
 		'qwen'       => '#615CED',
 		'meta_ai'    => '#0081FB',
+		'copy_link'  => '#5F6C7B',
+		'web_share'  => '#2F6FED',
 	);
+}
+
+/**
+ * Allowed tags for the plugin's own inline SVG icons (v2.5.0)
+ *
+ * The icons are literal strings in AyudaWP_AISS_Icons with no user input in
+ * them, so they were printed raw behind a `phpcs:ignore`. Running them through
+ * wp_kses() instead costs nothing measurable, removes two security-sniff
+ * suppressions, and means a future icon carrying something it should not is
+ * stripped rather than printed.
+ *
+ * @since 2.5.0
+ * @return array Allowlist for wp_kses().
+ */
+function ayudawp_aiss_kses_svg() {
+	return array(
+		'svg'      => array(
+			'width'       => array(),
+			'height'      => array(),
+			'viewbox'     => array(),
+			'fill'        => array(),
+			'role'        => array(),
+			'class'       => array(),
+			'aria-hidden' => array(),
+			'xmlns'       => array(),
+		),
+		'path'     => array(
+			'd'         => array(),
+			'fill'      => array(),
+			'stroke'    => array(),
+			'fill-rule' => array(),
+			'clip-rule' => array(),
+		),
+		'circle'   => array(
+			'cx'     => array(),
+			'cy'     => array(),
+			'r'      => array(),
+			'fill'   => array(),
+			'stroke' => array(),
+		),
+		'rect'     => array(
+			'x'      => array(),
+			'y'      => array(),
+			'width'  => array(),
+			'height' => array(),
+			'rx'     => array(),
+			'ry'     => array(),
+			'fill'   => array(),
+		),
+		'polyline' => array( 'points' => array() ),
+		'polygon'  => array( 'points' => array(), 'fill' => array() ),
+		'g'        => array( 'fill' => array() ),
+		'span'     => array( 'class' => array() ),
+	);
+}
+
+/**
+ * Allowed tags for a rendered block of share buttons (v2.5.0)
+ *
+ * Used by the floating bar, the one place that echoes a composed buttons
+ * string instead of returning it through the_content. Every attribute the
+ * button markup can carry is listed here; anything else is dropped, so a
+ * regression in the builder cannot print an attribute nobody reviewed.
+ *
+ * @since 2.5.0
+ * @return array Allowlist for wp_kses().
+ */
+function ayudawp_aiss_kses_buttons() {
+	$button_attributes = array(
+		'class'           => array(),
+		'id'              => array(),
+		'data-url'        => array(),
+		'data-platform'   => array(),
+		'data-title'      => array(),
+		'data-post-id'    => array(),
+		'data-autohide'   => array(),
+		'aria-label'      => array(),
+		'aria-labelledby' => array(),
+		'aria-controls'   => array(),
+		'aria-expanded'   => array(),
+		'aria-hidden'     => array(),
+		'role'            => array(),
+		'hidden'          => array(),
+		'style'           => array(),
+	);
+
+	$link_attributes = array_merge(
+		$button_attributes,
+		array(
+			'href'   => array(),
+			'target' => array(),
+			'rel'    => array(),
+		)
+	);
+
+	return array_merge(
+		ayudawp_aiss_kses_svg(),
+		array(
+			'div'    => $button_attributes,
+			'a'      => $link_attributes,
+			'button' => array_merge( $button_attributes, array( 'type' => array() ) ),
+			'span'   => $button_attributes,
+		)
+	);
+}
+
+/**
+ * Buttons that act on the current page instead of opening a destination (v2.5.0)
+ *
+ * "Copy link" writes to the clipboard and "Native share" opens the operating
+ * system share sheet. They are rendered as <button> whatever the global
+ * "Button HTML type" setting says, because there is no URL to follow: emitting
+ * them as <a href="{permalink}"> would add a self-link to every post.
+ *
+ * @since 2.5.0
+ * @return array Button keys.
+ */
+function ayudawp_aiss_get_action_buttons() {
+	return array( 'copy_link', 'web_share' );
+}
+
+/**
+ * Campaign medium a platform belongs to, for UTM tagging (v2.5.0)
+ *
+ * @since 2.5.0
+ * @param string $platform Button key.
+ * @return string 'ai', 'share' or 'social'.
+ */
+function ayudawp_aiss_get_platform_medium( $platform ) {
+	if ( in_array( $platform, ayudawp_aiss_get_ai_buttons(), true ) ) {
+		return 'ai';
+	}
+	if ( in_array( $platform, ayudawp_aiss_get_action_buttons(), true ) ) {
+		return 'share';
+	}
+	return 'social';
+}
+
+/**
+ * Add UTM parameters to the URL being shared (v2.5.0)
+ *
+ * Off by default. When enabled, the shared URL carries utm_source (the
+ * platform key), utm_medium (ai / social / share) and, when the admin filled
+ * it in, utm_campaign. Only the URL of the site's own post is tagged — never
+ * the destination platform URL, which is built afterwards around this value.
+ *
+ * `add_query_arg()` is used rather than string concatenation so a permalink
+ * that already has a query string (plain permalinks, tracking parameters
+ * added by other plugins) keeps working.
+ *
+ * @since 2.5.0
+ * @param string $url      Permalink being shared.
+ * @param string $platform Button key.
+ * @param array  $options  Plugin options.
+ * @return string URL, tagged or untouched.
+ */
+function ayudawp_aiss_add_utm( $url, $platform, $options = null ) {
+	if ( null === $options ) {
+		$options = get_option( 'ayudawp_aiss_options' );
+	}
+
+	if ( empty( $options['utm_enabled'] ) || '' === (string) $url ) {
+		return $url;
+	}
+
+	$args = array(
+		'utm_source' => $platform,
+		'utm_medium' => ayudawp_aiss_get_platform_medium( $platform ),
+	);
+
+	$campaign = isset( $options['utm_campaign'] ) ? trim( (string) $options['utm_campaign'] ) : '';
+	if ( '' !== $campaign ) {
+		$args['utm_campaign'] = $campaign;
+	}
+
+	/**
+	 * Filter the UTM parameters added to a shared URL.
+	 *
+	 * @since 2.5.0
+	 * @param array  $args     Query arguments to add.
+	 * @param string $platform Button key.
+	 * @param string $url      Untagged URL.
+	 */
+	$args = apply_filters( 'ayudawp_aiss_utm_args', $args, $platform, $url );
+
+	if ( empty( $args ) || ! is_array( $args ) ) {
+		return $url;
+	}
+
+	return add_query_arg( array_map( 'rawurlencode', array_map( 'strval', $args ) ), $url );
+}
+
+/**
+ * What the current request shares: its URL, its title and its post id (v2.5.0)
+ *
+ * The floating bar can now sit on archives and on the blog home, where there is
+ * no single post: there it shares the listing itself, which is what a reader on
+ * that page would expect to pass on.
+ *
+ * @since 2.5.0
+ * @return array {
+ *     @type string $url     Permalink or archive URL.
+ *     @type string $title   Title to share.
+ *     @type int    $post_id Post id, 0 on listings.
+ * }
+ */
+function ayudawp_aiss_get_shareable_context() {
+	if ( is_singular() ) {
+		$post_id = (int) get_queried_object_id();
+		return array(
+			'url'     => (string) get_permalink( $post_id ),
+			'title'   => (string) get_the_title( $post_id ),
+			'post_id' => $post_id,
+		);
+	}
+
+	if ( is_home() || is_front_page() ) {
+		return array(
+			'url'     => (string) home_url( '/' ),
+			'title'   => (string) get_bloginfo( 'name' ),
+			'post_id' => 0,
+		);
+	}
+
+	$queried = get_queried_object();
+
+	if ( $queried instanceof WP_Term ) {
+		$link = get_term_link( $queried );
+		return array(
+			'url'     => is_wp_error( $link ) ? (string) home_url( '/' ) : (string) $link,
+			'title'   => (string) $queried->name,
+			'post_id' => 0,
+		);
+	}
+
+	if ( $queried instanceof WP_Post_Type ) {
+		$link = get_post_type_archive_link( $queried->name );
+		return array(
+			'url'     => $link ? (string) $link : (string) home_url( '/' ),
+			'title'   => (string) $queried->label,
+			'post_id' => 0,
+		);
+	}
+
+	return array(
+		'url'     => (string) home_url( '/' ),
+		'title'   => (string) get_bloginfo( 'name' ),
+		'post_id' => 0,
+	);
+}
+
+/**
+ * Whether the inline buttons block is going to be inserted on this request (v2.5.0)
+ *
+ * Answers the question before `the_content` runs, so the floating bar can
+ * decide whether it would be duplicating the inline block. Shortcode renders
+ * are not predictable from here and are not counted.
+ *
+ * @since 2.5.0
+ * @param int $post_id Post being rendered.
+ * @return bool
+ */
+function ayudawp_aiss_inline_buttons_will_render( $post_id = null ) {
+	$options = get_option( 'ayudawp_aiss_options' );
+
+	$buttons = isset( $options['enabled_buttons'] ) ? $options['enabled_buttons'] : array();
+	if ( empty( $buttons ) || ! is_array( $buttons ) ) {
+		return false;
+	}
+
+	if ( ! ayudawp_aiss_should_display_buttons() ) {
+		return false;
+	}
+
+	// On a listing there is no single post to exclude.
+	return ! $post_id || ! ayudawp_aiss_is_post_excluded( $post_id );
+}
+
+/**
+ * Whether the floating share bar is enabled and applies to this request (v2.5.0)
+ *
+ * The bar is a singular-page feature: it needs one post to share and one
+ * permalink to point at. It reuses the buttons' own display rules, so a post
+ * type outside the buttons settings, an excluded post or a noindexed post does
+ * not get it either.
+ *
+ * @since 2.5.0
+ * @param int|null $post_id Post to check, or null to resolve the queried one.
+ * @return bool
+ */
+function ayudawp_aiss_should_display_floating_bar( $post_id = null ) {
+	// Asked twice per request, once to enqueue and once to render, and the
+	// answer cannot change in between.
+	static $cache = array();
+
+	$key = ( null === $post_id ) ? 'queried' : (string) $post_id;
+
+	if ( ! isset( $cache[ $key ] ) ) {
+		$cache[ $key ] = ayudawp_aiss_resolve_floating_bar_visibility( $post_id );
+	}
+
+	return $cache[ $key ];
+}
+
+/**
+ * Work out whether the floating bar applies, without caching (v2.5.0)
+ *
+ * Split out of ayudawp_aiss_should_display_floating_bar() so that one can keep
+ * its early returns and still memoize the answer.
+ *
+ * @since 2.5.0
+ * @param int|null $post_id Post to check, or null to resolve the queried one.
+ * @return bool
+ */
+function ayudawp_aiss_resolve_floating_bar_visibility( $post_id = null ) {
+	if ( is_feed() ) {
+		return false;
+	}
+
+	$options = get_option( 'ayudawp_aiss_options' );
+
+	$buttons = isset( $options['enabled_buttons'] ) ? $options['enabled_buttons'] : array();
+	if ( empty( $buttons ) || ! is_array( $buttons ) ) {
+		return false;
+	}
+
+	/*
+	 * The bar has its own table of destinations with its own positions (left,
+	 * right, bottom), so it is resolved exactly like the inline block and can
+	 * live somewhere the block does not — on archives, for instance, where the
+	 * block is not inserted at all.
+	 */
+	if ( '' === ayudawp_aiss_get_placement_for_context( 'floating_bar_placements' ) ) {
+		return false;
+	}
+
+	if ( is_singular() ) {
+		if ( null === $post_id ) {
+			$post_id = get_queried_object_id();
+		}
+		if ( ! $post_id || ayudawp_aiss_is_post_excluded( $post_id ) ) {
+			return false;
+		}
+	}
+
+	/*
+	 * Optional: stay out of the way when the inline block is already on the
+	 * page, so the bar can act as a fallback for the places where the block is
+	 * not inserted instead of showing both.
+	 */
+	if ( ! empty( $options['floating_bar_hide_with_inline'] ) && ayudawp_aiss_inline_buttons_will_render( $post_id ) ) {
+		return false;
+	}
+
+	/**
+	 * Filter whether the floating bar renders on this request.
+	 *
+	 * @since 2.5.0
+	 * @param bool $show    Whether to render it.
+	 * @param int  $post_id Post being rendered, 0 on listings.
+	 */
+	return (bool) apply_filters( 'ayudawp_aiss_show_floating_bar', true, (int) $post_id );
+}
+
+/**
+ * Platform names sent to the front end, limited to the buttons in use (v2.5.0)
+ *
+ * @since 2.5.0
+ * @param array $options Plugin options.
+ * @return array Platform key => display name.
+ */
+function ayudawp_aiss_get_localized_platform_names( $options ) {
+	$all = array(
+		'twitter'    => 'X (Twitter)',
+		'linkedin'   => 'LinkedIn',
+		'facebook'   => 'Facebook',
+		'telegram'   => 'Telegram',
+		'whatsapp'   => 'WhatsApp',
+		'email'      => __( 'Email', 'ai-share-summarize' ),
+		'raindrop'   => 'Raindrop',
+		'reddit'     => 'Reddit',
+		'bluesky'    => 'Bluesky',
+		'line'       => 'LINE',
+		'mastodon'   => 'Mastodon',
+		'threads'    => 'Threads',
+		'pinterest'  => 'Pinterest',
+		'claude'     => 'Claude AI',
+		'chatgpt'    => 'ChatGPT',
+		'google_ai'  => 'Google AI',
+		'gemini'     => 'Gemini',
+		'grok'       => 'Grok',
+		'perplexity' => 'Perplexity',
+		'deepseek'   => 'DeepSeek',
+		'mistral'    => 'Mistral AI',
+		'copilot'    => 'Microsoft Copilot',
+		'qwen'       => 'Qwen',
+		'meta_ai'    => 'Meta AI',
+		'copy_link'  => __( 'Copy link', 'ai-share-summarize' ),
+		'web_share'  => __( 'Share', 'ai-share-summarize' ),
+	);
+
+	$enabled = isset( $options['enabled_buttons'] ) && is_array( $options['enabled_buttons'] )
+		? $options['enabled_buttons']
+		: array();
+
+	if ( empty( $enabled ) ) {
+		return $all;
+	}
+
+	return array_intersect_key( $all, array_flip( $enabled ) );
 }
 
 /**
@@ -990,10 +1700,15 @@ function ayudawp_aiss_enqueue_frontend_assets() {
 		AYUDAWP_AISS_VERSION
 	);
 
+	/*
+	 * No jQuery dependency since 2.5.0. The script was rewritten in plain JS,
+	 * so block themes that do not load jQuery on the front end no longer pull
+	 * it in (~85 KB and one request) just to show share buttons.
+	 */
 	wp_enqueue_script(
 		'ayudawp-aiss-scripts',
 		AYUDAWP_AISS_PLUGIN_URL . 'assets/js/ai-share-summarize.js',
-		array( 'jquery' ),
+		array(),
 		AYUDAWP_AISS_VERSION,
 		true
 	);
@@ -1015,28 +1730,9 @@ function ayudawp_aiss_enqueue_frontend_assets() {
 		// Copilot specific tooltips.
 		'copilotTooltipShort' => __( 'Copy prompt & open', 'ai-share-summarize' ),
 		'copilotTooltipLong'  => __( 'Copy prompt and open Copilot', 'ai-share-summarize' ),
-		// Platform names for tooltips.
-		'platformNames'      => array(
-			'twitter'    => 'X (Twitter)',
-			'linkedin'   => 'LinkedIn',
-			'facebook'   => 'Facebook',
-			'telegram'   => 'Telegram',
-			'whatsapp'   => 'WhatsApp',
-			'email'      => __( 'Email', 'ai-share-summarize' ),
-			'raindrop'   => 'Raindrop',
-			'reddit'     => 'Reddit',
-			'bluesky'    => 'Bluesky',
-			'line'       => 'LINE',
-			'claude'     => 'Claude AI',
-			'chatgpt'    => 'ChatGPT',
-			'google_ai'  => 'Google AI',
-			'gemini'     => 'Gemini',
-			'grok'       => 'Grok',
-			'perplexity' => 'Perplexity',
-			'deepseek'   => 'DeepSeek',
-			'mistral'    => 'Mistral AI',
-			'copilot'    => 'Microsoft Copilot',
-		),
+		// Platform names for tooltips, trimmed to the buttons in use (v2.5.0):
+		// the full list is 26 entries of inline JSON on every page.
+		'platformNames'      => ayudawp_aiss_get_localized_platform_names( $options ),
 		// Analytics click tracking (v1.5.0) - no nonce needed for public counter.
 		'trackUrl'           => esc_url_raw( rest_url( 'aiss/v1/track' ) ),
 		// Dark-mode adaptation: 'disabled' (default) or 'auto'
@@ -1046,6 +1742,14 @@ function ayudawp_aiss_enqueue_frontend_assets() {
 		'publicGenerateUrl'    => esc_url_raw( rest_url( 'aiss/v1/summary/generate' ) ),
 		'summaryGenerating'    => __( 'Generating…', 'ai-share-summarize' ),
 		'summaryGenerateError' => __( 'Generation failed. Try again.', 'ai-share-summarize' ),
+		// Copy link and native share (v2.5.0).
+		'linkCopied'           => __( 'Link copied to clipboard!', 'ai-share-summarize' ),
+		'copyFailed'           => __( 'Could not copy. Copy the address from the browser bar.', 'ai-share-summarize' ),
+		// Mobile compact mode (v2.5.0): labels for the expanded state. The
+		// collapsed ones are rendered by PHP so the toggle reads correctly
+		// before any script runs.
+		'compactLess'          => __( 'Less', 'ai-share-summarize' ),
+		'compactClose'         => __( 'Close', 'ai-share-summarize' ),
 	) );
 }
 

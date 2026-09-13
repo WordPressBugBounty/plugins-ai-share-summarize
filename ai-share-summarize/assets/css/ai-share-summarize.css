@@ -1,7 +1,7 @@
 /**
  * Share Buttons & AI-powered Summaries Plugin - CSS Styles
  * Refactored with CSS custom properties, no !important overrides.
- * Version: 2.4.0
+ * Version: 2.5.0
  */
 
 /* =============================================
@@ -32,6 +32,8 @@
 	--ayudawp-copilot: #6264A7;
 	--ayudawp-qwen: #615CED;
 	--ayudawp-meta-ai: #0081FB;
+	--ayudawp-copy-link: #5F6C7B;
+	--ayudawp-web-share: #2F6FED;
 	--ayudawp-custom-bg: #333333;
 	--ayudawp-custom-text: #ffffff;
 
@@ -338,6 +340,8 @@ button.ayudawp-share-btn:focus {
 .ayudawp-share-buttons.brand .ayudawp-share-btn.copilot    { background: var(--ayudawp-copilot); border-color: var(--ayudawp-copilot); color: #fff; }
 .ayudawp-share-buttons.brand .ayudawp-share-btn.qwen       { background: var(--ayudawp-qwen); border-color: var(--ayudawp-qwen); color: #fff; }
 .ayudawp-share-buttons.brand .ayudawp-share-btn.meta-ai    { background: var(--ayudawp-meta-ai); border-color: var(--ayudawp-meta-ai); color: #fff; }
+.ayudawp-share-buttons.brand .ayudawp-share-btn.copy-link  { background: var(--ayudawp-copy-link); border-color: var(--ayudawp-copy-link); color: #fff; }
+.ayudawp-share-buttons.brand .ayudawp-share-btn.web-share  { background: var(--ayudawp-web-share); border-color: var(--ayudawp-web-share); color: #fff; }
 
 /* Brand hover: darken via filter (single rule for all) */
 .ayudawp-share-buttons.brand .ayudawp-share-btn:hover {
@@ -373,6 +377,8 @@ button.ayudawp-share-btn:focus {
 .ayudawp-share-buttons.outline .ayudawp-share-btn.copilot    { border-color: var(--ayudawp-copilot); color: var(--ayudawp-copilot); background: transparent; }
 .ayudawp-share-buttons.outline .ayudawp-share-btn.qwen       { border-color: var(--ayudawp-qwen); color: var(--ayudawp-qwen); background: transparent; }
 .ayudawp-share-buttons.outline .ayudawp-share-btn.meta-ai    { border-color: var(--ayudawp-meta-ai); color: var(--ayudawp-meta-ai); background: transparent; }
+.ayudawp-share-buttons.outline .ayudawp-share-btn.copy-link  { border-color: var(--ayudawp-copy-link); color: var(--ayudawp-copy-link); background: transparent; }
+.ayudawp-share-buttons.outline .ayudawp-share-btn.web-share  { border-color: var(--ayudawp-web-share); color: var(--ayudawp-web-share); background: transparent; }
 
 /* Outline hover: fill with brand color */
 .ayudawp-share-buttons.outline .ayudawp-share-btn:hover {
@@ -405,6 +411,8 @@ button.ayudawp-share-btn:focus {
 .ayudawp-share-buttons.outline .ayudawp-share-btn.copilot:hover    { background: var(--ayudawp-copilot); }
 .ayudawp-share-buttons.outline .ayudawp-share-btn.qwen:hover       { background: var(--ayudawp-qwen); }
 .ayudawp-share-buttons.outline .ayudawp-share-btn.meta-ai:hover    { background: var(--ayudawp-meta-ai); }
+.ayudawp-share-buttons.outline .ayudawp-share-btn.copy-link:hover  { background: var(--ayudawp-copy-link); }
+.ayudawp-share-buttons.outline .ayudawp-share-btn.web-share:hover  { background: var(--ayudawp-web-share); }
 
 /* =============================================
    CUSTOM style (v1.6.0) - User-defined colors via CSS vars
@@ -448,6 +456,8 @@ button.ayudawp-share-btn:focus {
 .ayudawp-share-buttons.icons-only .ayudawp-share-btn.copilot    { background: var(--ayudawp-copilot); border-color: var(--ayudawp-copilot); color: #fff; }
 .ayudawp-share-buttons.icons-only .ayudawp-share-btn.qwen       { background: var(--ayudawp-qwen); border-color: var(--ayudawp-qwen); color: #fff; }
 .ayudawp-share-buttons.icons-only .ayudawp-share-btn.meta-ai    { background: var(--ayudawp-meta-ai); border-color: var(--ayudawp-meta-ai); color: #fff; }
+.ayudawp-share-buttons.icons-only .ayudawp-share-btn.copy-link  { background: var(--ayudawp-copy-link); border-color: var(--ayudawp-copy-link); color: #fff; }
+.ayudawp-share-buttons.icons-only .ayudawp-share-btn.web-share  { background: var(--ayudawp-web-share); border-color: var(--ayudawp-web-share); color: #fff; }
 
 /* Icons-only hover */
 .ayudawp-share-buttons.icons-only .ayudawp-share-btn:hover {
@@ -487,11 +497,18 @@ button.ayudawp-share-btn:focus {
    so the collapse/expand behavior works without JavaScript.
    ============================================= */
 
+/*
+ * Minimal is the default and, since 2.5.0, actually minimal: no box at all,
+ * just a rule above the block. Until now it carried the same 1px border as
+ * Outline, so the two presets were indistinguishable on most themes and the
+ * choice between them meant nothing.
+ */
 .ayudawp-aiss-summary {
 	margin: 24px 0;
-	padding: 12px 16px;
-	border: 1px solid #e0e0e0;
-	border-radius: 6px;
+	padding: 12px 0;
+	border: 0;
+	border-top: 1px solid #e0e0e0;
+	border-radius: 0;
 	background: transparent;
 }
 
@@ -560,9 +577,27 @@ button.ayudawp-share-btn:focus {
 
 /* Placeholder variant: contains the "Generate AI summary" button shown to
    visitors when the post has no stored summary yet (v2.0.0 frontend gen). */
-.ayudawp-aiss-summary--placeholder {
-	padding: 0;
-	border: none;
+.ayudawp-aiss-summary-generate-btn {
+	border: 2px solid var(--ayudawp-aiss-accent);
+	color: var(--ayudawp-aiss-accent);
+}
+
+.ayudawp-aiss-summary--placeholder.style-brand .ayudawp-aiss-summary-generate-btn {
+	background: var(--ayudawp-aiss-accent);
+	border-color: var(--ayudawp-aiss-accent);
+	color: #ffffff;
+}
+
+.ayudawp-aiss-summary--placeholder.style-dark .ayudawp-aiss-summary-generate-btn {
+	background: #1f2430;
+	border-color: #1f2430;
+	color: #e6e6e6;
+}
+
+.ayudawp-aiss-summary--placeholder.style-custom .ayudawp-aiss-summary-generate-btn {
+	background: var(--ayudawp-aiss-bg, transparent);
+	border-color: rgba(127, 127, 127, 0.35);
+	color: var(--ayudawp-aiss-text, inherit);
 }
 
 .ayudawp-aiss-summary-generate-btn {
@@ -635,31 +670,42 @@ button.ayudawp-share-btn:focus {
 	--ayudawp-aiss-accent: #2563eb;
 }
 
-/* Outline: accent border, transparent background. */
+/* Outline: a real box, drawn in the accent colour. */
 .ayudawp-aiss-summary.style-outline {
-	border-width: 2px;
-	border-color: var(--ayudawp-aiss-accent);
+	padding: 12px 16px;
+	border: 2px solid var(--ayudawp-aiss-accent);
+	border-radius: 6px;
+}
+
+.ayudawp-aiss-summary.style-outline .ayudawp-aiss-summary-label {
+	color: var(--ayudawp-aiss-accent);
 }
 
 /* Brand: filled accent background with light text. */
 .ayudawp-aiss-summary.style-brand {
+	padding: 12px 16px;
+	border: 1px solid var(--ayudawp-aiss-accent);
+	border-radius: 6px;
 	background: var(--ayudawp-aiss-accent);
-	border-color: var(--ayudawp-aiss-accent);
 	color: #ffffff;
 }
 
 /* Dark: dark callout on light themes. */
 .ayudawp-aiss-summary.style-dark {
+	padding: 12px 16px;
+	border: 1px solid #1f2430;
+	border-radius: 6px;
 	background: #1f2430;
-	border-color: #1f2430;
 	color: #e6e6e6;
 }
 
 /* Custom: colors from the settings color pickers (inline CSS variables). */
 .ayudawp-aiss-summary.style-custom {
+	padding: 12px 16px;
+	border: 1px solid rgba(127, 127, 127, 0.35);
+	border-radius: 6px;
 	background: var(--ayudawp-aiss-bg, transparent);
 	color: var(--ayudawp-aiss-text, inherit);
-	border-color: rgba(127, 127, 127, 0.35);
 }
 
 /* Keep the attribution and generate button legible on filled variants. */
@@ -681,6 +727,50 @@ button.ayudawp-share-btn:focus {
 .ayudawp-aiss-summary.style-dark .ayudawp-aiss-summary-generate-btn:hover:not(:disabled),
 .ayudawp-aiss-summary.style-custom .ayudawp-aiss-summary-generate-btn:hover:not(:disabled) {
 	background: rgba(255, 255, 255, 0.12);
+}
+
+/*
+ * Placeholder variant: the block is a single button, so the preset paints the
+ * button and not the wrapper. Until 2.5.0 the filled presets painted the
+ * <aside>, which with `padding: 0` meant a slab of accent colour with a small
+ * outlined button floating inside it. These rules repeat the base class to
+ * outweigh the presets above, which they tie with otherwise.
+ */
+.ayudawp-aiss-summary.ayudawp-aiss-summary--placeholder,
+.ayudawp-aiss-summary.ayudawp-aiss-summary--placeholder.style-outline,
+.ayudawp-aiss-summary.ayudawp-aiss-summary--placeholder.style-brand,
+.ayudawp-aiss-summary.ayudawp-aiss-summary--placeholder.style-dark,
+.ayudawp-aiss-summary.ayudawp-aiss-summary--placeholder.style-custom {
+	display: block;
+	width: auto;
+	padding: 0;
+	border: 0;
+	border-radius: 0;
+	background: transparent;
+	color: inherit;
+}
+
+.ayudawp-aiss-summary--placeholder.style-outline .ayudawp-aiss-summary-generate-btn {
+	border: 2px solid var(--ayudawp-aiss-accent);
+	color: var(--ayudawp-aiss-accent);
+}
+
+.ayudawp-aiss-summary--placeholder.style-brand .ayudawp-aiss-summary-generate-btn {
+	background: var(--ayudawp-aiss-accent);
+	border-color: var(--ayudawp-aiss-accent);
+	color: #ffffff;
+}
+
+.ayudawp-aiss-summary--placeholder.style-dark .ayudawp-aiss-summary-generate-btn {
+	background: #1f2430;
+	border-color: #1f2430;
+	color: #e6e6e6;
+}
+
+.ayudawp-aiss-summary--placeholder.style-custom .ayudawp-aiss-summary-generate-btn {
+	background: var(--ayudawp-aiss-bg, transparent);
+	border-color: rgba(127, 127, 127, 0.35);
+	color: var(--ayudawp-aiss-text, inherit);
 }
 
 /* =============================================
@@ -804,6 +894,181 @@ button.ayudawp-share-btn:focus {
 }
 
 /* =============================================
+   Copy-to-clipboard / native share notification (v2.5.0)
+   Moved out of the inline styles the script used to write, so a site can
+   restyle it and the Content Security Policy of strict setups is not a
+   problem.
+   ============================================= */
+.ayudawp-notification {
+	position: fixed;
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%) scale(0.96);
+	background: #333;
+	color: #fff;
+	padding: 16px 24px;
+	border-radius: 8px;
+	font-size: 14px;
+	font-weight: 500;
+	line-height: 1.4;
+	max-width: min(90vw, 420px);
+	text-align: center;
+	z-index: 99999;
+	box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+	border: 1px solid #555;
+	opacity: 0;
+	transition: opacity 0.3s ease, transform 0.3s ease;
+	pointer-events: none;
+}
+
+.ayudawp-notification.is-visible {
+	opacity: 1;
+	transform: translate(-50%, -50%) scale(1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.ayudawp-notification {
+		transition: none;
+	}
+}
+
+/* =============================================
+   Accessibility (v2.5.0)
+   ============================================= */
+
+/* The native share button is rendered hidden and revealed by the script only
+   where navigator.share exists. `display: inline-flex` on .ayudawp-share-btn
+   would otherwise beat the user agent's [hidden] rule. */
+.ayudawp-share-btn[hidden] {
+	display: none;
+}
+
+/* Keyboard focus ring that does not show on mouse clicks. The plain :focus
+   rule above stays for browsers without :focus-visible. */
+.ayudawp-share-btn:focus-visible {
+	outline: 2px solid #0073aa;
+	outline-offset: 2px;
+}
+
+/* =============================================
+   Mobile compact mode (v2.5.0)
+   Desktop renders exactly as before: everything here lives inside the mobile
+   breakpoint, and the toggle is hidden outside it.
+   ============================================= */
+.ayudawp-aiss-compact-toggle {
+	display: none;
+}
+
+@media (max-width: 600px) {
+	/*
+	 * The toggle follows the block's own alignment setting (v2.5.0): it used
+	 * to be centred always, which looked wrong on a left-aligned block.
+	 */
+	.ayudawp-share-buttons.is-mobile-compact .ayudawp-aiss-compact-toggle {
+		display: flex;
+		justify-content: flex-start;
+		margin-top: 10px;
+	}
+
+	.ayudawp-share-buttons.ayudawp-aiss-centered.is-mobile-compact .ayudawp-aiss-compact-toggle {
+		justify-content: center;
+	}
+
+	/*
+	 * And it never inherits the icons-only shape. A 40px circle cannot hold
+	 * "Share" plus an icon, so the label came out clipped; the toggle is a
+	 * pill with room for both whatever the button style is.
+	 */
+	.ayudawp-share-buttons.is-mobile-compact .ayudawp-aiss-more-btn,
+	.ayudawp-share-buttons.icons-only.is-mobile-compact .ayudawp-aiss-more-btn,
+	.ayudawp-share-buttons.icons-only.circular.is-mobile-compact .ayudawp-aiss-more-btn {
+		width: auto;
+		min-width: 0;
+		max-width: none;
+		height: auto;
+		min-height: 40px;
+		padding: 8px 18px;
+		border-radius: 6px;
+		gap: 8px;
+	}
+
+	/* The same caret as the summary block, rotating when the block opens. */
+	.ayudawp-share-buttons.is-mobile-compact .ayudawp-aiss-more-btn::after {
+		content: "";
+		display: inline-block;
+		width: 0;
+		height: 0;
+		border-left: 5px solid transparent;
+		border-right: 5px solid transparent;
+		border-top: 6px solid currentColor;
+		transition: transform 0.2s ease;
+	}
+
+	.ayudawp-share-buttons.is-mobile-compact.is-expanded .ayudawp-aiss-more-btn::after {
+		transform: rotate(180deg);
+	}
+
+	@media (prefers-reduced-motion: reduce) {
+		.ayudawp-share-buttons.is-mobile-compact .ayudawp-aiss-more-btn::after {
+			transition: none;
+		}
+	}
+
+	/* The visible buttons follow the alignment setting too. */
+	.ayudawp-share-buttons.is-mobile-compact .ayudawp-buttons-container {
+		justify-content: flex-start;
+	}
+
+	.ayudawp-share-buttons.ayudawp-aiss-centered.is-mobile-compact .ayudawp-buttons-container {
+		justify-content: center;
+	}
+
+	/* Single-button mode: nothing but the toggle until it is expanded. */
+	.ayudawp-share-buttons.compact-single:not(.is-expanded) .ayudawp-buttons-container,
+	.ayudawp-share-buttons.compact-single:not(.is-expanded) .ayudawp-title,
+	.ayudawp-share-buttons.compact-single:not(.is-expanded) .ayudawp-section-separator {
+		display: none;
+	}
+
+	.ayudawp-share-buttons.compact-single:not(.is-expanded) .ayudawp-aiss-compact-toggle {
+		margin-top: 0;
+	}
+
+	/* "N visible + more": the buttons past the count, and any section title
+	   left with nothing under it, are marked .aiss-overflow by PHP. */
+	.ayudawp-share-buttons.compact-partial:not(.is-expanded) .aiss-overflow {
+		display: none;
+	}
+
+	/* Compact blocks keep their buttons side by side: the full-width stacking
+	   of the 480px breakpoint would defeat the point of showing only three. */
+	.ayudawp-share-buttons.is-mobile-compact .ayudawp-buttons-container {
+		flex-direction: row;
+		flex-wrap: wrap;
+		gap: 8px;
+	}
+
+	.ayudawp-share-buttons.is-mobile-compact:not(.icons-only):not(.size-fluid) .ayudawp-share-btn {
+		width: auto;
+		min-width: 0;
+		flex: 0 1 auto;
+		max-width: 100%;
+	}
+
+	/* Fluid still fills the row when compact mode is on. */
+	.ayudawp-share-buttons.size-fluid.is-mobile-compact .ayudawp-share-btn {
+		width: auto;
+		flex: 1 1 45%;
+		max-width: none;
+	}
+
+	.ayudawp-share-buttons.compact-single.size-fluid .ayudawp-aiss-more-btn {
+		width: 100%;
+		max-width: 300px;
+	}
+}
+
+/* =============================================
    Responsive
    ============================================= */
 @media (max-width: 768px) {
@@ -862,10 +1127,21 @@ button.ayudawp-share-btn:focus {
 		max-width: 300px;
 	}
 
+	/*
+	 * Fluid keeps filling the row on phones (v2.5.0). Until now this rule made
+	 * it `width: 100%` with `flex: none`, which is exactly what every other
+	 * size does at this breakpoint, so choosing "fluid" changed nothing on a
+	 * phone. Two per row is what tells it apart from the stacked sizes.
+	 */
+	.ayudawp-share-buttons.size-fluid .ayudawp-buttons-container {
+		flex-direction: row;
+		flex-wrap: wrap;
+	}
+
 	.ayudawp-share-buttons.size-fluid .ayudawp-share-btn {
-		width: 100%;
-		max-width: 300px;
-		flex: none;
+		width: auto;
+		flex: 1 1 45%;
+		max-width: none;
 	}
 
 	.ayudawp-share-buttons.icons-only .ayudawp-buttons-container {

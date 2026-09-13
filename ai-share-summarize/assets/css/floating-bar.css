@@ -1,0 +1,189 @@
+/**
+ * Share Buttons & AI-powered Summaries — floating bar (v2.5.0)
+ *
+ * Loaded only on pages where the bar renders. It inherits the button look from
+ * the main stylesheet (the bar carries .ayudawp-share-buttons.icons-only), so
+ * everything here is placement, stacking and the optional auto-hide.
+ */
+
+/* =============================================
+   Placement
+   ============================================= */
+.ayudawp-aiss-floating {
+	position: fixed;
+	z-index: 9990;
+	/* Undo the inline block's own spacing and separator lines, inherited from
+	   the .ayudawp-share-buttons class the bar reuses for its button styles. */
+	margin: 0;
+	padding: 8px;
+	border: 0;
+	border-radius: 10px;
+	background: rgba(255, 255, 255, 0.92);
+	box-shadow: 0 2px 14px rgba(0, 0, 0, 0.14);
+	backdrop-filter: saturate(160%) blur(6px);
+	-webkit-backdrop-filter: saturate(160%) blur(6px);
+	max-width: calc(100vw - 24px);
+	box-sizing: border-box;
+}
+
+/*
+ * Specificity high enough to beat the main stylesheet's mobile rules. Below
+ * 480px those turn every icons-only container into `display: grid` with 40px
+ * columns, and `flex-direction` has no effect on a grid, so the bar stayed a
+ * vertical column pinned to the bottom — which on a phone reads as "stuck in
+ * the middle of the screen". The bar lays itself out, always.
+ */
+.ayudawp-aiss-floating.ayudawp-share-buttons.icons-only .ayudawp-buttons-container,
+.ayudawp-aiss-floating .ayudawp-buttons-container {
+	display: flex;
+	gap: 8px;
+	margin: 0;
+	max-width: none;
+	grid-template-columns: none;
+}
+
+/* Left and right: a vertical column, centred against the viewport. */
+.ayudawp-aiss-floating--left,
+.ayudawp-aiss-floating--right {
+	top: 50%;
+	transform: translateY(-50%);
+	max-height: 90vh;
+	overflow-y: auto;
+	overscroll-behavior: contain;
+}
+
+.ayudawp-aiss-floating--left {
+	left: 12px;
+}
+
+.ayudawp-aiss-floating--right {
+	right: 12px;
+}
+
+.ayudawp-aiss-floating--left.ayudawp-share-buttons .ayudawp-buttons-container,
+.ayudawp-aiss-floating--right.ayudawp-share-buttons .ayudawp-buttons-container {
+	flex-direction: column;
+	flex-wrap: nowrap;
+	justify-content: flex-start;
+}
+
+/* Bottom: a horizontal strip, centred and allowed to wrap. */
+.ayudawp-aiss-floating--bottom {
+	left: 50%;
+	bottom: 12px;
+	transform: translateX(-50%);
+	padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+}
+
+.ayudawp-aiss-floating--bottom.ayudawp-share-buttons .ayudawp-buttons-container {
+	flex-direction: row;
+	flex-wrap: wrap;
+	justify-content: center;
+}
+
+/* =============================================
+   Auto-hide
+   The bar is visible by default. `js-autohide` is added by the script, so a
+   site where the JS never runs keeps a usable bar instead of an invisible one.
+   ============================================= */
+.ayudawp-aiss-floating.js-autohide {
+	opacity: 0;
+	visibility: hidden;
+	transition: opacity 0.25s ease, visibility 0.25s ease, transform 0.25s ease;
+	pointer-events: none;
+}
+
+.ayudawp-aiss-floating--left.js-autohide {
+	transform: translateY(-50%) translateX(-12px);
+}
+
+.ayudawp-aiss-floating--right.js-autohide {
+	transform: translateY(-50%) translateX(12px);
+}
+
+.ayudawp-aiss-floating--bottom.js-autohide {
+	transform: translateX(-50%) translateY(12px);
+}
+
+.ayudawp-aiss-floating.js-autohide.is-visible {
+	opacity: 1;
+	visibility: visible;
+	pointer-events: auto;
+}
+
+.ayudawp-aiss-floating--left.js-autohide.is-visible,
+.ayudawp-aiss-floating--right.js-autohide.is-visible {
+	transform: translateY(-50%) translateX(0);
+}
+
+.ayudawp-aiss-floating--bottom.js-autohide.is-visible {
+	transform: translateX(-50%) translateY(0);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.ayudawp-aiss-floating.js-autohide {
+		transition: none;
+	}
+}
+
+/* =============================================
+   Dark background adaptation
+   Follows the .is-on-dark class the main script sets, plus the OS preference
+   for sites that switch theme with prefers-color-scheme.
+   ============================================= */
+.ayudawp-aiss-floating.is-on-dark {
+	background: rgba(24, 24, 24, 0.92);
+	box-shadow: 0 2px 14px rgba(0, 0, 0, 0.5);
+}
+
+/* =============================================
+   Responsive
+   Side bars become a bottom strip on phones, where a vertical column would eat
+   the reading area. The whole bar can also be switched off for mobile.
+   ============================================= */
+@media (max-width: 782px) {
+	/*
+	 * One strip across the bottom, using the width available instead of
+	 * shrinking to the buttons: on a 375px screen a content-width bar wrapped
+	 * into three rows and covered a third of the screen.
+	 */
+	.ayudawp-aiss-floating--left,
+	.ayudawp-aiss-floating--right,
+	.ayudawp-aiss-floating--bottom {
+		top: auto;
+		left: 12px;
+		right: 12px;
+		bottom: 12px;
+		transform: none;
+		max-width: none;
+		max-height: none;
+		padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px));
+	}
+
+	.ayudawp-aiss-floating--left.ayudawp-share-buttons .ayudawp-buttons-container,
+	.ayudawp-aiss-floating--right.ayudawp-share-buttons .ayudawp-buttons-container,
+	.ayudawp-aiss-floating.ayudawp-share-buttons.icons-only .ayudawp-buttons-container {
+		display: flex;
+		flex-direction: row;
+		flex-wrap: wrap;
+		justify-content: center;
+		grid-template-columns: none;
+		max-width: none;
+	}
+
+	.ayudawp-aiss-floating--left.js-autohide,
+	.ayudawp-aiss-floating--right.js-autohide,
+	.ayudawp-aiss-floating--bottom.js-autohide {
+		transform: translateY(12px);
+	}
+
+	.ayudawp-aiss-floating--left.js-autohide.is-visible,
+	.ayudawp-aiss-floating--right.js-autohide.is-visible,
+	.ayudawp-aiss-floating--bottom.js-autohide.is-visible {
+		transform: translateY(0);
+	}
+
+	.ayudawp-aiss-floating.hide-on-mobile {
+		display: none;
+	}
+}

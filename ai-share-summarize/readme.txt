@@ -3,7 +3,7 @@ Contributors: fernandot,ayudawp
 Tags: claude, chatgpt, social share, ai, perplexity
 Requires at least: 6.1
 Tested up to: 7.1
-Stable tag: 2.4.4
+Stable tag: 2.5.0
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -30,7 +30,10 @@ Among the **first plugins to integrate the native WordPress 7.0 AI Connectors AP
 
 * **Social networks**: X (Twitter), LinkedIn, Facebook, Telegram, WhatsApp, Email, Raindrop, Reddit, Bluesky, LINE, Mastodon, Threads, Pinterest.
 * **AI assistants**: Claude, ChatGPT, Google AI, Gemini, Grok, Perplexity, DeepSeek, Mistral, Copilot, Qwen, Meta AI — each opens with a citation-ready prompt linking back to your URL.
-* 6 visual styles, 4 sizes, custom colors, brand SVG icons, dark-mode auto-adaptation, drag-and-drop ordering. SEO-friendly (`<a rel="nofollow">` or `<button>`, auto-exclusion on noindex content for all major SEO plugins).
+* **Browser actions**: a **Copy link** button and a **native Share** button that opens the device share sheet (reaching WhatsApp, Signal, Instagram, Messages or AirDrop), shown only where the browser supports it.
+* **Where they show**: inline before or after the content, through the `[ayudawp_share_buttons]` shortcode, or in a **floating bar** pinned to the left, the right or the bottom of the screen — on its own or alongside the inline block.
+* **Compact on phones**: optionally collapse the whole set behind a single Share button, or show a few buttons plus a More button, without touching the desktop layout.
+* 6 visual styles, 4 sizes, custom colors, brand SVG icons, dark-mode auto-adaptation, drag-and-drop ordering, optional UTM tagging. SEO-friendly (`<a rel="nofollow">` or `<button>`, auto-exclusion on noindex content for all major SEO plugins).
 
 = Analytics =
 
@@ -285,15 +288,39 @@ Gemini has a special behavior:
 - Opens Gemini in a new tab
 - User can paste the prompt directly and get the summary
 
-= How do DeepSeek, Copilot, Qwen, and Meta AI work? =
+= How do DeepSeek, Copilot, and Qwen work? =
 
-DeepSeek, Copilot, Qwen, and Meta AI work the same way as Gemini:
+DeepSeek, Copilot, and Qwen work the same way as Gemini:
 - Clicking the button automatically copies the prompt to clipboard
 - A notification appears confirming the copy
 - The platform opens in a new tab
 - User can paste the prompt with Ctrl+V and get the summary
 
-This approach is used because these platforms don't support URL parameters for prompts.
+This approach is used because these platforms don't support URL parameters for prompts. Meta AI worked this way until 2.5.0; it now accepts the prompt in the address, like Claude or ChatGPT, so its button opens with the prompt already written. The list is checked on every release, because platforms add and remove this support over time.
+
+= What is the floating bar and how is it different from the inline buttons? =
+
+The inline block is inserted before or after the post content and scrolls away with it. The floating bar stays pinned to the viewport while the reader scrolls: on the left edge, the right edge or along the bottom, always as icons. It shows the same buttons you enabled, in the same order.
+
+You can use both at once, or only the bar: untick every destination under "Where the buttons appear" and turn the bar on with its own destinations. Three options control how intrusive it is: showing it only while the reader scrolls down, hiding it on phones (the default), and standing aside on pages where the inline block is already showing. On phones the side positions turn into a bottom strip, because a vertical column would eat the reading area.
+
+Its CSS and JavaScript live in separate files that are only loaded on pages where the bar is shown, so a site with the bar off downloads nothing extra.
+
+= How does compact mode on phones work? =
+
+It reduces how much room the buttons take on a phone screen, and only there: the desktop layout is untouched. There are two shapes. "A single Share button" hides the whole block behind one button that opens it. "A few buttons plus a More button" keeps the first two to five visible (you choose how many) and puts the rest behind More. The visible ones are the first in the order you set by dragging the platforms in the settings, so put the ones that matter at the top of their group.
+
+Everything is rendered by the server and only shown or hidden with CSS, so it works with page caching and the buttons are in the page for search engines either way.
+
+= What do the Copy link and Share buttons do? =
+
+"Copy link" copies the post address to the clipboard and confirms it on screen. "Share" hands the post to your device own share sheet, which is where WhatsApp, Signal, Instagram, Messages or AirDrop appear — anything installed on the device, without a button per app.
+
+The Share button is only rendered where the browser supports it (most mobile browsers, Safari and Chrome on desktop), so visitors on a browser without it never see a button that does nothing. Both count in the analytics like any other button.
+
+= What are the UTM options for? =
+
+With UTM tagging on, the address that travels to each platform carries utm_source with the platform name, utm_medium with social, ai or share, and the campaign name if you filled one in. That lets your analytics tool separate visits coming back from a share button from the rest of the referral traffic. It is off by default, because many analytics setups already group referrals the way their owners want.
 
 = Does it work with page builders? =
 
@@ -374,32 +401,39 @@ The social and AI sharing buttons render as `<a>` / `<button>` elements that ope
 
 == Changelog ==
 
-= 2.4.4 =
-* Fix: Security. The visitor-facing summary generation endpoint now only works on published, publicly readable posts. Until now it accepted any post ID, so a summary could be built and returned for a draft, a pending or private post, an item in the trash, or a password-protected post without its password. Updating is recommended if you have the frontend generation button enabled.
-* Improved: Visitor-triggered summary generation is harder to abuse. The per-visitor limit is now based on the real connection address instead of forwarding headers a client can set, and a site-wide ceiling caps how many new summaries visitors can trigger per hour. Both matter because each new summary can be a paid call to your AI provider. Already generated summaries are still served from cache and are unaffected, so normal reading does not change. Sites behind a reverse proxy or CDN can declare which header to trust with the new ayudawp_aiss_trusted_proxy_header filter, and the hourly ceiling is adjustable with ayudawp_aiss_frontend_hourly_cap.
+= 2.5.0 =
+New floating share bar, compact mode for phones, Copy link and native Share buttons, UTM tagging, and a reorganised settings screen where the three overlapping location settings become a single list.
 
-= 2.4.3 =
-* Fix: Security. Post titles are now escaped for attribute position when the analytics dashboard renders the "most shared content" table, so a title containing quotes is shown as written instead of affecting the surrounding markup. As added hardening, click tracking records only published content, so titles from unpublished drafts stay out of the analytics data. Updating is recommended.
-
-= 2.4.2 =
-* Improved: Tested up to WordPress 7.1, with no changes needed. The editor sidebar panel already works inside the always-iframed post editor, and the settings screen was reviewed against the jQuery UI 1.14.2 update that ships with this release.
-
-= 2.4.1 =
-* Improved: A prompt, a custom text or any of the section titles you write yourself can now be translated from WPML String Translation or Polylang, through the multilingual configuration the plugin ships
-* Fix: The AI prompt no longer gets stuck in the language of whoever saved the settings. It was written to the database on activation and again on the first save, so on a multilingual site every reader was asking the AI for a summary in that one language. It is resolved per reader again, and a stored copy of the bundled prompt is cleaned up on update. A prompt you wrote yourself is kept untouched, and an empty one still means send no instructions
-* Fix: The editor sidebar panel was still titled "AI Share & Summarize", the name the plugin had before it was renamed
-
-= 2.4.0 =
-* New: Bullet-list format for the AI summary. A new "Summary format" checkbox in the AI Summary tab renders the summary as a concise bullet list instead of paragraphs: new AI summaries are generated as one key point per line, and already stored summaries are split into one item per sentence without regenerating. Works with the extractive fallback and every visual style.
-* New: Separator lines setting. Two checkboxes under Share Buttons let you show or hide the thin horizontal lines above and below the buttons block, which until now could only be removed with custom CSS. Both stay on by default, keeping the previous look.
-* Improved: The noindex exclusion now recognizes the Visibility SEO plugin (native-aeo-pack). Content marked noindex by Visibility — per post or through its bulk per-content-type rules with their per-post exceptions — hides the share buttons and the AI summary like with any other supported SEO plugin, and the settings screen reports it as detected.
+* New: The settings screen is reorganised. Where the buttons appear was governed by three settings that had to agree with each other (the locations, the content types and the insertion position), two of them listing overlapping things, and nothing on screen said the condition was an AND, so ticking one of them and seeing no buttons was the usual first experience. They are now a single list with one row per destination and its own position, which also makes possible something that was not before: buttons after the content on posts and before it on pages. Your current setup is migrated to the new list, keeping what visitors were actually seeing rather than the literal settings. The rest of the screen is grouped under headings, with related settings side by side, so the two halves of the same decision are no longer twelve rows apart.
+* New: The buttons you enable are shown as the real buttons, in the style you picked, and the preview repaints as you change the style, the icons or the corner shape. The AI Summary tab gets the same treatment: its thirteen settings are now four groups, and the block appearance is decided against a live sample instead of by saving and reloading.
+* New: The floating bar can have its own destinations, so the inline block and the bar no longer have to appear in the same places: the block on posts and the bar on the blog home, or the other way round.
+* New: Floating share bar. A new option pins the same enabled buttons, in icon form, to the left edge, the right edge or the bottom of the screen on single content. It can accompany the inline block or replace it entirely, it can use its own destinations so the two never have to coincide, it can be set to appear only while the reader scrolls down, and it can be told to stand aside on pages where the inline block is already showing. On phones it is hidden by default, and the side positions become a strip along the bottom when it is switched on, because a column pinned to the side of a small screen eats the reading area. Its CSS and JS are separate files, loaded only on pages where the bar is shown.
+* New: Compact mode on phones. The buttons block can now show a single Share button that opens the rest, or a few buttons plus a More button, so a long list of platforms no longer fills the screen on mobile. The desktop layout is unchanged, and which buttons stay visible follows the order you set by dragging.
+* New: Copy link button. A new platform that copies the post address to the clipboard, confirms it on screen and counts in the analytics like any other button.
+* New: Native share button. Uses the browser share sheet, which reaches WhatsApp, Signal, Instagram, Messages, AirDrop and any other app installed on the device. It is only rendered where the browser supports it, so it never shows as a dead button.
+* New: Optional UTM tagging. A checkbox adds utm_source (the platform), utm_medium (social, ai or share) and an optional campaign name to the shared link, so you can tell this traffic apart in your analytics.
+* New: The summary now has a position per content type, like the buttons: next to them on posts and before the content on pages, which a single global position could not express. "Do not display" becomes one of those positions, so a type can still generate its summary for the shortcode or the REST API without printing it.
+* Improved: The buttons you can enable are now shown in the settings as the buttons themselves, grouped into social networks, AI assistants and browser actions, each rendered with the style you picked. It replaces the row of bare icons, which said nothing about size, colour or shape.
+* Improved: The default label of the summary block is now "TL;DR (AI Generated)". It says what the block is in the words readers already use, and it states plainly that a machine wrote it, which is what the EU AI Act expects of generated content shown to the public. A label you set yourself is untouched.
+* Improved: Compact mode on phones is on by default for new installs, showing a single Share button that opens the rest. Updating sites keep whatever they had.
+* Improved: Meta AI now opens with the prompt already written, instead of copying it to the clipboard for you to paste. Checked platform by platform in September 2026: Gemini, DeepSeek, Copilot and Qwen still offer no way to pre-fill the prompt from the address, so those four keep copying it.
+* Improved: The settings screen uses the width it has. The form was capped well below what the browser offered while the promo cards ran along the bottom, where nobody scrolls; the content now sits in one column with the cards in a rail beside it that follows as you scroll, and folds underneath on narrower screens. Every field, description and heading shares one measure instead of two.
+* Improved: Less weight on pages that have nothing to show. The stylesheet and the script were loaded on every singular view, archive and blog home whenever the buttons were not placed there, in case a shortcode turned up; a site with the buttons on posts was downloading 71 KB on its home page and on every archive to render nothing at all. They now load where something is actually placed, plus singular views whose content really does carry the shortcode. The list of platform names sent with the script is trimmed to the buttons you enabled.
+* Improved: The front end no longer loads jQuery for the share buttons. The script was rewritten in plain JavaScript, so a block theme that does not use jQuery stops loading it (about 85 KB and one request) just to show the buttons. The same pass moved the hover effect and the mobile icon grid to the stylesheet, replaced a browser event removed from Chrome in 2024, reduced the tooltip to a single shared element instead of one per button, and sends click tracking with sendBeacon so it survives the page being replaced by the destination.
+* Improved: Accessibility of the buttons block. Each group of buttons is now announced with the section title you wrote, or with a description when there is none, the keyboard focus ring no longer appears on mouse clicks, and the copy confirmation is announced by screen readers.
+* Improved: Click tracking identifies the post directly from the buttons block, instead of relying on the theme marking the article in a particular way, so analytics are accurate on more themes.
+* Improved: The summary, provider and content-hash post fields are sanitized on save. They are written by the plugin itself and the output was already escaped, so nothing changes on screen; it closes the gap on the way in as well.
+* Fix: The Minimal and Outline styles of the summary block were indistinguishable, both drawing the same thin grey box. Minimal is now genuinely minimal, a rule above the block and nothing else, and Outline draws a real box in the accent colour with its heading to match.
+* Fix: With a filled style (Brand, Dark or Custom colours), the "Generate AI summary" button that visitors see was painted as a full-width slab of colour with a small outlined button floating inside it. The colour now belongs to the button itself.
+* Fix: The "fluid" button size behaved exactly like "normal" on phones. Both ended up as one full-width button per row, so choosing fluid changed nothing below 480 pixels; it now fills the row two buttons at a time, which is what it does on wider screens.
+* Fix: The visitor generation limit could be bypassed on sites that trust a proxy header. Since 2.4.4 those headers are only read when the site opts in, but the address was taken from the start of the forwarding chain, which is the part the visitor writes. It now reads the end of the chain, and only when the request actually arrives from the proxy: an address declared with the new ayudawp_aiss_trusted_proxies filter, or the site own network when no list is declared.
 
 For older changelog entries, please check the [changelog.txt](https://plugins.svn.wordpress.org/ai-share-summarize/trunk/changelog.txt) file
 
 == Upgrade Notice ==
 
-= 2.4.4 =
-Security fix for the visitor summary button: it now works only on published, publicly readable posts, and visitor-triggered generation is rate limited per site. Update if you have that button enabled.
+= 2.5.0 =
+New floating share bar, compact mode for phones, Copy link and native Share buttons, UTM tagging, and a reorganised settings screen where the three overlapping location settings become a single list.
 
 == Advanced Usage ==
 
@@ -409,7 +443,7 @@ The `[ayudawp_share_buttons]` shortcode accepts several parameters:
 
 **buttons**: Comma-separated list of buttons to display
 - Example: `[ayudawp_share_buttons buttons="claude,chatgpt,deepseek,twitter,mastodon"]`
-- Available: twitter, linkedin, facebook, telegram, whatsapp, email, raindrop, reddit, bluesky, line, mastodon, threads, pinterest, claude, chatgpt, google_ai, gemini, grok, perplexity, deepseek, mistral, copilot, qwen, meta_ai
+- Available: twitter, linkedin, facebook, telegram, whatsapp, email, raindrop, reddit, bluesky, line, mastodon, threads, pinterest, copy_link, web_share, claude, chatgpt, google_ai, gemini, grok, perplexity, deepseek, mistral, copilot, qwen, meta_ai
 
 **style**: Visual style to use
 - Example: `[ayudawp_share_buttons style="outline"]`
@@ -561,7 +595,8 @@ The main container has top and bottom border lines. You can hide either of them 
 = Performance features =
 * Modular file structure for maximum efficiency
 * Selective loading of resources (CSS/JS only where buttons display)
-* No external dependencies
+* No external dependencies: the front end script is plain JavaScript and does not load jQuery
+* The floating bar ships its CSS and JS as separate files, loaded only where the bar is shown
 * Optimized CSS with custom properties and minimal specificity
 * Lightweight SVG icons (under 1KB each)
 * Minimal database impact: analytics queries are cached (5 min) and compatible with persistent object cache (Redis, Memcached)
@@ -579,6 +614,7 @@ The main container has top and bottom border lines. You can hide either of them 
 * SEO-friendly markup options
 * Post meta for individual exclusions
 * Centralized platform color definitions
+* Filters to extend the 2.5.0 features: `ayudawp_aiss_floating_bar_buttons` (which buttons the bar shows), `ayudawp_aiss_show_floating_bar` (whether it renders on a given request), `ayudawp_aiss_utm_args` (the campaign parameters added to a shared link) and `ayudawp_aiss_trusted_proxies` (which addresses may set the forwarding header behind a CDN or load balancer)
 
 
 == Support ==

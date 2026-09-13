@@ -2,7 +2,7 @@
  * Share Buttons & AI-powered Summaries Plugin - JavaScript
  * Advanced functionality for tooltips, hover effects, responsive behavior, click tracking
  * and the visitor-facing AI summary generation button (v2.0.0).
- * Version: 2.0.1
+ * Version: 2.5.0
  */
 
 /**
@@ -68,384 +68,516 @@
     }
 })();
 
-jQuery(document).ready(function($) {
+/**
+ * Share buttons runtime (rewritten without jQuery in v2.5.0)
+ *
+ * Everything below used to run inside jQuery(document).ready. The plugin no
+ * longer declares a jQuery dependency, so block themes that do not load it on
+ * the front end stop pulling in ~85 KB to show share buttons. Three things
+ * went away rather than being ported, because they were doing work the
+ * stylesheet already does or the browser does better:
+ *
+ *   - the hover handler that wrote `transform: translateY(-2px)` inline, which
+ *     the CSS :hover rule had been applying since 1.6.0;
+ *   - the resize handler that rewrote the icons-only grid with inline styles,
+ *     now a media query;
+ *   - the DOMNodeInserted listener, a Mutation Event removed from Chrome in
+ *     version 127, replaced by a MutationObserver that only watches for share
+ *     blocks arriving.
+ *
+ * @since 2.5.0
+ */
+(function () {
+    'use strict';
 
     /**
-     * Platforms that require copy-to-clipboard behavior
-     * These platforms don't support direct URL parameters for prompts
+     * AI platforms with no way to pre-fill the prompt from the URL, so the
+     * prompt is copied to the clipboard and the site opened empty.
+     *
+     * Checked again on 12 Sep 2026 against each platform, with Perplexity's
+     * working ?q= as the positive control: Meta AI does pre-fill from
+     * ?prompt= and left this list in 2.5.0; Gemini, DeepSeek, Copilot and
+     * Qwen still do not.
      */
-    var copyPromptPlatforms = ['gemini', 'deepseek', 'copilot', 'qwen', 'meta_ai'];
+    var copyPromptPlatforms = ['gemini', 'deepseek', 'copilot', 'qwen'];
 
     /**
-     * Platform base URLs for copy-to-clipboard platforms
+     * Landing pages for the copy-prompt platforms.
      */
     var platformBaseUrls = {
-        'gemini': 'https://gemini.google.com/app',
+        'gemini':   'https://gemini.google.com/app',
         'deepseek': 'https://chat.deepseek.com/',
-        'copilot': 'https://copilot.microsoft.com/',
-        'qwen': 'https://chat.qwen.ai/',
-        'meta_ai': 'https://www.meta.ai/'
+        'copilot':  'https://copilot.microsoft.com/',
+        'qwen':     'https://chat.qwen.ai/'
     };
 
-    /**
-     * Universal tooltip system for all buttons
-     */
-    function attachUniversalTooltips() {
-        $('.ayudawp-tooltip').remove();
+    /** Platforms that open in a sized popup window instead of a tab. */
+    var popupPlatforms = ['twitter', 'linkedin', 'facebook', 'telegram', 'reddit', 'bluesky'];
 
-        $('.ayudawp-share-btn').each(function() {
-            var $button = $(this);
-            var platform = detectPlatform($button);
-            var tooltipText = '';
+    /** Buttons that act on the current page instead of opening a destination. */
+    var actionPlatforms = ['copy_link', 'web_share'];
 
-            if (copyPromptPlatforms.indexOf(platform) !== -1) {
-                var isIconsOnly = $button.closest('.ayudawp-share-buttons').hasClass('icons-only');
-                var platformName = '';
+    var L = window.ayudawpAissL10n || {};
+    var tooltipEl = null;
 
-                if (platform === 'gemini') {
-                    platformName = 'Gemini';
-                } else if (platform === 'deepseek') {
-                    platformName = 'DeepSeek';
-                } else if (platform === 'copilot') {
-                    platformName = 'Copilot';
-                } else if (platform === 'qwen') {
-                    platformName = 'Qwen';
-                } else if (platform === 'meta_ai' || platform === 'meta-ai') {
-                    platformName = 'Meta AI';
-                }
-
-                if (isIconsOnly) {
-                    tooltipText = (window.ayudawpAissL10n && window.ayudawpAissL10n[platform + 'TooltipShort']) ||
-                                  (window.ayudawpAissL10n && window.ayudawpAissL10n.copyPromptShort) ||
-                                  'Copy prompt & open';
-                } else {
-                    tooltipText = (window.ayudawpAissL10n && window.ayudawpAissL10n[platform + 'TooltipLong']) ||
-                                  (window.ayudawpAissL10n && window.ayudawpAissL10n.copyPromptLong) ||
-                                  ('Copy prompt and open ' + platformName);
-                }
-            } else if (platform && window.ayudawpAissL10n && window.ayudawpAissL10n.platformNames) {
-                tooltipText = window.ayudawpAissL10n.platformNames[platform] || platform;
-            }
-
-            if (tooltipText) {
-                var $tooltip = $('<div class="ayudawp-tooltip">' + tooltipText + '</div>');
-                $('body').append($tooltip);
-
-                $button.on('mouseenter', function() {
-                    var offset = $button.offset();
-                    var buttonWidth = $button.outerWidth();
-                    var tooltipWidth = $tooltip.outerWidth();
-                    var tooltipHeight = $tooltip.outerHeight();
-
-                    $tooltip.css({
-                        top: offset.top - tooltipHeight - 8,
-                        left: offset.left + (buttonWidth / 2) - (tooltipWidth / 2)
-                    }).addClass('active');
-                });
-
-                $button.on('mouseleave', function() {
-                    $tooltip.removeClass('active');
-                });
-
-                $button.data('tooltip', $tooltip);
-            }
-        });
+    function l10n(key, fallback) {
+        return (L && L[key]) ? L[key] : fallback;
     }
 
     /**
-     * Detect platform from button data attribute or class
+     * Platform of a button, from its data attribute or, failing that, its class.
      *
-     * @param {jQuery} $button Button element
-     * @return {string} Platform identifier
+     * @param {Element} btn Button element.
+     * @return {string} Platform key, '' when unknown.
      */
-    function detectPlatform($button) {
-        var platform = $button.attr('data-platform');
-
-        if (!platform) {
-            var classes = $button.attr('class').split(' ');
-            var platforms = ['twitter', 'linkedin', 'facebook', 'telegram', 'whatsapp', 'email', 'raindrop',
-                           'reddit', 'bluesky', 'line', 'mastodon', 'threads', 'pinterest',
-                           'claude', 'chatgpt', 'google-ai', 'gemini',
-                           'grok', 'perplexity', 'deepseek', 'mistral', 'copilot', 'qwen', 'meta-ai'];
-            for (var i = 0; i < platforms.length; i++) {
-                if (classes.indexOf(platforms[i]) !== -1) {
-                    platform = platforms[i];
-                    break;
-                }
+    function detectPlatform(btn) {
+        var platform = btn.getAttribute('data-platform');
+        if (platform) {
+            return platform;
+        }
+        var known = ['twitter', 'linkedin', 'facebook', 'telegram', 'whatsapp', 'email', 'raindrop',
+            'reddit', 'bluesky', 'line', 'mastodon', 'threads', 'pinterest',
+            'claude', 'chatgpt', 'google-ai', 'gemini', 'grok', 'perplexity',
+            'deepseek', 'mistral', 'copilot', 'qwen', 'meta-ai', 'copy-link', 'web-share'];
+        for (var i = 0; i < known.length; i++) {
+            if (btn.classList.contains(known[i])) {
+                return known[i].replace(/-/g, '_');
             }
         }
-
-        return platform || '';
+        return '';
     }
 
     /**
-     * Enhanced click handling with proper platform detection and analytics tracking
-     */
-    function attachClickHandlers() {
-        $(document).off('click.ayudawp').on('click.ayudawp', '.ayudawp-share-btn', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-
-            var $button = $(this);
-            var url = $button.attr('data-url') || $button.attr('href');
-            var platform = detectPlatform($button);
-
-            if (!url) {
-                return false;
-            }
-
-            // Track the click (fire and forget).
-            trackClick(platform, $button);
-
-            // Special handling for platforms that require copy-to-clipboard.
-            if (copyPromptPlatforms.indexOf(platform) !== -1) {
-                handleCopyPromptClick(url, platform);
-                return false;
-            }
-
-            // Social media popups.
-            if (['twitter', 'linkedin', 'facebook', 'telegram', 'reddit', 'bluesky'].indexOf(platform) !== -1) {
-                var width = 600, height = 400;
-                if (platform === 'reddit') {
-                    width = 900;
-                    height = 600;
-                }
-                var left = (screen.width / 2) - (width / 2);
-                var top = (screen.height / 2) - (height / 2);
-
-                window.open(url, 'share', 'width=' + width + ',height=' + height + ',left=' + left + ',top=' + top + ',scrollbars=yes,resizable=yes');
-                return false;
-            }
-
-            // Default behavior for all other buttons.
-            window.open(url, '_blank', 'noopener,noreferrer');
-            return false;
-        });
-    }
-
-    /**
-     * Track button click via REST API (fire and forget)
-     * No nonce needed: public non-destructive endpoint, compatible with page caching.
+     * Tooltip text for a button, or '' when it needs none.
      *
-     * @param {string} platform Platform identifier
-     * @param {jQuery} $button The clicked button element
+     * @param {Element} btn      Button element.
+     * @param {string}  platform Platform key.
+     * @return {string} Tooltip text.
      */
-    function trackClick(platform, $button) {
-        if (!window.ayudawpAissL10n || !window.ayudawpAissL10n.trackUrl) {
+    function tooltipFor(btn, platform) {
+        if (copyPromptPlatforms.indexOf(platform) !== -1) {
+            var block = btn.closest('.ayudawp-share-buttons');
+            var short = block && block.classList.contains('icons-only');
+            return short
+                ? l10n(platform + 'TooltipShort', l10n('copyPromptShort', 'Copy prompt & open'))
+                : l10n(platform + 'TooltipLong', l10n('copyPromptLong', 'Copy prompt and open'));
+        }
+        var names = L.platformNames || {};
+        return names[platform] || '';
+    }
+
+    /**
+     * Single shared tooltip element.
+     *
+     * One node reused by every button, instead of one node plus two listeners
+     * per button as before 2.5.0 — a 24-button block was adding 24 divs to
+     * <body> on every page load.
+     *
+     * @return {Element} The tooltip element.
+     */
+    function getTooltip() {
+        if (!tooltipEl) {
+            tooltipEl = document.createElement('div');
+            tooltipEl.className = 'ayudawp-tooltip';
+            tooltipEl.setAttribute('aria-hidden', 'true');
+            document.body.appendChild(tooltipEl);
+        }
+        return tooltipEl;
+    }
+
+    function showTooltip(btn) {
+        var platform = detectPlatform(btn);
+        var text     = tooltipFor(btn, platform);
+        if (!text) {
+            return;
+        }
+        var tip = getTooltip();
+        tip.textContent = text;
+        tip.classList.add('active');
+
+        var rect = btn.getBoundingClientRect();
+        var top  = rect.top + window.pageYOffset - tip.offsetHeight - 8;
+        var left = rect.left + window.pageXOffset + (rect.width / 2) - (tip.offsetWidth / 2);
+        tip.style.top  = Math.max(0, top) + 'px';
+        tip.style.left = Math.max(0, left) + 'px';
+    }
+
+    function hideTooltip() {
+        if (tooltipEl) {
+            tooltipEl.classList.remove('active');
+        }
+    }
+
+    /**
+     * Report a click to the analytics endpoint, fire and forget.
+     *
+     * sendBeacon since 2.5.0: the browser queues the request and delivers it
+     * even if the page is being replaced by the destination, which is exactly
+     * what happens when the click opens another site.
+     *
+     * @param {string}  platform Platform key.
+     * @param {Element} btn      Clicked button.
+     */
+    function trackClick(platform, btn) {
+        if (!L.trackUrl || !platform) {
             return;
         }
 
-        // Get post ID from the closest container or page body.
-        var postId = $button.closest('[data-post-id]').attr('data-post-id') ||
-                     $('article[id^="post-"]').first().attr('id');
+        var container = btn.closest('[data-post-id]');
+        var postId    = container ? container.getAttribute('data-post-id') : '';
 
-        if (postId && typeof postId === 'string') {
-            postId = postId.replace('post-', '');
+        if (!postId) {
+            var article = document.querySelector('article[id^="post-"]');
+            if (article) {
+                postId = article.id.replace('post-', '');
+            }
         }
 
-        // Normalize platform names (google-ai -> google_ai).
-        var normalizedPlatform = platform ? platform.replace(/-/g, '_') : '';
+        var payload = JSON.stringify({
+            platform: platform.replace(/-/g, '_'),
+            post_id: parseInt(postId, 10) || 0
+        });
 
-        if (!normalizedPlatform) {
-            return;
-        }
-
-        // Fire and forget - don't block user interaction.
         try {
+            if (navigator.sendBeacon) {
+                navigator.sendBeacon(L.trackUrl, new Blob([payload], { type: 'application/json' }));
+                return;
+            }
+            if (window.fetch) {
+                window.fetch(L.trackUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: payload,
+                    keepalive: true,
+                    credentials: 'same-origin'
+                }).catch(function () {});
+                return;
+            }
             var xhr = new XMLHttpRequest();
-            xhr.open('POST', window.ayudawpAissL10n.trackUrl, true);
+            xhr.open('POST', L.trackUrl, true);
             xhr.setRequestHeader('Content-Type', 'application/json');
-            xhr.send(JSON.stringify({
-                platform: normalizedPlatform,
-                post_id: parseInt(postId, 10) || 0
-            }));
+            xhr.send(payload);
         } catch (err) {
-            // Silently fail - tracking should never break user experience.
+            // Tracking must never break sharing.
         }
     }
 
     /**
-     * Handle click for platforms that require copy-to-clipboard behavior
-     * Works for Gemini, DeepSeek, and Copilot
+     * Copy text to the clipboard, resolving when it is done.
      *
-     * @param {string} url - The URL containing the prompt parameter
-     * @param {string} platform - The platform identifier
-     */
-    function handleCopyPromptClick(url, platform) {
-        try {
-            var urlParts = url.split('?');
-            var queryString = urlParts.length > 1 ? urlParts[1] : '';
-            var urlParams = new URLSearchParams(queryString);
-            var prompt = urlParams.get('prompt') || urlParams.get('q') || '';
-            var baseUrl = platformBaseUrls[platform] || urlParts[0];
-
-            if (prompt) {
-                copyToClipboard(decodeURIComponent(prompt)).then(function() {
-                    showNotification(window.ayudawpAissL10n.promptCopied || 'Prompt copied!', 'success');
-                    setTimeout(function() {
-                        window.open(baseUrl, '_blank', 'noopener,noreferrer');
-                    }, 500);
-                }).catch(function() {
-                    window.open(baseUrl, '_blank', 'noopener,noreferrer');
-                });
-            } else {
-                window.open(baseUrl, '_blank', 'noopener,noreferrer');
-            }
-        } catch (error) {
-            var fallbackUrl = platformBaseUrls[platform] || url.split('?')[0];
-            window.open(fallbackUrl, '_blank', 'noopener,noreferrer');
-        }
-    }
-
-    /**
-     * Copy to clipboard function
+     * @param {string} text Text to copy.
+     * @return {Promise} Resolves on success.
      */
     function copyToClipboard(text) {
         if (navigator.clipboard && window.isSecureContext) {
             return navigator.clipboard.writeText(text);
-        } else {
-            var textArea = document.createElement('textarea');
-            textArea.value = text;
-            textArea.style.position = 'fixed';
-            textArea.style.left = '-999999px';
-            textArea.style.top = '-999999px';
-            document.body.appendChild(textArea);
-            textArea.focus();
-            textArea.select();
-
-            return new Promise(function(resolve, reject) {
-                try {
-                    document.execCommand('copy') ? resolve() : reject();
-                } catch (err) {
-                    reject(err);
-                } finally {
-                    textArea.remove();
-                }
-            });
         }
+
+        return new Promise(function (resolve, reject) {
+            var area = document.createElement('textarea');
+            area.value = text;
+            area.setAttribute('readonly', 'readonly');
+            area.style.position = 'fixed';
+            area.style.left = '-999999px';
+            area.style.top = '-999999px';
+            document.body.appendChild(area);
+            area.focus();
+            area.select();
+            try {
+                if (document.execCommand('copy')) {
+                    resolve();
+                } else {
+                    reject();
+                }
+            } catch (err) {
+                reject(err);
+            } finally {
+                area.remove();
+            }
+        });
     }
 
     /**
-     * Show notification
+     * Transient on-screen message.
+     *
+     * role="status" so screen readers announce it: before 2.5.0 the copy
+     * confirmation was visual only.
+     *
+     * @param {string} message Text to show.
      */
-    function showNotification(message, type) {
-        if (document.querySelector('.ayudawp-notification')) return;
+    function showNotification(message) {
+        var existing = document.querySelector('.ayudawp-notification');
+        if (existing) {
+            existing.remove();
+        }
 
-        var notification = document.createElement('div');
-        notification.className = 'ayudawp-notification ayudawp-notification-' + type;
-        notification.textContent = message;
-        notification.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#333;color:white;padding:16px 24px;border-radius:8px;font-size:14px;font-weight:500;z-index:9999;box-shadow:0 8px 32px rgba(0,0,0,0.3);opacity:0;transition:all 0.4s ease;border:1px solid #555;';
+        var note = document.createElement('div');
+        note.className = 'ayudawp-notification';
+        note.setAttribute('role', 'status');
+        note.textContent = message;
+        document.body.appendChild(note);
 
-        document.body.appendChild(notification);
+        window.setTimeout(function () {
+            note.classList.add('is-visible');
+        }, 20);
 
-        setTimeout(function() {
-            notification.style.opacity = '1';
-        }, 50);
-
-        setTimeout(function() {
-            notification.style.opacity = '0';
-            notification.style.transform = 'translate(-50%,-50%) scale(0.9)';
-            setTimeout(function() {
-                if (notification.parentNode) {
-                    notification.parentNode.removeChild(notification);
+        window.setTimeout(function () {
+            note.classList.remove('is-visible');
+            window.setTimeout(function () {
+                if (note.parentNode) {
+                    note.parentNode.removeChild(note);
                 }
             }, 400);
         }, 2500);
     }
 
     /**
-     * Improve accessibility with keyboard navigation
+     * Copy the prompt and open the platform empty.
+     *
+     * @param {string} url      Button URL carrying the prompt.
+     * @param {string} platform Platform key.
      */
-    function enhanceKeyboardNavigation() {
-        $(document).on('keydown', '.ayudawp-share-btn', function(e) {
-            if (e.keyCode === 13 || e.keyCode === 32) {
-                e.preventDefault();
-                $(this).click();
-            }
-        });
-    }
+    function handleCopyPromptClick(url, platform) {
+        var base = platformBaseUrls[platform] || url.split('?')[0];
+        var prompt = '';
 
-    /**
-     * Enhanced responsive behavior for icons-only mode
-     */
-    function handleResponsiveIconsOnly() {
-        var $iconsOnlyContainers = $('.ayudawp-share-buttons.icons-only .ayudawp-buttons-container');
-
-        $iconsOnlyContainers.each(function() {
-            var $container = $(this);
-            var $buttons = $container.find('.ayudawp-share-btn');
-            var containerWidth = $container.width();
-            var buttonWidth = 44;
-            var gap = 10;
-            var buttonsPerRow = Math.floor((containerWidth + gap) / (buttonWidth + gap));
-
-            if ($(window).width() <= 480 && buttonsPerRow < $buttons.length) {
-                $container.css({
-                    'display': 'grid',
-                    'grid-template-columns': 'repeat(auto-fit, 44px)',
-                    'gap': '8px',
-                    'max-width': '300px',
-                    'margin': '0 auto'
-                });
-            } else {
-                $container.css({
-                    'display': 'flex',
-                    'grid-template-columns': '',
-                    'max-width': '',
-                    'margin': ''
-                });
-            }
-        });
-    }
-
-    /**
-     * Smooth hover animation for all buttons
-     */
-    function attachHoverEffects() {
-        $(document).on('mouseenter', '.ayudawp-share-btn', function() {
-            var $this = $(this);
-            var platform = $this.attr('data-platform');
-            if (copyPromptPlatforms.indexOf(platform) === -1) {
-                $this.css('transform', 'translateY(-2px)');
-            }
-        });
-
-        $(document).on('mouseleave', '.ayudawp-share-btn', function() {
-            var $this = $(this);
-            $this.css('transform', 'translateY(0)');
-        });
-    }
-
-    /**
-     * Initialize all features
-     */
-    function initializeAllFeatures() {
-        attachUniversalTooltips();
-        attachClickHandlers();
-        enhanceKeyboardNavigation();
-        handleResponsiveIconsOnly();
-        attachHoverEffects();
-    }
-
-    // Initialize on document ready.
-    initializeAllFeatures();
-
-    // Handle window resize for responsive behavior.
-    $(window).on('resize', function() {
-        handleResponsiveIconsOnly();
-    });
-
-    // Re-initialize when new content is added dynamically.
-    $(document).on('DOMNodeInserted', function(e) {
-        if ($(e.target).hasClass('ayudawp-share-buttons') || $(e.target).find('.ayudawp-share-buttons').length > 0) {
-            setTimeout(function() {
-                attachUniversalTooltips();
-                handleResponsiveIconsOnly();
-            }, 100);
+        try {
+            var query = url.split('?')[1] || '';
+            var params = new URLSearchParams(query);
+            prompt = params.get('prompt') || params.get('q') || '';
+        } catch (err) {
+            prompt = '';
         }
-    });
 
-});
+        if (!prompt) {
+            window.open(base, '_blank', 'noopener,noreferrer');
+            return;
+        }
+
+        copyToClipboard(decodeURIComponent(prompt)).then(function () {
+            showNotification(l10n('promptCopied', 'Prompt copied!'));
+            window.setTimeout(function () {
+                window.open(base, '_blank', 'noopener,noreferrer');
+            }, 500);
+        }).catch(function () {
+            window.open(base, '_blank', 'noopener,noreferrer');
+        });
+    }
+
+    /**
+     * Copy the post link (v2.5.0).
+     *
+     * @param {string} url Link to copy.
+     */
+    function handleCopyLink(url) {
+        copyToClipboard(url).then(function () {
+            showNotification(l10n('linkCopied', 'Link copied to clipboard!'));
+        }).catch(function () {
+            showNotification(l10n('copyFailed', 'Could not copy.'));
+        });
+    }
+
+    /**
+     * Hand the post to the operating system share sheet (v2.5.0).
+     *
+     * @param {Element} btn Button element.
+     * @param {string}  url Link to share.
+     */
+    function handleWebShare(btn, url) {
+        // No API, or the browser refuses the call (it is only available in a
+        // secure context, so plain http never has it): fall back to copying
+        // the link rather than doing nothing, which is what a visitor who
+        // manages to click it would otherwise get.
+        if (!navigator.share) {
+            handleCopyLink(url);
+            return;
+        }
+
+        var data = { url: url };
+        var title = btn.getAttribute('data-title');
+        if (title) {
+            data.title = title;
+        }
+
+        try {
+            var shared = navigator.share(data);
+            if (shared && shared.catch) {
+                shared.catch(function (err) {
+                    // AbortError is the visitor closing the sheet: not a failure.
+                    if (err && 'AbortError' === err.name) {
+                        return;
+                    }
+                    handleCopyLink(url);
+                });
+            }
+        } catch (err) {
+            handleCopyLink(url);
+        }
+    }
+
+    /**
+     * Expand or collapse the mobile compact block (v2.5.0).
+     *
+     * @param {Element} toggle The toggle button.
+     */
+    function handleCompactToggle(toggle) {
+        var block = toggle.closest('.ayudawp-share-buttons');
+        if (!block) {
+            return;
+        }
+
+        var expanded = block.classList.toggle('is-expanded');
+        toggle.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+
+        var label = toggle.querySelector('.ayudawp-button-text');
+        if (!label) {
+            return;
+        }
+        if (expanded) {
+            if (!toggle.hasAttribute('data-collapsed-label')) {
+                toggle.setAttribute('data-collapsed-label', label.textContent);
+            }
+            label.textContent = block.classList.contains('compact-single')
+                ? l10n('compactClose', 'Close')
+                : l10n('compactLess', 'Less');
+        } else {
+            label.textContent = toggle.getAttribute('data-collapsed-label') || label.textContent;
+        }
+    }
+
+    /**
+     * Single delegated click handler for every share button on the page.
+     *
+     * @param {Event} e Click event.
+     */
+    function onClick(e) {
+        var target = e.target;
+        if (!target || !target.closest) {
+            return;
+        }
+
+        var toggle = target.closest('.ayudawp-aiss-more-btn');
+        if (toggle) {
+            e.preventDefault();
+            handleCompactToggle(toggle);
+            return;
+        }
+
+        var btn = target.closest('.ayudawp-share-btn');
+        if (!btn) {
+            return;
+        }
+
+        var url = btn.getAttribute('data-url') || btn.getAttribute('href');
+        if (!url) {
+            return;
+        }
+
+        var platform = detectPlatform(btn);
+
+        e.preventDefault();
+        trackClick(platform, btn);
+
+        if (actionPlatforms.indexOf(platform) !== -1) {
+            if ('copy_link' === platform) {
+                handleCopyLink(url);
+            } else {
+                handleWebShare(btn, url);
+            }
+            return;
+        }
+
+        if (copyPromptPlatforms.indexOf(platform) !== -1) {
+            handleCopyPromptClick(url, platform);
+            return;
+        }
+
+        if (popupPlatforms.indexOf(platform) !== -1) {
+            var width  = 'reddit' === platform ? 900 : 600;
+            var height = 'reddit' === platform ? 600 : 400;
+            var left   = (window.screen.width / 2) - (width / 2);
+            var top    = (window.screen.height / 2) - (height / 2);
+            window.open(url, 'share', 'width=' + width + ',height=' + height + ',left=' + left + ',top=' + top + ',scrollbars=yes,resizable=yes');
+            return;
+        }
+
+        window.open(url, '_blank', 'noopener,noreferrer');
+    }
+
+    /**
+     * Reveal the native share buttons where the browser supports the API.
+     *
+     * Rendered hidden by PHP so the markup is the same for every visitor (and
+     * therefore cacheable), and only shown here when navigator.share exists.
+     */
+    function revealNativeShare() {
+        if (!navigator.share) {
+            return;
+        }
+        var buttons = document.querySelectorAll('.ayudawp-aiss-needs-share-api[hidden]');
+        for (var i = 0; i < buttons.length; i++) {
+            buttons[i].removeAttribute('hidden');
+        }
+    }
+
+    function init() {
+        document.addEventListener('click', onClick, false);
+
+        // Tooltips follow both pointer and keyboard focus.
+        document.addEventListener('mouseover', function (e) {
+            var btn = e.target && e.target.closest ? e.target.closest('.ayudawp-share-btn') : null;
+            if (btn && !btn.classList.contains('ayudawp-aiss-more-btn')) {
+                showTooltip(btn);
+            }
+        }, false);
+        document.addEventListener('mouseout', function (e) {
+            if (e.target && e.target.closest && e.target.closest('.ayudawp-share-btn')) {
+                hideTooltip();
+            }
+        }, false);
+        document.addEventListener('focusin', function (e) {
+            var btn = e.target && e.target.closest ? e.target.closest('.ayudawp-share-btn') : null;
+            if (btn && !btn.classList.contains('ayudawp-aiss-more-btn')) {
+                showTooltip(btn);
+            }
+        }, false);
+        document.addEventListener('focusout', hideTooltip, false);
+        window.addEventListener('scroll', hideTooltip, { passive: true });
+
+        revealNativeShare();
+
+        // Share blocks injected later (AJAX pagination, page builders, infinite
+        // scroll) only need the native-share buttons revealing: clicks and
+        // tooltips are delegated on document and work without re-binding.
+        if (window.MutationObserver && document.body) {
+            var observer = new MutationObserver(function (mutations) {
+                for (var i = 0; i < mutations.length; i++) {
+                    for (var j = 0; j < mutations[i].addedNodes.length; j++) {
+                        var node = mutations[i].addedNodes[j];
+                        if (node.nodeType !== 1) {
+                            continue;
+                        }
+                        if (node.classList && node.classList.contains('ayudawp-share-buttons')) {
+                            revealNativeShare();
+                            return;
+                        }
+                        if (node.querySelector && node.querySelector('.ayudawp-share-buttons')) {
+                            revealNativeShare();
+                            return;
+                        }
+                    }
+                }
+            });
+            observer.observe(document.body, { childList: true, subtree: true });
+        }
+    }
+
+    if ('loading' === document.readyState) {
+        document.addEventListener('DOMContentLoaded', init);
+    } else {
+        init();
+    }
+})();
 
 /**
  * AI Summary frontend generation button (v2.0.0)

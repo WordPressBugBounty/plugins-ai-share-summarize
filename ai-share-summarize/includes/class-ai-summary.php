@@ -104,33 +104,42 @@ class AyudaWP_AISS_AI_Summary {
 				$post_type,
 				self::META_SUMMARY,
 				array(
-					'show_in_rest'  => true,
-					'single'        => true,
-					'type'          => 'string',
-					'default'       => '',
-					'auth_callback' => $auth_callback,
+					'show_in_rest'      => true,
+					'single'            => true,
+					'type'              => 'string',
+					'default'           => '',
+					'auth_callback'     => $auth_callback,
+					// Textarea, not text: the bullet-list format (v2.4.0) stores
+					// one item per line and sanitize_text_field() would collapse
+					// those newlines into spaces.
+					'sanitize_callback' => 'sanitize_textarea_field',
 				)
 			);
 			register_post_meta(
 				$post_type,
 				self::META_PROVIDER,
 				array(
-					'show_in_rest'  => true,
-					'single'        => true,
-					'type'          => 'string',
-					'default'       => '',
-					'auth_callback' => $auth_callback,
+					'show_in_rest'      => true,
+					'single'            => true,
+					'type'              => 'string',
+					'default'           => '',
+					'auth_callback'     => $auth_callback,
+					// Closed set written by the plugin itself: 'wp_ai_client',
+					// 'extractive' or 'manual'.
+					'sanitize_callback' => 'sanitize_key',
 				)
 			);
 			register_post_meta(
 				$post_type,
 				self::META_HASH,
 				array(
-					'show_in_rest'  => true,
-					'single'        => true,
-					'type'          => 'string',
-					'default'       => '',
-					'auth_callback' => $auth_callback,
+					'show_in_rest'      => true,
+					'single'            => true,
+					'type'              => 'string',
+					'default'           => '',
+					'auth_callback'     => $auth_callback,
+					// Lowercase hex SHA1 produced by compute_hash().
+					'sanitize_callback' => 'sanitize_key',
 				)
 			);
 		}
@@ -1139,9 +1148,15 @@ class AyudaWP_AISS_AI_Summary {
 		$open     = empty( $options['ai_summary_collapsed_default'] ) ? ' open' : '';
 		$is_basic = 'extractive' === $provider;
 
+		/*
+		 * "TL;DR (AI Generated)" rather than "AI Summary" since 2.5.0: it says
+		 * what the block is in the words readers already use, and it states
+		 * that a machine wrote it, which the EU AI Act expects of generated
+		 * content shown to the public. Sites that set their own label keep it.
+		 */
 		$label = ! empty( $options['ai_summary_label'] )
 			? $options['ai_summary_label']
-			: __( 'AI Summary', 'ai-share-summarize' );
+			: __( 'TL;DR (AI Generated)', 'ai-share-summarize' );
 
 		$class_attr = self::get_summary_block_classes( $options );
 		$custom     = self::get_summary_block_custom_colors( $options );
@@ -1178,7 +1193,7 @@ class AyudaWP_AISS_AI_Summary {
 			<details class="ayudawp-aiss-summary-details"<?php echo esc_attr( $open ); ?>>
 				<summary class="ayudawp-aiss-summary-toggle">
 					<?php if ( $icon ) : ?>
-						<span class="ayudawp-aiss-summary-icon" aria-hidden="true"><?php echo $icon; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- SVG built by AyudaWP_AISS_Icons. ?></span>
+						<span class="ayudawp-aiss-summary-icon" aria-hidden="true"><?php echo wp_kses( $icon, ayudawp_aiss_kses_svg() ); ?></span>
 					<?php endif; ?>
 					<span class="ayudawp-aiss-summary-label"><?php echo esc_html( $label ); ?></span>
 				</summary>
@@ -1249,7 +1264,7 @@ class AyudaWP_AISS_AI_Summary {
 		       data-nosnippet>
 			<button type="button" class="ayudawp-aiss-summary-generate-btn">
 				<?php if ( $icon ) : ?>
-					<span class="ayudawp-aiss-summary-icon" aria-hidden="true"><?php echo $icon; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- SVG built by AyudaWP_AISS_Icons. ?></span>
+					<span class="ayudawp-aiss-summary-icon" aria-hidden="true"><?php echo wp_kses( $icon, ayudawp_aiss_kses_svg() ); ?></span>
 				<?php endif; ?>
 				<span class="ayudawp-aiss-summary-label"><?php echo esc_html( $label ); ?></span>
 			</button>

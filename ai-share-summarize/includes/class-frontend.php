@@ -50,27 +50,38 @@ class AyudaWP_AISS_Frontend {
 	 * Falls back to shortcode detection for disabled auto-insert.
 	 */
 	public function ayudawp_enqueue_scripts() {
-		$options         = get_option( 'ayudawp_aiss_options' );
 		$summary_options = ayudawp_aiss_get_summary_options();
-		$insert_position = isset( $options['auto_insert_position'] ) ? $options['auto_insert_position'] : 'after_content';
+		$insert_position = ayudawp_aiss_get_placement_for_context();
 		$summary_enabled = ayudawp_aiss_is_summary_active();
-		$summary_pos     = isset( $summary_options['ai_summary_position'] ) ? $summary_options['ai_summary_position'] : 'before_buttons';
+		$summary_pos     = ayudawp_aiss_get_summary_position_for_context();
 
 		// Determine if assets are needed on this page.
 		$should_load = false;
 
-		$buttons_active = ( 'disabled' !== $insert_position );
-		$summary_active = ( $summary_enabled && 'disabled' !== $summary_pos );
+		$buttons_active = ( '' !== $insert_position );
+		$summary_active = ( $summary_enabled && '' !== $summary_pos );
 
-		if ( $buttons_active || $summary_active ) {
-			// Auto-insert mode (buttons or summary): the buttons' locations
-			// setting gates archives/home; singular pages get a second chance
-			// below through the summary's own content-type list.
-			$should_load = ayudawp_aiss_should_display_buttons();
+		if ( $buttons_active || $summary_active || ayudawp_aiss_should_display_floating_bar() ) {
+			$should_load = true;
 		} else {
-			// Shortcode-only mode: load on singular and archives
-			// where shortcodes might be used in content or widgets.
-			$should_load = is_singular() || is_archive() || is_home();
+			/*
+			 * Nothing is placed here (v2.5.0). Until now this branch loaded the
+			 * stylesheet and the script on every singular view, archive and
+			 * home "in case a shortcode is used", which before 2.5.0 only
+			 * happened when automatic insertion was switched off entirely.
+			 * With one map per destination it also fires wherever a destination
+			 * is simply not ticked, so a site with the buttons on posts was
+			 * downloading 71 KB on its home page and on every archive to render
+			 * nothing at all.
+			 *
+			 * On a singular view the content can be searched for the shortcode,
+			 * which is exact. On a listing it cannot, cheaply, so the assets
+			 * are loaded only when no destination is configured anywhere, which
+			 * is the shape of a site driven entirely by shortcodes. Anything
+			 * else relies on the shortcode enqueuing them itself, which it
+			 * does, printing them in the footer.
+			 */
+			$should_load = $this->ayudawp_content_has_shortcode();
 		}
 
 		/*
@@ -113,6 +124,31 @@ class AyudaWP_AISS_Frontend {
 	}
 
 	/**
+	 * Whether this request is likely to render a shortcode of ours (v2.5.0)
+	 *
+	 * @since 2.5.0
+	 * @return bool
+	 */
+	private function ayudawp_content_has_shortcode() {
+		if ( is_singular() ) {
+			$post = get_post( get_queried_object_id() );
+			if ( ! $post ) {
+				return false;
+			}
+			return has_shortcode( (string) $post->post_content, 'ayudawp_share_buttons' )
+				|| has_shortcode( (string) $post->post_content, 'ayudawp_aiss_summary' );
+		}
+
+		// A listing: only worth loading for a site that places nothing at all
+		// and drives everything from shortcodes in templates or widgets.
+		$nothing_placed = ! ayudawp_aiss_get_placements()
+			&& ! ayudawp_aiss_get_placements( 'floating_bar_placements' )
+			&& ! ayudawp_aiss_get_placements( 'ai_summary_placements' );
+
+		return $nothing_placed && ( is_archive() || is_home() );
+	}
+
+	/**
 	 * Add the share buttons (and the buttons-anchored summary) to the content
 	 *
 	 * Runs at the default the_content priority (10). The standalone
@@ -144,17 +180,16 @@ class AyudaWP_AISS_Frontend {
 			return $content;
 		}
 
-		$options         = get_option( 'ayudawp_aiss_options' );
 		$summary_options = ayudawp_aiss_get_summary_options();
-		$insert_position = isset( $options['auto_insert_position'] ) ? $options['auto_insert_position'] : 'after_content';
+		$insert_position = ayudawp_aiss_get_placement_for_context();
 		$summary_enabled = ayudawp_aiss_is_summary_active();
 		$frontend_button = ! empty( $summary_options['ai_summary_frontend_button'] );
-		$summary_pos     = isset( $summary_options['ai_summary_position'] ) ? $summary_options['ai_summary_position'] : 'before_buttons';
+		$summary_pos     = ayudawp_aiss_get_summary_position_for_context();
 
-		// Buttons are this filter's job. When auto-insert is disabled there is
-		// nothing to do here — a standalone summary (if any) is rendered by
-		// ayudawp_prepend_before_content_summary().
-		if ( 'disabled' === $insert_position ) {
+		// Buttons are this filter's job. With no placement for this request
+		// there is nothing to do here — a standalone summary (if any) is
+		// rendered by ayudawp_prepend_before_content_summary().
+		if ( '' === $insert_position ) {
 			return $content;
 		}
 
@@ -172,9 +207,20 @@ class AyudaWP_AISS_Frontend {
 			? AyudaWP_AISS_AI_Summary::get_summary_html( $post_id )
 			: '';
 
+		/*
+		 * The "both" position prints the buttons twice. Since 2.5.0 the block
+		 * carries an id (used by aria-labelledby and by the compact toggle's
+		 * aria-controls), so the second copy has to be generated again rather
+		 * than reusing the same string: two elements with the same id is
+		 * invalid HTML and would point every aria reference at the first one.
+		 */
+		$second_buttons_html = ( 'both' === $insert_position )
+			? AyudaWP_AISS_Buttons::ayudawp_generate_buttons_html()
+			: '';
+
 		$processed[] = $post_id;
 
-		return $this->ayudawp_compose_output( $content, $buttons_html, $summary_html, $insert_position, $summary_pos );
+		return $this->ayudawp_compose_output( $content, $buttons_html, $summary_html, $insert_position, $summary_pos, $second_buttons_html );
 	}
 
 	/**
@@ -316,14 +362,13 @@ class AyudaWP_AISS_Frontend {
 			return $content;
 		}
 
-		$options         = get_option( 'ayudawp_aiss_options' );
 		$summary_options = ayudawp_aiss_get_summary_options();
-		$insert_position = isset( $options['auto_insert_position'] ) ? $options['auto_insert_position'] : 'after_content';
+		$insert_position = ayudawp_aiss_get_placement_for_context();
 		$summary_enabled = ayudawp_aiss_is_summary_active();
 		$frontend_button = ! empty( $summary_options['ai_summary_frontend_button'] );
-		$summary_pos     = isset( $summary_options['ai_summary_position'] ) ? $summary_options['ai_summary_position'] : 'before_buttons';
+		$summary_pos     = ayudawp_aiss_get_summary_position_for_context();
 
-		$summary_active = ( 'disabled' !== $summary_pos ) && ( $summary_enabled || $frontend_button );
+		$summary_active = ( '' !== $summary_pos ) && ( $summary_enabled || $frontend_button );
 		if ( ! $summary_active ) {
 			return $content;
 		}
@@ -337,8 +382,7 @@ class AyudaWP_AISS_Frontend {
 		 * ayudawp_add_share_buttons(). The per-post summary exclusion itself
 		 * is enforced inside should_apply_summary().
 		 */
-		$buttons_visible = ( 'disabled' !== $insert_position )
-			&& ayudawp_aiss_should_display_buttons()
+		$buttons_visible = ( '' !== $insert_position )
 			&& ! ayudawp_aiss_is_post_excluded( $post_id );
 		$standalone      = ( 'before_content' === $summary_pos )
 			|| ( ! $buttons_visible && in_array( $summary_pos, array( 'before_buttons', 'after_buttons' ), true ) );
@@ -398,11 +442,11 @@ class AyudaWP_AISS_Frontend {
 		// No buttons-locations gate here (v2.3.0): whether the summary shows
 		// on this singular page is decided by its own rules alone.
 		$summary_options = ayudawp_aiss_get_summary_options();
-		$summary_pos     = isset( $summary_options['ai_summary_position'] ) ? $summary_options['ai_summary_position'] : 'before_buttons';
+		$summary_pos     = ayudawp_aiss_get_summary_position_for_context();
 		$summary_enabled = ayudawp_aiss_is_summary_active();
 		$frontend_button = ! empty( $summary_options['ai_summary_frontend_button'] );
 
-		if ( 'disabled' === $summary_pos || ( ! $summary_enabled && ! $frontend_button ) ) {
+		if ( '' === $summary_pos || ( ! $summary_enabled && ! $frontend_button ) ) {
 			return;
 		}
 
@@ -430,9 +474,12 @@ class AyudaWP_AISS_Frontend {
 	 * @param string $summary_html    Pre-built summary HTML (may be '').
 	 * @param string $insert_position Buttons position option.
 	 * @param string $summary_pos     Effective summary position option.
+	 * @param string $second_buttons_html Independently generated second block,
+	 *                                    only used by the 'both' position so the
+	 *                                    two blocks do not share element ids.
 	 * @return string Composed content.
 	 */
-	private function ayudawp_compose_output( $content, $buttons_html, $summary_html, $insert_position, $summary_pos ) {
+	private function ayudawp_compose_output( $content, $buttons_html, $summary_html, $insert_position, $summary_pos, $second_buttons_html = '' ) {
 		$has_buttons = '' !== $buttons_html;
 		$has_summary = '' !== $summary_html;
 
@@ -459,7 +506,8 @@ class AyudaWP_AISS_Frontend {
 				return $pre_summary . $buttons_block . $content;
 			case 'both':
 				// Summary appears once with the first buttons block; the second block stays plain.
-				return $pre_summary . $buttons_block . $content . $buttons_html;
+				$second = '' !== $second_buttons_html ? $second_buttons_html : $buttons_html;
+				return $pre_summary . $buttons_block . $content . $second;
 			case 'after_content':
 			default:
 				return $pre_summary . $content . $buttons_block;

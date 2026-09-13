@@ -924,43 +924,235 @@ class AyudaWP_AISS_Rest_API {
 	/**
 	 * Best-effort visitor IP detection for rate limiting (v2.0.0)
 	 *
-	 * Not used for authentication or anything security-sensitive — only as
-	 * a rate-limit bucket key, so accuracy under reverse proxies is enough.
+	 * Not used for authentication — only as a rate-limit bucket key. Even so,
+	 * a bucket key the caller can choose is a bucket key that does not limit
+	 * anything, which is why the forwarding headers are opt-in and, since
+	 * 2.5.0, only honoured when the request actually arrives from a proxy.
 	 *
+	 * @since 2.5.0 Reads the rightmost entry of the chain and requires the peer
+	 *              to be a trusted proxy.
 	 * @return string IP address, or '0.0.0.0' as fallback.
 	 */
 	private static function ayudawp_visitor_ip() {
-		// REMOTE_ADDR is the only value the visitor cannot choose: it is set by
-		// the web server from the actual TCP connection. The forwarding headers
-		// below are sent by the client, so trusting them by default turns the
-		// rate limit into a suggestion (send a different X-Forwarded-For on each
+		$remote = '';
+		if ( ! empty( $_SERVER['REMOTE_ADDR'] ) ) {
+			$candidate = sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) );
+			if ( filter_var( $candidate, FILTER_VALIDATE_IP ) ) {
+				$remote = $candidate;
+			}
+		}
+
+		// REMOTE_ADDR is the only value the visitor cannot choose: the web
+		// server sets it from the actual TCP connection. The forwarding headers
+		// are sent by the client, so trusting them by default turns the rate
+		// limit into a suggestion (send a different X-Forwarded-For on each
 		// request and every call looks like a new visitor).
 		//
-		// Sites genuinely behind a reverse proxy or CDN do need those headers,
-		// because there REMOTE_ADDR is the proxy. That is opt-in: return the
-		// header name to trust from the filter below, and only then is it read.
-		// Trust it only if the proxy is known to overwrite the header, otherwise
-		// the same bypass comes back.
+		// Sites genuinely behind a reverse proxy or CDN do need them, because
+		// there REMOTE_ADDR is the proxy. That is opt-in through the filter
+		// below AND conditional on the request reaching us from a proxy: a
+		// header from any other peer is a forged header.
 		$trusted_header = apply_filters( 'ayudawp_aiss_trusted_proxy_header', '' );
 
-		if ( is_string( $trusted_header ) && '' !== $trusted_header ) {
+		if ( is_string( $trusted_header ) && '' !== $trusted_header && self::ayudawp_peer_is_trusted_proxy( $remote ) ) {
 			$key = 'HTTP_' . strtoupper( str_replace( '-', '_', $trusted_header ) );
 			if ( ! empty( $_SERVER[ $key ] ) ) {
 				$raw   = sanitize_text_field( wp_unslash( $_SERVER[ $key ] ) );
-				$first = trim( explode( ',', $raw )[0] );
-				if ( filter_var( $first, FILTER_VALIDATE_IP ) ) {
-					return $first;
+				$chain = self::ayudawp_client_from_chain( $raw );
+				if ( '' !== $chain ) {
+					return $chain;
 				}
 			}
 		}
 
-		if ( ! empty( $_SERVER['REMOTE_ADDR'] ) ) {
-			$remote = sanitize_text_field( wp_unslash( $_SERVER['REMOTE_ADDR'] ) );
-			if ( filter_var( $remote, FILTER_VALIDATE_IP ) ) {
-				return $remote;
+		return '' !== $remote ? $remote : '0.0.0.0';
+	}
+
+	/**
+	 * Whether the peer that opened this connection may set the forwarding header
+	 *
+	 * A proxy header is only as trustworthy as the peer that sent it. Sites can
+	 * declare their proxies (IPs or CIDR) through the
+	 * `ayudawp_aiss_trusted_proxies` filter; when that list is empty the header
+	 * is honoured only if the connection comes from the site's own network,
+	 * which is the usual shape of a load balancer or a container sidecar. A
+	 * balancer with a public IP has to be listed, or its header is ignored
+	 * (secure by default).
+	 *
+	 * @since 2.5.0
+	 * @param string $remote Validated REMOTE_ADDR.
+	 * @return bool True when the header may be honoured.
+	 */
+	private static function ayudawp_peer_is_trusted_proxy( $remote ) {
+		if ( '' === $remote ) {
+			return false;
+		}
+
+		$trusted = apply_filters( 'ayudawp_aiss_trusted_proxies', array() );
+
+		if ( is_array( $trusted ) && ! empty( $trusted ) ) {
+			foreach ( $trusted as $entry ) {
+				if ( self::ayudawp_ip_matches( $remote, (string) $entry ) ) {
+					return true;
+				}
+			}
+			return false;
+		}
+
+		return self::ayudawp_is_own_network( $remote );
+	}
+
+	/**
+	 * Pick the client address from a forwarding chain
+	 *
+	 * A proxy appends the address it received the connection from and keeps
+	 * whatever the visitor sent in front of it, so the entry that can be
+	 * trusted is the rightmost one — walking left past the site's own proxies.
+	 * Taking the first entry (what every naive implementation does, including
+	 * this plugin until 2.4.4) hands the choice back to the visitor.
+	 *
+	 * @since 2.5.0
+	 * @param string $raw Raw header value.
+	 * @return string Client IP, or '' when the chain has nothing usable.
+	 */
+	private static function ayudawp_client_from_chain( $raw ) {
+		$parts    = array_reverse( array_map( 'trim', explode( ',', $raw ) ) );
+		$fallback = '';
+
+		foreach ( $parts as $part ) {
+			// Strip a port and the brackets of a bracketed IPv6 literal.
+			$part = preg_replace( '/^\[|\](:\d+)?$/', '', $part );
+			if ( preg_match( '/^(\d{1,3}(?:\.\d{1,3}){3}):\d+$/', $part, $m ) ) {
+				$part = $m[1];
+			}
+			$part = self::ayudawp_normalize_ip( $part );
+
+			if ( ! filter_var( $part, FILTER_VALIDATE_IP ) ) {
+				continue;
+			}
+			if ( '' === $fallback ) {
+				$fallback = $part;
+			}
+			if ( ! self::ayudawp_is_own_network( $part ) ) {
+				return $part;
 			}
 		}
 
-		return '0.0.0.0';
+		return $fallback;
+	}
+
+	/**
+	 * Convert an IPv4-mapped IPv6 address to its plain IPv4 form
+	 *
+	 * A dual-stack proxy writes 203.0.113.7 as ::ffff:203.0.113.7. Classifying
+	 * that as an IPv6 address would send it down the wrong branch, and since
+	 * PHP 8.3 filter_var() also counts ::ffff:0:0/96 as reserved, so the range
+	 * checks here are written by hand rather than delegated to flags that
+	 * change with the PHP version.
+	 *
+	 * @since 2.5.0
+	 * @param string $ip Address.
+	 * @return string Normalized address.
+	 */
+	private static function ayudawp_normalize_ip( $ip ) {
+		if ( 0 === stripos( $ip, '::ffff:' ) ) {
+			$tail = substr( $ip, 7 );
+			if ( filter_var( $tail, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4 ) ) {
+				return $tail;
+			}
+		}
+		return $ip;
+	}
+
+	/**
+	 * Whether an address belongs to the site's own network (private/reserved)
+	 *
+	 * Ranges are written out instead of using FILTER_FLAG_NO_PRIV_RANGE /
+	 * FILTER_FLAG_NO_RES_RANGE, whose coverage changes between PHP versions.
+	 *
+	 * @since 2.5.0
+	 * @param string $ip Validated address.
+	 * @return bool True for loopback, link-local, private or unique-local.
+	 */
+	private static function ayudawp_is_own_network( $ip ) {
+		$ip = self::ayudawp_normalize_ip( $ip );
+
+		if ( filter_var( $ip, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4 ) ) {
+			$ranges = array( '10.0.0.0/8', '172.16.0.0/12', '192.168.0.0/16', '127.0.0.0/8', '169.254.0.0/16', '100.64.0.0/10' );
+			foreach ( $ranges as $range ) {
+				if ( self::ayudawp_ip_matches( $ip, $range ) ) {
+					return true;
+				}
+			}
+			return false;
+		}
+
+		$packed = @inet_pton( $ip ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- malformed input returns false, which is the branch below.
+		if ( false === $packed ) {
+			return false;
+		}
+		// ::1 (loopback), fc00::/7 (unique local), fe80::/10 (link local).
+		if ( str_repeat( "\0", 15 ) . "\1" === $packed ) {
+			return true;
+		}
+		$first = ord( $packed[0] );
+		if ( 0xfc === ( $first & 0xfe ) ) {
+			return true;
+		}
+		if ( 0xfe === $first && 0x80 === ( ord( $packed[1] ) & 0xc0 ) ) {
+			return true;
+		}
+
+		return false;
+	}
+
+	/**
+	 * Match an address against a single IP or CIDR block
+	 *
+	 * @since 2.5.0
+	 * @param string $ip    Address to test.
+	 * @param string $entry Single IP or CIDR block.
+	 * @return bool True on match.
+	 */
+	private static function ayudawp_ip_matches( $ip, $entry ) {
+		$entry = trim( $entry );
+		if ( '' === $entry ) {
+			return false;
+		}
+
+		$ip = self::ayudawp_normalize_ip( $ip );
+
+		if ( false === strpos( $entry, '/' ) ) {
+			return self::ayudawp_normalize_ip( $entry ) === $ip;
+		}
+
+		list( $subnet, $bits ) = explode( '/', $entry, 2 );
+		$subnet = self::ayudawp_normalize_ip( trim( $subnet ) );
+		$bits   = (int) $bits;
+
+		$packed_ip     = @inet_pton( $ip ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- malformed input returns false and the block below bails out.
+		$packed_subnet = @inet_pton( $subnet ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged -- same.
+		if ( false === $packed_ip || false === $packed_subnet || strlen( $packed_ip ) !== strlen( $packed_subnet ) ) {
+			return false;
+		}
+
+		$max = strlen( $packed_ip ) * 8;
+		if ( $bits < 0 || $bits > $max ) {
+			return false;
+		}
+
+		$whole = intdiv( $bits, 8 );
+		$rest  = $bits % 8;
+
+		if ( $whole > 0 && substr( $packed_ip, 0, $whole ) !== substr( $packed_subnet, 0, $whole ) ) {
+			return false;
+		}
+		if ( 0 === $rest ) {
+			return true;
+		}
+
+		$mask = ~( ( 1 << ( 8 - $rest ) ) - 1 ) & 0xff;
+
+		return ( ord( $packed_ip[ $whole ] ) & $mask ) === ( ord( $packed_subnet[ $whole ] ) & $mask );
 	}
 }
