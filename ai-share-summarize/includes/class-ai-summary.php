@@ -1180,6 +1180,13 @@ class AyudaWP_AISS_AI_Summary {
 			$items = array( $summary );
 		}
 
+		/*
+		 * data-nosnippet sits on a <div> that wraps everything inside the box,
+		 * not on the <aside> (2.5.1). Google reads the attribute on span, div
+		 * and section only, so on the <aside> it never kept the summary out of
+		 * snippets or AI Overviews. The <div> has no itemscope of its own, so
+		 * genre and abstract still belong to the CreativeWork of the <aside>.
+		 */
 		ob_start();
 		self::print_critical_inline_style();
 		?>
@@ -1187,35 +1194,36 @@ class AyudaWP_AISS_AI_Summary {
 		       role="complementary"
 		       aria-label="<?php echo esc_attr( $label ); ?>"
 		       data-provider="<?php echo esc_attr( $provider ); ?>"
-		       data-nosnippet
 		       itemscope itemtype="https://schema.org/CreativeWork">
-			<meta itemprop="genre" content="summary">
-			<details class="ayudawp-aiss-summary-details"<?php echo esc_attr( $open ); ?>>
-				<summary class="ayudawp-aiss-summary-toggle">
-					<?php if ( $icon ) : ?>
-						<span class="ayudawp-aiss-summary-icon" aria-hidden="true"><?php echo wp_kses( $icon, ayudawp_aiss_kses_svg() ); ?></span>
-					<?php endif; ?>
-					<span class="ayudawp-aiss-summary-label"><?php echo esc_html( $label ); ?></span>
-				</summary>
-				<div class="ayudawp-aiss-summary-content">
-					<div class="ayudawp-aiss-summary-text" itemprop="abstract">
-						<?php if ( $bullets_mode ) : ?>
-							<ul class="ayudawp-aiss-summary-list">
+			<div data-nosnippet>
+				<meta itemprop="genre" content="summary">
+				<details class="ayudawp-aiss-summary-details"<?php echo esc_attr( $open ); ?>>
+					<summary class="ayudawp-aiss-summary-toggle">
+						<?php if ( $icon ) : ?>
+							<span class="ayudawp-aiss-summary-icon" aria-hidden="true"><?php echo wp_kses( $icon, ayudawp_aiss_kses_svg() ); ?></span>
+						<?php endif; ?>
+						<span class="ayudawp-aiss-summary-label"><?php echo esc_html( $label ); ?></span>
+					</summary>
+					<div class="ayudawp-aiss-summary-content">
+						<div class="ayudawp-aiss-summary-text" itemprop="abstract">
+							<?php if ( $bullets_mode ) : ?>
+								<ul class="ayudawp-aiss-summary-list">
+									<?php foreach ( $items as $item ) : ?>
+										<li><?php echo esc_html( $item ); ?></li>
+									<?php endforeach; ?>
+								</ul>
+							<?php else : ?>
 								<?php foreach ( $items as $item ) : ?>
-									<li><?php echo esc_html( $item ); ?></li>
+									<p><?php echo esc_html( $item ); ?></p>
 								<?php endforeach; ?>
-							</ul>
-						<?php else : ?>
-							<?php foreach ( $items as $item ) : ?>
-								<p><?php echo esc_html( $item ); ?></p>
-							<?php endforeach; ?>
+							<?php endif; ?>
+						</div>
+						<?php if ( $is_basic ) : ?>
+							<small class="ayudawp-aiss-summary-attribution"><?php esc_html_e( 'Basic summary', 'ai-share-summarize' ); ?></small>
 						<?php endif; ?>
 					</div>
-					<?php if ( $is_basic ) : ?>
-						<small class="ayudawp-aiss-summary-attribution"><?php esc_html_e( 'Basic summary', 'ai-share-summarize' ); ?></small>
-					<?php endif; ?>
-				</div>
-			</details>
+				</details>
+			</div>
 		</aside>
 		<?php
 		return (string) ob_get_clean();
@@ -1254,20 +1262,23 @@ class AyudaWP_AISS_AI_Summary {
 			? AyudaWP_AISS_Icons::ayudawp_get_icon( 'aiss_summary', 16 )
 			: '';
 
+		// Same <div data-nosnippet> wrapper as the summary box, and for the
+		// same reason: see get_summary_html().
 		ob_start();
 		self::print_critical_inline_style();
 		?>
 		<aside class="<?php echo esc_attr( $class_attr ); ?>"<?php if ( $custom ) : ?> style="--ayudawp-aiss-bg:<?php echo esc_attr( $custom['bg'] ); ?>;--ayudawp-aiss-text:<?php echo esc_attr( $custom['text'] ); ?>;"<?php endif; ?>
 		       role="complementary"
 		       aria-label="<?php echo esc_attr( $label ); ?>"
-		       data-post-id="<?php echo esc_attr( $post_id ); ?>"
-		       data-nosnippet>
-			<button type="button" class="ayudawp-aiss-summary-generate-btn">
-				<?php if ( $icon ) : ?>
-					<span class="ayudawp-aiss-summary-icon" aria-hidden="true"><?php echo wp_kses( $icon, ayudawp_aiss_kses_svg() ); ?></span>
-				<?php endif; ?>
-				<span class="ayudawp-aiss-summary-label"><?php echo esc_html( $label ); ?></span>
-			</button>
+		       data-post-id="<?php echo esc_attr( $post_id ); ?>">
+			<div data-nosnippet>
+				<button type="button" class="ayudawp-aiss-summary-generate-btn">
+					<?php if ( $icon ) : ?>
+						<span class="ayudawp-aiss-summary-icon" aria-hidden="true"><?php echo wp_kses( $icon, ayudawp_aiss_kses_svg() ); ?></span>
+					<?php endif; ?>
+					<span class="ayudawp-aiss-summary-label"><?php echo esc_html( $label ); ?></span>
+				</button>
+			</div>
 		</aside>
 		<?php
 		return (string) ob_get_clean();

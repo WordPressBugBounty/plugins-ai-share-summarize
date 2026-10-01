@@ -3,7 +3,7 @@ Contributors: fernandot,ayudawp
 Tags: claude, chatgpt, social share, ai, perplexity
 Requires at least: 6.1
 Tested up to: 7.1
-Stable tag: 2.5.0
+Stable tag: 2.5.1
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -21,7 +21,7 @@ Among the **first plugins to integrate the native WordPress 7.0 AI Connectors AP
 * **Two-tier cascade**: Level A uses the WordPress 7.0 AI Client; Level C is a built-in PHP extractive fallback with zero API cost on any WP 6.1+ install.
 * **Choose your AI model and mode**: pick the provider and model used to generate summaries, or leave it on Automatic to use a fast, cost-effective model instead of the newest, most expensive one. Set how generation behaves too: AI with extractive fallback, AI only, extractive only, or disabled.
 * **Paragraph or bullet-list format**: show the summary as prose (one paragraph per sentence) or as a concise bullet list, with configurable length (1-5 sentences or points).
-* **Collapsible inline block** with native `<details>`, `data-nosnippet` and Schema.org `CreativeWork` microdata so search engines treat it as derived content, not competition.
+* **Collapsible inline block** with native `<details>`, `data-nosnippet` and Schema.org `CreativeWork` microdata, so Google leaves the summary out of its snippets and AI Overviews and it never competes with your own text.
 * **Editor controls** in the block sidebar and the classic meta box: view, edit manually, regenerate on demand, hide per post (independently from the buttons).
 * **Visitor-facing "Generate AI summary" button** for posts without a stored summary, restrictable to extractive-only or open to the AI Client.
 * **Async generation via WP-Cron**. `[ayudawp_aiss_summary]` shortcode also available.
@@ -401,6 +401,11 @@ The social and AI sharing buttons render as `<a>` / `<button>` elements that ope
 
 == Changelog ==
 
+= 2.5.1 =
+The summary box is now actually kept out of Google snippets and AI Overviews: data-nosnippet moves from the aside, which Google ignores, to a div that wraps the whole box. Clear your page cache after updating.
+
+* Fix: The summary box was never actually kept out of Google snippets and AI Overviews, as the readme promised. Since 2.0.0 the `data-nosnippet` attribute sat on the `<aside>`, and Google only reads it on `div`, `span` and `section`. It now sits on a `div` that wraps everything inside the box, for both the summary and the Generate button. Classes, styles and the Schema.org microdata do not change. It takes effect the next time Google crawls each post, so if you use a page cache, clear it after updating so the new markup is the one being served.
+
 = 2.5.0 =
 New floating share bar, compact mode for phones, Copy link and native Share buttons, UTM tagging, and a reorganised settings screen where the three overlapping location settings become a single list.
 
@@ -432,8 +437,8 @@ For older changelog entries, please check the [changelog.txt](https://plugins.sv
 
 == Upgrade Notice ==
 
-= 2.5.0 =
-New floating share bar, compact mode for phones, Copy link and native Share buttons, UTM tagging, and a reorganised settings screen where the three overlapping location settings become a single list.
+= 2.5.1 =
+The summary box is now actually kept out of Google snippets and AI Overviews: data-nosnippet moves from the aside, which Google ignores, to a div that wraps the whole box. Clear your page cache after updating.
 
 == Advanced Usage ==
 

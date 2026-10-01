@@ -3,6 +3,9 @@ Share Buttons & AI-powered Summaries — Full changelog
 For each release, see the entries below. The latest version is always at the top.
 The current release notes also live in readme.txt under "== Changelog ==".
 
+= 2.5.1 =
+* Fix: The summary box was never actually kept out of Google snippets and AI Overviews, as the readme promised. Since 2.0.0 the `data-nosnippet` attribute sat on the `<aside>`, and Google only reads it on `div`, `span` and `section`. It now sits on a `div` that wraps everything inside the box, for both the summary and the Generate button. Classes, styles and the Schema.org microdata do not change. It takes effect the next time Google crawls each post, so if you use a page cache, clear it after updating so the new markup is the one being served.
+
 = 2.5.0 =
 * New: The settings screen is reorganised. Where the buttons appear was governed by three settings that had to agree with each other (the locations, the content types and the insertion position), two of them listing overlapping things, and nothing on screen said the condition was an AND, so ticking one of them and seeing no buttons was the usual first experience. They are now a single list with one row per destination and its own position, which also makes possible something that was not before: buttons after the content on posts and before it on pages. Your current setup is migrated to the new list, keeping what visitors were actually seeing rather than the literal settings. The rest of the screen is grouped under headings, with related settings side by side, so the two halves of the same decision are no longer twelve rows apart.
 * New: The buttons you enable are shown as the real buttons, in the style you picked, and the preview repaints as you change the style, the icons or the corner shape. The AI Summary tab gets the same treatment: its thirteen settings are now four groups, and the block appearance is decided against a live sample instead of by saving and reloading.
