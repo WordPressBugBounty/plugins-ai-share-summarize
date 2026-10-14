@@ -31,9 +31,12 @@ class AyudaWP_AISS_Buttons {
 	 * @param array  $options         Plugin options.
 	 * @param string $url             Current URL.
 	 * @param string $title           Current title.
+	 * @param int    $post_id         Post the block belongs to (v2.6.0). Defaults
+	 *                                to the global post; a theme action passes it
+	 *                                because the global may be another post.
 	 * @return string Complete buttons HTML.
 	 */
-	public static function ayudawp_generate_buttons_html( $enabled_buttons = null, $options = null, $url = null, $title = null ) {
+	public static function ayudawp_generate_buttons_html( $enabled_buttons = null, $options = null, $url = null, $title = null, $post_id = null ) {
 		if ( null === $options ) {
 			$options = get_option( 'ayudawp_aiss_options' );
 		}
@@ -95,7 +98,38 @@ class AyudaWP_AISS_Buttons {
 		$custom_bg   = isset( $options['custom_color_bg'] ) ? $options['custom_color_bg'] : '';
 		$custom_text = isset( $options['custom_color_text'] ) ? $options['custom_color_text'] : '';
 
-		$enabled_buttons = self::ayudawp_order_buttons( $enabled_buttons, $button_order, $options );
+		$enabled_buttons = ayudawp_aiss_remove_unavailable_buttons( self::ayudawp_order_buttons( $enabled_buttons, $button_order, $options ) );
+
+		/*
+		 * Where the Google preferred source button goes (v2.6.0). Outside the
+		 * block it only shows when a shortcode names it in its buttons list;
+		 * in a section of its own it leaves the groups and is printed last.
+		 * Alone in the block there is nothing to set it apart from, so it is
+		 * printed as an ordinary single button.
+		 */
+		$google_place   = ayudawp_aiss_get_google_preferred_placement( $options );
+		$google_section = false;
+		if ( in_array( 'google_preferred', $enabled_buttons, true ) ) {
+			if ( 'outside' === $google_place && empty( $options['_sc_explicit_buttons'] ) ) {
+				$enabled_buttons = array_values( array_diff( $enabled_buttons, array( 'google_preferred' ) ) );
+			} elseif ( 'section' === $google_place && count( $enabled_buttons ) > 1 ) {
+				$enabled_buttons = array_values( array_diff( $enabled_buttons, array( 'google_preferred' ) ) );
+				$google_section  = true;
+			}
+		}
+
+		if ( empty( $enabled_buttons ) ) {
+			return '';
+		}
+
+		/*
+		 * Compact mode needs something to compact (v2.6.0). With a single
+		 * button, "one Share button that opens the rest" hid that button
+		 * behind a toggle that opened nothing else.
+		 */
+		if ( count( $enabled_buttons ) + ( $google_section ? 1 : 0 ) < 2 ) {
+			$compact_mode = 'disabled';
+		}
 
 		// Determine if we use section titles (override global title).
 		// Mixed order always uses the general title since groups are interleaved.
@@ -163,7 +197,7 @@ class AyudaWP_AISS_Buttons {
 		 * counting without guessing from the theme's `article id="post-N"`,
 		 * which only some themes emit.
 		 */
-		$block_post_id = get_the_ID();
+		$block_post_id = null === $post_id ? get_the_ID() : (int) $post_id;
 		$post_id_attr  = $block_post_id ? ' data-post-id="' . esc_attr( (string) $block_post_id ) . '"' : '';
 
 		$html = '<div id="' . esc_attr( $block_id ) . '" class="' . esc_attr( $style_class ) . '"' . $post_id_attr . $custom_style . '>';
@@ -248,6 +282,31 @@ class AyudaWP_AISS_Buttons {
 			$html .= '</div>';
 		}
 
+		// Google preferred source in a section of its own, last (v2.6.0).
+		if ( $google_section ) {
+			$group_id     = $block_id . '-google';
+			$title_id     = '';
+			$group_hidden = ( 'partial' === $compact_mode && $rendered >= $compact_visible );
+			$google_title = isset( $options['_sc_google_title'] )
+				? $options['_sc_google_title']
+				: ( isset( $options['google_section_title'] ) ? $options['google_section_title'] : '' );
+
+			if ( '' !== trim( (string) $google_title ) ) {
+				$title_id = $group_id . '-title';
+				$html    .= ayudawp_aiss_open_tag( $title_style, 'ayudawp-title ayudawp-section-title' . ( $group_hidden ? ' aiss-overflow' : '' ), $title_id ) . esc_html( $google_title ) . ayudawp_aiss_close_tag( $title_style );
+			} else {
+				// A visible line, unlike the spacer between the other groups:
+				// without a title it is what sets the section apart.
+				$html .= '<div class="ayudawp-section-separator ayudawp-google-separator' . ( $group_hidden ? ' aiss-overflow' : '' ) . '"></div>';
+			}
+
+			$html .= '<div id="' . esc_attr( $group_id ) . '" class="ayudawp-buttons-container ayudawp-google-section" role="group"'
+				. self::ayudawp_group_label_attr( $title_id, 'google' ) . '>';
+			$html .= self::ayudawp_get_button_html( 'google_preferred', $url, $title, $options, $show_icons, $color_style, $seo_button_type, $group_hidden );
+			$html .= '</div>';
+			$rendered++;
+		}
+
 		// The compact toggle is rendered whenever the mode is on, but CSS only
 		// shows it inside the mobile breakpoint — and, in "N visible" mode,
 		// only when there is something hidden behind it.
@@ -269,7 +328,7 @@ class AyudaWP_AISS_Buttons {
 	 *
 	 * @since 2.5.0
 	 * @param string $title_id Id of the title element, or '' when there is none.
-	 * @param string $kind     'ai', 'social' or 'mixed'.
+	 * @param string $kind     'ai', 'social', 'mixed' or 'google' (v2.6.0).
 	 * @return string Attribute string, starting with a space.
 	 */
 	private static function ayudawp_group_label_attr( $title_id, $kind ) {
@@ -281,6 +340,8 @@ class AyudaWP_AISS_Buttons {
 			$label = __( 'Ask an AI assistant about this content', 'ai-share-summarize' );
 		} elseif ( 'social' === $kind ) {
 			$label = __( 'Share this content on social networks', 'ai-share-summarize' );
+		} elseif ( 'google' === $kind ) {
+			$label = __( 'Google preferred source', 'ai-share-summarize' );
 		} else {
 			$label = __( 'Share this content', 'ai-share-summarize' );
 		}
@@ -439,6 +500,14 @@ class AyudaWP_AISS_Buttons {
 				'class' => 'web-share',
 			),
 
+			// Google preferred source (v2.6.0). Points at the site's domain,
+			// not at the post, so the UTM-tagged $url plays no part in it.
+			'google_preferred' => array(
+				'label' => __( 'Preferred source', 'ai-share-summarize' ),
+				'url'   => 'https://www.google.com/preferences/source?q=' . rawurlencode( ayudawp_aiss_get_google_preferred_domain() ),
+				'class' => 'google-preferred',
+			),
+
 			// AI platforms.
 			'claude'    => array(
 				'label' => 'Claude',
@@ -503,6 +572,12 @@ class AyudaWP_AISS_Buttons {
 			return '';
 		}
 
+		// A caller that skipped ayudawp_aiss_remove_unavailable_buttons() still
+		// gets no link to an empty search.
+		if ( 'google_preferred' === $button && '' === ayudawp_aiss_get_google_preferred_domain() ) {
+			return '';
+		}
+
 		$config = $buttons_config[ $button ];
 
 		// Get icon if needed.
@@ -534,6 +609,9 @@ class AyudaWP_AISS_Buttons {
 			$aria = __( 'Copy link to clipboard', 'ai-share-summarize' );
 		} elseif ( 'web_share' === $button ) {
 			$aria = __( 'Share using your device', 'ai-share-summarize' );
+		} elseif ( 'google_preferred' === $button ) {
+			// Not a share: "Share in Preferred source" would mislead.
+			$aria = __( 'Add this site as a preferred source on Google', 'ai-share-summarize' );
 		} else {
 			/* translators: %s is the button label */
 			$aria = sprintf( __( 'Share in %s', 'ai-share-summarize' ), $config['label'] );

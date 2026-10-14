@@ -25,6 +25,7 @@
 			<key name="title_text" />
 			<key name="ai_section_title" />
 			<key name="social_section_title" />
+			<key name="google_section_title" />
 		</key>
 		<key name="ayudawp_aiss_summary_options">
 			<key name="ai_summary_label" />

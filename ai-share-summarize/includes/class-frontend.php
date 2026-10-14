@@ -21,9 +21,33 @@ if ( ! defined( 'ABSPATH' ) ) {
 class AyudaWP_AISS_Frontend {
 
 	/**
+	 * Theme action each anchor is printed in, '' for the_content (v2.6.0)
+	 *
+	 * "before" holds what goes before the content (buttons placed before it,
+	 * the summary placed before it or glued to those buttons); "after" what
+	 * goes after it. Filled at `wp` from ayudawp_aiss_content_anchors.
+	 *
+	 * @since 2.6.0
+	 * @var array
+	 */
+	private $anchors = array(
+		'before' => '',
+		'after'  => '',
+	);
+
+	/**
+	 * Actions hooked for the anchors, so a second `wp` can unhook them (v2.6.0)
+	 *
+	 * @since 2.6.0
+	 * @var array
+	 */
+	private $hooked = array();
+
+	/**
 	 * Constructor
 	 */
 	public function __construct() {
+		add_action( 'wp', array( $this, 'ayudawp_register_anchors' ) );
 		add_action( 'wp_enqueue_scripts', array( $this, 'ayudawp_enqueue_scripts' ) );
 		add_action( 'wp_head', array( $this, 'ayudawp_print_summary_critical_css' ) );
 		add_filter( 'the_content', array( $this, 'ayudawp_add_share_buttons' ) );
@@ -165,6 +189,11 @@ class AyudaWP_AISS_Frontend {
 		// Track which post IDs already received the buttons so the same post
 		// can never get them twice on the same request.
 		static $processed = array();
+
+		// Both anchors moved to theme actions (v2.6.0): nothing goes in here.
+		if ( ! $this->ayudawp_anchor_in_content( 'before' ) && ! $this->ayudawp_anchor_in_content( 'after' ) ) {
+			return $content;
+		}
 
 		$post_id = $this->ayudawp_resolve_target_post_id( $content );
 		if ( ! $post_id || in_array( $post_id, $processed, true ) ) {
@@ -343,7 +372,9 @@ class AyudaWP_AISS_Frontend {
 	public function ayudawp_prepend_before_content_summary( $content ) {
 		static $processed = array();
 
-		if ( ! class_exists( 'AyudaWP_AISS_AI_Summary' ) ) {
+		// The standalone summary always belongs to the "before" anchor, so
+		// when that one is printed in a theme action it is not done here.
+		if ( ! class_exists( 'AyudaWP_AISS_AI_Summary' ) || ! $this->ayudawp_anchor_in_content( 'before' ) ) {
 			return $content;
 		}
 
@@ -404,7 +435,8 @@ class AyudaWP_AISS_Frontend {
 		 * skipped nested render does not — so require that marker to make sure we
 		 * prepend to the stream the buttons filter already claimed.
 		 */
-		if ( $buttons_visible && false === strpos( $content, 'ayudawp-share-buttons' ) ) {
+		if ( $buttons_visible && $this->ayudawp_buttons_in_content( $insert_position )
+			&& false === strpos( $content, 'ayudawp-share-buttons' ) ) {
 			return $content;
 		}
 
@@ -480,6 +512,29 @@ class AyudaWP_AISS_Frontend {
 	 * @return string Composed content.
 	 */
 	private function ayudawp_compose_output( $content, $buttons_html, $summary_html, $insert_position, $summary_pos, $second_buttons_html = '' ) {
+		$parts = $this->ayudawp_split_parts( $buttons_html, $summary_html, $insert_position, $summary_pos, $second_buttons_html );
+
+		// An anchor printed in a theme action (v2.6.0) leaves its part out.
+		return ( $this->ayudawp_anchor_in_content( 'before' ) ? $parts['before'] : '' )
+			. $content
+			. ( $this->ayudawp_anchor_in_content( 'after' ) ? $parts['after'] : '' );
+	}
+
+	/**
+	 * Split the buttons and the glued summary into what goes before and after the content
+	 *
+	 * The position matrix that ayudawp_compose_output() applied directly until
+	 * 2.6.0, kept apart so a theme action can print one of the two parts.
+	 *
+	 * @since 2.6.0
+	 * @param string $buttons_html        Pre-built buttons HTML (may be '').
+	 * @param string $summary_html        Pre-built summary HTML (may be '').
+	 * @param string $insert_position     Buttons position option.
+	 * @param string $summary_pos         Effective summary position option.
+	 * @param string $second_buttons_html Second block, for the 'both' position.
+	 * @return array{before: string, after: string}
+	 */
+	private function ayudawp_split_parts( $buttons_html, $summary_html, $insert_position, $summary_pos, $second_buttons_html = '' ) {
 		$has_buttons = '' !== $buttons_html;
 		$has_summary = '' !== $summary_html;
 
@@ -503,14 +558,258 @@ class AyudaWP_AISS_Frontend {
 
 		switch ( $insert_position ) {
 			case 'before_content':
-				return $pre_summary . $buttons_block . $content;
+				return array(
+					'before' => $pre_summary . $buttons_block,
+					'after'  => '',
+				);
 			case 'both':
 				// Summary appears once with the first buttons block; the second block stays plain.
-				$second = '' !== $second_buttons_html ? $second_buttons_html : $buttons_html;
-				return $pre_summary . $buttons_block . $content . $second;
+				return array(
+					'before' => $pre_summary . $buttons_block,
+					'after'  => '' !== $second_buttons_html ? $second_buttons_html : $buttons_html,
+				);
 			case 'after_content':
 			default:
-				return $pre_summary . $content . $buttons_block;
+				return array(
+					'before' => $pre_summary,
+					'after'  => $buttons_block,
+				);
 		}
+	}
+
+	/**
+	 * Read where each anchor is printed and hook the theme actions (v2.6.0)
+	 *
+	 * Runs at `wp`, once the theme is loaded and the query is known, so a
+	 * theme or a site plugin can decide per request.
+	 *
+	 * @since 2.6.0
+	 * @return void
+	 */
+	public function ayudawp_register_anchors() {
+		// Start from the_content every time, so running `wp` twice in one
+		// request neither keeps the previous answer nor hooks twice.
+		foreach ( $this->hooked as $hooked ) {
+			remove_action( $hooked[0], array( $this, $hooked[1] ), $hooked[2] );
+		}
+		$this->hooked  = array();
+		$this->anchors = array(
+			'before' => '',
+			'after'  => '',
+		);
+
+		if ( is_admin() ) {
+			return;
+		}
+
+		$defaults = array(
+			'before' => array(
+				'hook'     => 'the_content',
+				'priority' => 10,
+			),
+			'after'  => array(
+				'hook'     => 'the_content',
+				'priority' => 10,
+			),
+		);
+
+		/**
+		 * Filter where the blocks placed before and after the content are printed.
+		 *
+		 * Both are the_content by default, which is how every version before
+		 * 2.6.0 worked. Give an anchor the name of an action the theme fires
+		 * around the content to print its part there instead: for themes that
+		 * rewrite the content after the filters run and duplicate or move
+		 * whatever was added to it. Settings keep deciding whether and where
+		 * (before, after, both) the buttons and the summary go; this only moves
+		 * the "before" part, the "after" part, or both, out of the content.
+		 *
+		 * @since 2.6.0
+		 * @param array $anchors {
+		 *     @type array $before { @type string $hook Action name. @type int $priority Priority. }
+		 *     @type array $after  { @type string $hook Action name. @type int $priority Priority. }
+		 * }
+		 */
+		$anchors = apply_filters( 'ayudawp_aiss_content_anchors', $defaults );
+
+		$callbacks = array(
+			'before' => 'ayudawp_print_before_anchor',
+			'after'  => 'ayudawp_print_after_anchor',
+		);
+
+		foreach ( $callbacks as $anchor => $callback ) {
+			$hook     = isset( $anchors[ $anchor ]['hook'] ) && is_string( $anchors[ $anchor ]['hook'] ) ? trim( $anchors[ $anchor ]['hook'] ) : '';
+			$priority = isset( $anchors[ $anchor ]['priority'] ) ? (int) $anchors[ $anchor ]['priority'] : 10;
+
+			if ( '' === $hook || 'the_content' === $hook ) {
+				continue;
+			}
+
+			$this->anchors[ $anchor ] = $hook;
+			$this->hooked[]           = array( $hook, $callback, $priority );
+			add_action( $hook, array( $this, $callback ), $priority );
+		}
+	}
+
+	/**
+	 * Whether an anchor is still printed inside the_content (v2.6.0)
+	 *
+	 * @since 2.6.0
+	 * @param string $anchor 'before' or 'after'.
+	 * @return bool
+	 */
+	private function ayudawp_anchor_in_content( $anchor ) {
+		return '' === $this->anchors[ $anchor ];
+	}
+
+	/**
+	 * Whether the buttons block lands inside the_content for a position (v2.6.0)
+	 *
+	 * @since 2.6.0
+	 * @param string $insert_position Buttons position.
+	 * @return bool
+	 */
+	private function ayudawp_buttons_in_content( $insert_position ) {
+		if ( 'before_content' === $insert_position ) {
+			return $this->ayudawp_anchor_in_content( 'before' );
+		}
+		if ( 'both' === $insert_position ) {
+			return $this->ayudawp_anchor_in_content( 'before' ) || $this->ayudawp_anchor_in_content( 'after' );
+		}
+		return $this->ayudawp_anchor_in_content( 'after' );
+	}
+
+	/**
+	 * Print the "before" anchor in its theme action (v2.6.0)
+	 *
+	 * Returns what it receives, so a filter name given by mistake keeps its
+	 * value instead of being blanked.
+	 *
+	 * @since 2.6.0
+	 * @param mixed $value First argument of the hook, passed through.
+	 * @return mixed
+	 */
+	public function ayudawp_print_before_anchor( $value = null ) {
+		$this->ayudawp_print_anchor( 'before' );
+		return $value;
+	}
+
+	/**
+	 * Print the "after" anchor in its theme action (v2.6.0)
+	 *
+	 * @since 2.6.0
+	 * @param mixed $value First argument of the hook, passed through.
+	 * @return mixed
+	 */
+	public function ayudawp_print_after_anchor( $value = null ) {
+		$this->ayudawp_print_anchor( 'after' );
+		return $value;
+	}
+
+	/**
+	 * Print one anchor for the post being viewed, once per request (v2.6.0)
+	 *
+	 * @since 2.6.0
+	 * @param string $anchor 'before' or 'after'.
+	 * @return void
+	 */
+	private function ayudawp_print_anchor( $anchor ) {
+		static $done = array();
+
+		if ( is_admin() || is_feed() ) {
+			return;
+		}
+
+		// The queried post on a singular view, never the global one: a theme
+		// fires these actions around modules that may have left another post
+		// in $post. On a listing, the post of the main loop.
+		if ( is_singular() ) {
+			$post_id = (int) get_queried_object_id();
+		} elseif ( in_the_loop() && is_main_query() ) {
+			$post_id = (int) get_the_ID();
+		} else {
+			$post_id = 0;
+		}
+
+		/*
+		 * Marked before building, not after printing: building calls
+		 * get_the_title() and get_permalink(), and an anchor hooked by mistake
+		 * on one of their filters would otherwise call itself without end.
+		 */
+		if ( ! $post_id || isset( $done[ $anchor . ':' . $post_id ] ) ) {
+			return;
+		}
+		$done[ $anchor . ':' . $post_id ] = true;
+
+		// Normally already printed in <head>. Called here too so the <style>
+		// is never part of the string that goes through wp_kses() below.
+		if ( class_exists( 'AyudaWP_AISS_AI_Summary' ) ) {
+			AyudaWP_AISS_AI_Summary::print_critical_inline_style();
+		}
+
+		$parts = $this->ayudawp_build_parts( $post_id );
+		if ( '' === $parts[ $anchor ] ) {
+			return;
+		}
+
+		/*
+		 * Everything in the string is escaped where it is built. wp_kses() on
+		 * top keeps this output to the markup the blocks are made of, the same
+		 * defence in depth as the floating bar.
+		 */
+		echo wp_kses( $parts[ $anchor ], ayudawp_aiss_kses_content_blocks() );
+	}
+
+	/**
+	 * Both parts for a post, as the two the_content filters would build them (v2.6.0)
+	 *
+	 * Mirrors ayudawp_add_share_buttons() for the buttons and the glued summary,
+	 * and ayudawp_prepend_before_content_summary() for the standalone summary,
+	 * so a block printed in a theme action is the one the content would carry.
+	 *
+	 * @since 2.6.0
+	 * @param int $post_id Post being viewed.
+	 * @return array{before: string, after: string}
+	 */
+	private function ayudawp_build_parts( $post_id ) {
+		$parts = array(
+			'before' => '',
+			'after'  => '',
+		);
+
+		$summary_options = ayudawp_aiss_get_summary_options();
+		$insert_position = ayudawp_aiss_get_placement_for_context();
+		$summary_pos     = ayudawp_aiss_get_summary_position_for_context();
+		$summary_on      = ( ayudawp_aiss_is_summary_active() || ! empty( $summary_options['ai_summary_frontend_button'] ) )
+			&& '' !== $summary_pos
+			&& class_exists( 'AyudaWP_AISS_AI_Summary' )
+			&& ayudawp_aiss_should_apply_summary( $post_id );
+		$glued_position  = in_array( $summary_pos, array( 'before_buttons', 'after_buttons' ), true );
+		$buttons_visible = '' !== $insert_position && ! ayudawp_aiss_is_post_excluded( $post_id );
+
+		if ( $buttons_visible ) {
+			$url          = (string) get_permalink( $post_id );
+			$title        = (string) get_the_title( $post_id );
+			$buttons_html = AyudaWP_AISS_Buttons::ayudawp_generate_buttons_html( null, null, $url, $title, $post_id );
+			$summary_html = ( $summary_on && $glued_position ) ? AyudaWP_AISS_AI_Summary::get_summary_html( $post_id ) : '';
+			$second       = ( 'both' === $insert_position )
+				? AyudaWP_AISS_Buttons::ayudawp_generate_buttons_html( null, null, $url, $title, $post_id )
+				: '';
+
+			$parts = $this->ayudawp_split_parts( $buttons_html, $summary_html, $insert_position, $summary_pos, $second );
+		}
+
+		// Standalone summary: placed before the content, or anchored to buttons
+		// that this post does not show. Off listings without buttons, as in
+		// ayudawp_prepend_before_content_summary().
+		$standalone = $summary_on
+			&& ( is_singular() || '' !== $insert_position )
+			&& ( 'before_content' === $summary_pos || ( ! $buttons_visible && $glued_position ) );
+
+		if ( $standalone ) {
+			$parts['before'] = AyudaWP_AISS_AI_Summary::get_summary_html( $post_id ) . $parts['before'];
+		}
+
+		return $parts;
 	}
 }

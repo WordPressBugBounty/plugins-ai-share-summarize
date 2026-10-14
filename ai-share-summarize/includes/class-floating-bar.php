@@ -107,7 +107,12 @@ class AyudaWP_AISS_Floating_Bar {
 			$icon_style = 'circular';
 		}
 
-		$buttons = AyudaWP_AISS_Buttons::ayudawp_order_buttons( $buttons, $order, $options );
+		$buttons = ayudawp_aiss_remove_unavailable_buttons( AyudaWP_AISS_Buttons::ayudawp_order_buttons( $buttons, $order, $options ) );
+
+		// Set to go outside the block (v2.6.0): it stays out of the bar too.
+		if ( 'outside' === ayudawp_aiss_get_google_preferred_placement( $options ) ) {
+			$buttons = array_values( array_diff( $buttons, array( 'google_preferred' ) ) );
+		}
 
 		/**
 		 * Filter the buttons shown in the floating bar.

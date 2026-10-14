@@ -34,6 +34,7 @@
 	--ayudawp-meta-ai: #0081FB;
 	--ayudawp-copy-link: #5F6C7B;
 	--ayudawp-web-share: #2F6FED;
+	--ayudawp-google-preferred: #1A73E8;
 	--ayudawp-custom-bg: #333333;
 	--ayudawp-custom-text: #ffffff;
 
@@ -121,6 +122,19 @@
 	height: 0;
 	margin: 12px 0 4px;
 	border: 0;
+}
+
+/* The Google preferred source section without a title (v2.6.0): a real line,
+   the one the block draws above and below itself, since setting the button
+   apart is the point of giving it a section. */
+.ayudawp-section-separator.ayudawp-google-separator {
+	margin: 16px 0;
+	border-top: 1px solid #e0e0e0;
+}
+
+.ayudawp-share-buttons.dark .ayudawp-google-separator,
+.ayudawp-share-buttons.is-on-dark:not(.dark):not(.custom) .ayudawp-google-separator {
+	border-top-color: #444;
 }
 
 /* =============================================
@@ -342,6 +356,7 @@ button.ayudawp-share-btn:focus {
 .ayudawp-share-buttons.brand .ayudawp-share-btn.meta-ai    { background: var(--ayudawp-meta-ai); border-color: var(--ayudawp-meta-ai); color: #fff; }
 .ayudawp-share-buttons.brand .ayudawp-share-btn.copy-link  { background: var(--ayudawp-copy-link); border-color: var(--ayudawp-copy-link); color: #fff; }
 .ayudawp-share-buttons.brand .ayudawp-share-btn.web-share  { background: var(--ayudawp-web-share); border-color: var(--ayudawp-web-share); color: #fff; }
+.ayudawp-share-buttons.brand .ayudawp-share-btn.google-preferred  { background: var(--ayudawp-google-preferred); border-color: var(--ayudawp-google-preferred); color: #fff; }
 
 /* Brand hover: darken via filter (single rule for all) */
 .ayudawp-share-buttons.brand .ayudawp-share-btn:hover {
@@ -379,6 +394,7 @@ button.ayudawp-share-btn:focus {
 .ayudawp-share-buttons.outline .ayudawp-share-btn.meta-ai    { border-color: var(--ayudawp-meta-ai); color: var(--ayudawp-meta-ai); background: transparent; }
 .ayudawp-share-buttons.outline .ayudawp-share-btn.copy-link  { border-color: var(--ayudawp-copy-link); color: var(--ayudawp-copy-link); background: transparent; }
 .ayudawp-share-buttons.outline .ayudawp-share-btn.web-share  { border-color: var(--ayudawp-web-share); color: var(--ayudawp-web-share); background: transparent; }
+.ayudawp-share-buttons.outline .ayudawp-share-btn.google-preferred  { border-color: var(--ayudawp-google-preferred); color: var(--ayudawp-google-preferred); background: transparent; }
 
 /* Outline hover: fill with brand color */
 .ayudawp-share-buttons.outline .ayudawp-share-btn:hover {
@@ -413,6 +429,7 @@ button.ayudawp-share-btn:focus {
 .ayudawp-share-buttons.outline .ayudawp-share-btn.meta-ai:hover    { background: var(--ayudawp-meta-ai); }
 .ayudawp-share-buttons.outline .ayudawp-share-btn.copy-link:hover  { background: var(--ayudawp-copy-link); }
 .ayudawp-share-buttons.outline .ayudawp-share-btn.web-share:hover  { background: var(--ayudawp-web-share); }
+.ayudawp-share-buttons.outline .ayudawp-share-btn.google-preferred:hover  { background: var(--ayudawp-google-preferred); }
 
 /* =============================================
    CUSTOM style (v1.6.0) - User-defined colors via CSS vars
@@ -458,6 +475,7 @@ button.ayudawp-share-btn:focus {
 .ayudawp-share-buttons.icons-only .ayudawp-share-btn.meta-ai    { background: var(--ayudawp-meta-ai); border-color: var(--ayudawp-meta-ai); color: #fff; }
 .ayudawp-share-buttons.icons-only .ayudawp-share-btn.copy-link  { background: var(--ayudawp-copy-link); border-color: var(--ayudawp-copy-link); color: #fff; }
 .ayudawp-share-buttons.icons-only .ayudawp-share-btn.web-share  { background: var(--ayudawp-web-share); border-color: var(--ayudawp-web-share); color: #fff; }
+.ayudawp-share-buttons.icons-only .ayudawp-share-btn.google-preferred  { background: var(--ayudawp-google-preferred); border-color: var(--ayudawp-google-preferred); color: #fff; }
 
 /* Icons-only hover */
 .ayudawp-share-buttons.icons-only .ayudawp-share-btn:hover {

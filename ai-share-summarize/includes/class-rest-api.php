@@ -141,6 +141,27 @@ class AyudaWP_AISS_Rest_API {
 			)
 		);
 
+		// Posts each button was clicked from (admin only, v2.6.0).
+		register_rest_route(
+			self::API_NAMESPACE,
+			'/platforms/posts',
+			array(
+				'methods'             => 'GET',
+				'callback'            => array( __CLASS__, 'ayudawp_get_platform_posts' ),
+				'permission_callback' => array( __CLASS__, 'ayudawp_check_admin_permission' ),
+				'args'                => array_merge(
+					self::ayudawp_get_date_args(),
+					array(
+						'platform' => array(
+							'type'              => 'string',
+							'required'          => true,
+							'sanitize_callback' => 'sanitize_key',
+						),
+					)
+				),
+			)
+		);
+
 		// Top content endpoint (admin only).
 		register_rest_route(
 			self::API_NAMESPACE,
@@ -605,6 +626,65 @@ class AyudaWP_AISS_Rest_API {
 	}
 
 	/**
+	 * Posts a button was clicked from, for the platforms table (v2.6.0)
+	 *
+	 * Opens the row of a platform in the analytics screen: which posts its
+	 * clicks came from and how many, in the selected date range. For the
+	 * Google preferred source button it says from which post readers add the
+	 * site, which Google does not report anywhere.
+	 *
+	 * @since 2.6.0
+	 * @param WP_REST_Request $request Request object.
+	 * @return WP_REST_Response
+	 */
+	public static function ayudawp_get_platform_posts( $request ) {
+		$platform = (string) $request->get_param( 'platform' );
+
+		// Only the buttons the plugin knows: the key goes into a query and a
+		// cache key, so anything else is refused rather than looked up.
+		if ( ! in_array( $platform, array_keys( ayudawp_aiss_get_available_buttons() ), true ) ) {
+			return self::ayudawp_nocache_response( array( 'error' => 'invalid_platform' ), 400 );
+		}
+
+		$range = self::ayudawp_get_date_range( $request );
+		$limit = 20;
+		$rows  = AyudaWP_AISS_Database::ayudawp_get_platform_posts( $platform, $range['start_date'], $range['end_date'], $limit );
+		$more  = count( $rows ) > $limit;
+		$items = array();
+
+		foreach ( array_slice( $rows, 0, $limit ) as $row ) {
+			$post_id = (int) $row['post_id'];
+			$title   = (string) $row['post_title'];
+			$url     = '';
+
+			if ( 0 === $post_id ) {
+				$title = __( 'Home page and archives', 'ai-share-summarize' );
+			} else {
+				$link = get_permalink( $post_id );
+				$url  = $link ? esc_url_raw( $link ) : '';
+				if ( '' === $title ) {
+					/* translators: %d is a post ID. */
+					$title = sprintf( __( 'Post %d', 'ai-share-summarize' ), $post_id );
+				}
+			}
+
+			$items[] = array(
+				'post_id' => $post_id,
+				'title'   => $title,
+				'url'     => $url,
+				'clicks'  => (int) $row['click_count'],
+			);
+		}
+
+		return self::ayudawp_nocache_response(
+			array(
+				'items' => $items,
+				'more'  => $more,
+			)
+		);
+	}
+
+	/**
 	 * Get top content
 	 *
 	 * @param WP_REST_Request $request Request object.
@@ -857,6 +937,13 @@ class AyudaWP_AISS_Rest_API {
 				'html'     => AyudaWP_AISS_AI_Summary::get_summary_html( $post_id ),
 				'provider' => (string) get_post_meta( $post_id, AyudaWP_AISS_AI_Summary::META_PROVIDER, true ),
 			) );
+		}
+
+		// Too short to summarize (v2.6.0): answered before the rate limits, so
+		// it costs no slot of the hourly ceiling. The button is not rendered
+		// for these posts, so only a crafted request gets here.
+		if ( AyudaWP_AISS_AI_Summary::is_below_minimum( $post ) ) {
+			return self::ayudawp_nocache_response( array( 'error' => 'too_short' ), 403 );
 		}
 
 		// Rate limit: 1 generation per IP per post per minute.

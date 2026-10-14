@@ -407,6 +407,55 @@ class AyudaWP_AISS_Database {
 	}
 
 	/**
+	 * Posts a button was clicked from, with the clicks of each (v2.6.0)
+	 *
+	 * The breakdown behind a row of the platforms table. Same date window as
+	 * ayudawp_get_top_platforms(), and clicks with no post (home page,
+	 * archives) are included as post_id 0, so the rows add up to the total of
+	 * the platform. One row more than asked is returned when there is one,
+	 * so the caller can tell the list was cut.
+	 *
+	 * @since 2.6.0
+	 * @param string $platform   Button key, already checked against the list.
+	 * @param string $start_date Start date (Y-m-d).
+	 * @param string $end_date   End date (Y-m-d).
+	 * @param int    $limit      Posts to list.
+	 * @return array Rows with post_id, post_title and click_count.
+	 */
+	public static function ayudawp_get_platform_posts( $platform, $start_date, $end_date, $limit = 20 ) {
+		global $wpdb;
+
+		$limit     = max( 1, (int) $limit );
+		$cache_key = 'platform_posts_' . md5( $platform . '|' . $start_date . '|' . $end_date . '|' . $limit );
+		$cached    = wp_cache_get( $cache_key, self::CACHE_GROUP );
+		if ( false !== $cached ) {
+			return $cached;
+		}
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- own analytics table, no core API for it; cached for CACHE_TTL just below, like the other analytics queries.
+		$results = $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT post_id, MAX(post_title) AS post_title, COUNT(*) AS click_count
+				FROM {$wpdb->prefix}aiss_clicks
+				WHERE platform = %s AND click_date >= %s AND click_date < %s
+				GROUP BY post_id
+				ORDER BY click_count DESC, post_id DESC
+				LIMIT %d",
+				$platform,
+				$start_date . ' 00:00:00',
+				$end_date . ' 23:59:59',
+				$limit + 1
+			),
+			ARRAY_A
+		);
+
+		$result = $results ? $results : array();
+		wp_cache_set( $cache_key, $result, self::CACHE_GROUP, self::CACHE_TTL );
+
+		return $result;
+	}
+
+	/**
 	 * Get total unique posts count
 	 *
 	 * @param string $start_date Start date.

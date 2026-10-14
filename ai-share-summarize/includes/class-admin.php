@@ -187,6 +187,7 @@ class AyudaWP_AISS_Admin {
 			'adminUrl'   => admin_url(),
 			'siteName'   => get_bloginfo( 'name' ),
 			'vigiaActive' => is_plugin_active( 'vigia/vigia.php' ) ? '1' : '0',
+			'platforms'  => ayudawp_aiss_get_platforms_meta(),
 			'strings'    => array(
 				'loading'          => __( 'Loading...', 'ai-share-summarize' ),
 				'noData'           => __( 'No data yet.', 'ai-share-summarize' ),
@@ -214,6 +215,11 @@ class AyudaWP_AISS_Admin {
 				/* translators: %1$s = range start, %2$s = range end, %3$s = total */
 				'pagerRange'       => __( '%1$s–%2$s of %3$s', 'ai-share-summarize' ),
 				'vs'               => __( 'vs', 'ai-share-summarize' ),
+				/* Per-button breakdown in the platforms table (v2.6.0) */
+				'showPosts'        => __( 'Show the posts it was clicked from', 'ai-share-summarize' ),
+				'postsForButton'   => __( 'Posts it was clicked from', 'ai-share-summarize' ),
+				'topPostsOnly'     => __( 'Only the 20 posts with the most clicks are listed. The CSV export has all of them.', 'ai-share-summarize' ),
+				'loadError'        => __( 'Could not load the data. Please try again.', 'ai-share-summarize' ),
 			),
 		) );
 
@@ -648,8 +654,10 @@ class AyudaWP_AISS_Admin {
 			),
 		);
 
-		// Browser actions are listed apart: they do not open a destination.
-		$groups['social']['keys'] = array_values( array_diff( $groups['social']['keys'], $actions ) );
+		// Browser actions are listed apart: they do not open a destination. So
+		// is the Google preferred source button (v2.6.0), which is not a share.
+		$google                   = array( 'google_preferred' );
+		$groups['social']['keys'] = array_values( array_diff( $groups['social']['keys'], $actions, $google ) );
 
 		echo '<div class="' . esc_attr( implode( ' ', $wrapper_classes ) ) . '"';
 
@@ -688,6 +696,16 @@ class AyudaWP_AISS_Admin {
 		}
 		echo '</div>';
 
+		echo '<p class="aiss-picker-group-title">' . esc_html__( 'Google', 'ai-share-summarize' ) . '</p>';
+		echo '<div class="aiss-picker-grid">';
+		foreach ( $google as $key ) {
+			if ( ! isset( $buttons[ $key ] ) ) {
+				continue;
+			}
+			$this->ayudawp_render_button_choice( $key, $buttons[ $key ], $enabled, $style );
+		}
+		echo '</div>';
+
 		echo '</div>';
 
 		echo '<p class="description">' . esc_html__( 'Select which buttons to display on the frontend. Each one is shown here with the style you have chosen below.', 'ai-share-summarize' ) . '</p>';
@@ -698,6 +716,55 @@ class AyudaWP_AISS_Admin {
 			. '<strong>' . esc_html__( 'Native share', 'ai-share-summarize' ) . '</strong>: '
 			. esc_html__( 'this one has no destination of its own. It opens the share sheet of the visitor device, the same one a mobile app uses, which reaches WhatsApp, Signal, Instagram, Messages, AirDrop or whatever they have installed, without a button for each. It only appears where the browser supports it and the site is served over HTTPS, so it stays hidden on a local http install and on desktop Firefox. Where it cannot run, clicking it copies the link instead.', 'ai-share-summarize' )
 			. '</p>';
+
+		// What the Google button does, and why it would not show (v2.6.0).
+		echo '<p class="description aiss-picker-note"><span class="dashicons dashicons-info-outline"></span> '
+			. '<strong>' . esc_html__( 'Google preferred source', 'ai-share-summarize' ) . '</strong>: '
+			. esc_html__( 'opens the Google tool where readers mark your site as a preferred source, so it shows up more in their Top Stories. It is a plain link: nothing loads from Google until someone clicks it. Clicks are counted in Analytics like any other button.', 'ai-share-summarize' );
+
+		$google_domain = ayudawp_aiss_get_google_preferred_domain();
+		if ( '' === $google_domain ) {
+			echo ' <strong>' . esc_html__( 'This site cannot use it, so it will not be shown:', 'ai-share-summarize' ) . '</strong> ';
+			$home_path = wp_parse_url( home_url(), PHP_URL_PATH );
+			if ( (int) get_option( 'blog_public', 1 ) < 1 ) {
+				echo esc_html__( 'the site asks search engines not to index it (Settings > Reading).', 'ai-share-summarize' );
+			} elseif ( is_string( $home_path ) && '' !== trim( $home_path, '/' ) ) {
+				echo esc_html__( 'Google only accepts a domain or a subdomain, and the address of this site has a path.', 'ai-share-summarize' );
+			} else {
+				echo esc_html__( 'a filter on this site hides it.', 'ai-share-summarize' );
+			}
+		} else {
+			/* translators: %s is the domain sent to Google, e.g. example.com */
+			echo ' ' . esc_html( sprintf( __( 'Domain sent to Google: %s', 'ai-share-summarize' ), $google_domain ) );
+		}
+		echo '</p>';
+
+		// Where it goes (v2.6.0): with the social networks, in a section of
+		// its own at the end of the block, or only where a shortcode asks.
+		$google_place = ayudawp_aiss_get_google_preferred_placement( $options );
+		$google_title = isset( $options['google_section_title'] ) ? (string) $options['google_section_title'] : '';
+		$google_opts  = array(
+			'social'  => __( 'With the social networks', 'ai-share-summarize' ),
+			'section' => __( 'In a section of its own, at the end of the block', 'ai-share-summarize' ),
+			'outside' => __( 'Outside the block, only where you place the shortcode', 'ai-share-summarize' ),
+		);
+
+		// Side by side; the title is dimmed while it would not be used.
+		echo '<div class="aiss-google-placement">';
+		echo '<div class="aiss-google-field"><label for="aiss-google-placement"><strong>' . esc_html__( 'Where the Google button goes', 'ai-share-summarize' ) . '</strong></label>';
+		echo '<select id="aiss-google-placement" name="ayudawp_aiss_options[google_preferred_placement]">';
+		foreach ( $google_opts as $value => $label ) {
+			echo '<option value="' . esc_attr( $value ) . '"' . selected( $google_place, $value, false ) . '>' . esc_html( $label ) . '</option>';
+		}
+		echo '</select></div>';
+
+		echo '<div class="aiss-google-field aiss-google-title-field' . ( 'section' === $google_place ? '' : ' is-off' ) . '"><label for="aiss-google-section-title">' . esc_html__( 'Title of its section (optional)', 'ai-share-summarize' ) . '</label>';
+		echo '<input type="text" id="aiss-google-section-title" class="regular-text" name="ayudawp_aiss_options[google_section_title]" value="' . esc_attr( $google_title ) . '" placeholder="' . esc_attr__( 'Follow us on Google', 'ai-share-summarize' ) . '"></div>';
+		echo '</div>';
+
+		echo '<p class="description">'
+			. esc_html__( 'The title is only used when the button has a section of its own; without one, a thin line sets it apart. Outside the block, place it with this shortcode wherever you want it:', 'ai-share-summarize' )
+			. ' <code>[ayudawp_share_buttons buttons="google_preferred"]</code></p>';
 	}
 
 	/**
@@ -838,6 +905,15 @@ class AyudaWP_AISS_Admin {
 			$wrapper_classes[] = $style;
 		}
 
+		/*
+		 * The Google preferred source button only has a place in this order
+		 * while it goes with the social networks (v2.6.0). In a section of its
+		 * own it is always last, and outside the block it is not in it. It is
+		 * still rendered, hidden, so changing the setting shows it again
+		 * without saving first.
+		 */
+		$google_place = ayudawp_aiss_get_google_preferred_placement( $options );
+
 		$columns = array(
 			'ai'     => array(
 				'label'   => esc_html__( 'AI platforms', 'ai-share-summarize' ),
@@ -864,7 +940,7 @@ class AyudaWP_AISS_Admin {
 					$classes[] = 'ai';
 				}
 				?>
-				<li data-button="<?php echo esc_attr( $btn ); ?>">
+				<li data-button="<?php echo esc_attr( $btn ); ?>"<?php echo ( 'google_preferred' === $btn && 'social' !== $google_place ) ? ' hidden' : ''; ?>>
 					<span class="dashicons dashicons-menu aiss-order-grip" aria-hidden="true"></span>
 					<span class="<?php echo esc_attr( implode( ' ', $classes ) ); ?>" aria-hidden="true">
 						<?php echo wp_kses( AyudaWP_AISS_Icons::ayudawp_get_button_icon( $btn, 16 ), ayudawp_aiss_kses_svg() ); ?>
@@ -876,7 +952,19 @@ class AyudaWP_AISS_Admin {
 				<?php
 			}
 
-			echo '</ul></div>';
+			echo '</ul>';
+
+			if ( 'social' === $group && in_array( 'google_preferred', $column['buttons'], true ) ) {
+				$google_notes = array(
+					'section' => __( 'Google preferred source is not in this list: it goes in a section of its own, at the end of the block.', 'ai-share-summarize' ),
+					'outside' => __( 'Google preferred source is not in this list: it goes outside the block, only where you place its shortcode.', 'ai-share-summarize' ),
+				);
+				foreach ( $google_notes as $place => $note ) {
+					echo '<p class="description aiss-google-order-note" data-placement="' . esc_attr( $place ) . '"' . ( $place === $google_place ? '' : ' hidden' ) . '>' . esc_html( $note ) . '</p>';
+				}
+			}
+
+			echo '</div>';
 		}
 
 		echo '</div></div>';

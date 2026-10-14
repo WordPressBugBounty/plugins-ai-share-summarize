@@ -246,6 +246,13 @@ class AyudaWP_AISS_AI_Summary {
 			return false;
 		}
 
+		// Too short to summarize (v2.6.0). Checked here and not only in run():
+		// otherwise the frontend self-heal would schedule a generation on every
+		// visit for two weeks, each one ending in the same refusal.
+		if ( self::is_below_minimum( $post ) ) {
+			return false;
+		}
+
 		if ( ! self::should_regenerate( $post_id, $post ) ) {
 			return false;
 		}
@@ -452,6 +459,38 @@ class AyudaWP_AISS_AI_Summary {
 	}
 
 	/**
+	 * Whether a post is too short to get an automatic summary (v2.6.0)
+	 *
+	 * Below the minimum the AI answers that there is nothing to summarize,
+	 * and run() used to store that answer and show it as the summary. The
+	 * count is kept per request, since the box and the self-heal ask for the
+	 * same post on the same page.
+	 *
+	 * @since 2.6.0
+	 * @param WP_Post|int|null $post Post object or ID.
+	 * @return bool True when the post has fewer words than the minimum.
+	 */
+	public static function is_below_minimum( $post ) {
+		$post = get_post( $post );
+		if ( ! ( $post instanceof WP_Post ) ) {
+			return false;
+		}
+
+		$min = ayudawp_aiss_get_summary_min_words();
+		if ( $min < 1 ) {
+			return false;
+		}
+
+		static $counts = array();
+		$key = $post->ID . ':' . md5( (string) $post->post_content );
+		if ( ! isset( $counts[ $key ] ) ) {
+			$counts[ $key ] = ayudawp_aiss_count_summary_words( $post->post_content );
+		}
+
+		return $counts[ $key ] < $min;
+	}
+
+	/**
 	 * Check whether the stored summary is still valid for the current content
 	 *
 	 * Compares the current content+title hash against the stored hash.
@@ -508,6 +547,18 @@ class AyudaWP_AISS_AI_Summary {
 			$post = get_post( $post_id );
 			if ( ! $post ) {
 				return new WP_Error( 'no_post', __( 'Post not found.', 'ai-share-summarize' ) );
+			}
+
+			// Before any provider call and before anything is stored (v2.6.0).
+			if ( self::is_below_minimum( $post ) ) {
+				return new WP_Error(
+					'too_short',
+					sprintf(
+						/* translators: %d is the minimum number of words. */
+						__( 'This content is too short to summarize. It needs at least %d words of text, not counting images, embeds or tables.', 'ai-share-summarize' ),
+						ayudawp_aiss_get_summary_min_words()
+					)
+				);
 			}
 
 			$content = $post->post_content;
@@ -1130,7 +1181,19 @@ class AyudaWP_AISS_AI_Summary {
 			return '';
 		}
 
-		$summary = get_post_meta( $post_id, self::META_SUMMARY, true );
+		$summary  = get_post_meta( $post_id, self::META_SUMMARY, true );
+		$provider = get_post_meta( $post_id, self::META_PROVIDER, true );
+
+		/*
+		 * Too short for a summary (v2.6.0): no box, no visitor button and no
+		 * self-heal. A summary stored before this check existed is kept in the
+		 * database but not shown, because for these posts it is often the AI
+		 * saying there was nothing to summarize. Lowering the minimum with the
+		 * filter brings it back. One written by hand is always shown.
+		 */
+		if ( 'manual' !== $provider && self::is_below_minimum( $post_id ) ) {
+			return '';
+		}
 
 		if ( '' === $summary ) {
 			// Self-heal (v2.2.2): if this post should have an automatic
@@ -1143,7 +1206,6 @@ class AyudaWP_AISS_AI_Summary {
 			return self::get_generate_button_html( $post_id );
 		}
 
-		$provider = get_post_meta( $post_id, self::META_PROVIDER, true );
 		$options  = ayudawp_aiss_get_summary_options();
 		$open     = empty( $options['ai_summary_collapsed_default'] ) ? ' open' : '';
 		$is_basic = 'extractive' === $provider;

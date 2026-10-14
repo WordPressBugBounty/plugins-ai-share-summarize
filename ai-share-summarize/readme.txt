@@ -3,7 +3,7 @@ Contributors: fernandot,ayudawp
 Tags: claude, chatgpt, social share, ai, perplexity
 Requires at least: 6.1
 Tested up to: 7.1
-Stable tag: 2.5.1
+Stable tag: 2.6.0
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -24,6 +24,7 @@ Among the **first plugins to integrate the native WordPress 7.0 AI Connectors AP
 * **Collapsible inline block** with native `<details>`, `data-nosnippet` and Schema.org `CreativeWork` microdata, so Google leaves the summary out of its snippets and AI Overviews and it never competes with your own text.
 * **Editor controls** in the block sidebar and the classic meta box: view, edit manually, regenerate on demand, hide per post (independently from the buttons).
 * **Visitor-facing "Generate AI summary" button** for posts without a stored summary, restrictable to extractive-only or open to the AI Client.
+* **Only where there is something to summarize**: posts with fewer than 50 words of text get no summary, so the box never shows an AI reply saying there was nothing to summarize.
 * **Async generation via WP-Cron**. `[ayudawp_aiss_summary]` shortcode also available.
 
 = Sharing =
@@ -31,6 +32,7 @@ Among the **first plugins to integrate the native WordPress 7.0 AI Connectors AP
 * **Social networks**: X (Twitter), LinkedIn, Facebook, Telegram, WhatsApp, Email, Raindrop, Reddit, Bluesky, LINE, Mastodon, Threads, Pinterest.
 * **AI assistants**: Claude, ChatGPT, Google AI, Gemini, Grok, Perplexity, DeepSeek, Mistral, Copilot, Qwen, Meta AI — each opens with a citation-ready prompt linking back to your URL.
 * **Browser actions**: a **Copy link** button and a **native Share** button that opens the device share sheet (reaching WhatsApp, Signal, Instagram, Messages or AirDrop), shown only where the browser supports it.
+* **Google Preferred Source**: a button that takes readers to the Google tool where they mark your site as a preferred source, with the clicks counted per post. It can go with the social networks, in a section of its own, or anywhere with the shortcode.
 * **Where they show**: inline before or after the content, through the `[ayudawp_share_buttons]` shortcode, or in a **floating bar** pinned to the left, the right or the bottom of the screen — on its own or alongside the inline block.
 * **Compact on phones**: optionally collapse the whole set behind a single Share button, or show a few buttons plus a More button, without touching the desktop layout.
 * 6 visual styles, 4 sizes, custom colors, brand SVG icons, dark-mode auto-adaptation, drag-and-drop ordering, optional UTM tagging. SEO-friendly (`<a rel="nofollow">` or `<button>`, auto-exclusion on noindex content for all major SEO plugins).
@@ -121,6 +123,15 @@ Yes, Share Buttons & AI-powered Summaries is 100% free with all features include
 
 When you publish or update a post, the plugin generates a short summary asynchronously (in a background WP-Cron event, to avoid blocking the editor save). The summary then appears inline next to the share buttons, inside a collapsible block. Visitors can expand it without leaving the page. You can disable the feature globally in **Settings > Share Buttons & AI-powered Summaries > AI Summary**, choose where the summary is placed (before/after the buttons, or before the content), and override or edit the text per post from the editor sidebar.
 
+= Why does a short post have no summary? =
+
+A post needs at least 50 words of text. Images, embeds, captions and tables do not count.
+
+* Below that, the AI tends to answer that there is nothing to summarize, and that answer would end up in the box.
+* So no summary is generated and the visitor button does not appear.
+* A summary you write by hand in the editor is always shown.
+* Developers can change the minimum with the `ayudawp_aiss_summary_min_words` filter (0 turns it off).
+
 = How do I choose the AI generation mode and model? =
 
 The **AI Summary generation** setting is a single selector with four modes: *AI with extractive fallback* (recommended), *AI only*, *Extractive only* (never contacts a provider), and *Disabled*. The **AI model** selector lists the models your configured providers expose; leave it on *Automatic* to let the plugin pick a fast, cost-effective model per provider instead of the newest, most expensive flagship.
@@ -147,7 +158,7 @@ If you have the canonical **AI** plugin from wordpress.org installed, go to **To
 
 = How does the analytics dashboard work? =
 
-The analytics dashboard tracks every button click on your site, showing you which platforms are most popular and which content gets the most engagement. You can filter by date range (7 to 365 days or custom dates), compare with a previous period, the same period last year, or custom dates, and view data in timeline charts, platform tables, and content performance tables. Stat cards show percentage changes when comparison is active. You can download data as CSV files from the export dropdown. A dashboard widget provides a quick 7-day summary right on your WordPress admin homepage.
+The analytics dashboard tracks every button click on your site, showing you which platforms are most popular and which content gets the most engagement. You can filter by date range (7 to 365 days or custom dates), compare with a previous period, the same period last year, or custom dates, and view data in timeline charts, platform tables, and content performance tables. In the platforms table, the click count of each button opens the posts it was clicked from. Stat cards show percentage changes when comparison is active. You can download data as CSV files from the export dropdown. A dashboard widget provides a quick 7-day summary right on your WordPress admin homepage.
 
 = How do I export analytics data? =
 
@@ -318,6 +329,25 @@ Everything is rendered by the server and only shown or hidden with CSS, so it wo
 
 The Share button is only rendered where the browser supports it (most mobile browsers, Safari and Chrome on desktop), so visitors on a browser without it never see a button that does nothing. Both count in the analytics like any other button.
 
+= What does the Google Preferred Source button do? =
+
+It opens the Google tool where a reader marks your site as a preferred source, so your stories show up more for them in Top Stories.
+
+* It is a plain link: nothing loads from Google until someone clicks it.
+* Analytics counts its clicks and, in the platforms table, lists the posts they came from. Google does not show you this anywhere.
+* It is off until you tick it, under Google in the button list.
+* It is not shown if your site lives in a subfolder or asks search engines not to index it, because Google cannot list those. The settings screen tells you when that happens.
+
+= Can I show the Google Preferred Source button apart from the others? =
+
+Yes. Under the button list, choose where it goes:
+
+* **With the social networks**, like any other button.
+* **In a section of its own**, at the end of the block, with a title of your choice or a thin line above it.
+* **Outside the block**: it leaves the block and the floating bar, and shows only where you place it.
+
+To place it anywhere (a Shortcode block, a widget, a template), use `[ayudawp_share_buttons buttons="google_preferred" title_text="Follow us on Google"]`. A shortcode that names it shows it whatever you chose above.
+
 = What are the UTM options for? =
 
 With UTM tagging on, the address that travels to each platform carries utm_source with the platform name, utm_medium with social, ai or share, and the campaign name if you filled one in. That lets your analytics tool separate visits coming back from a share button from the rest of the referral traffic. It is off by default, because many analytics setups already group referrals the way their owners want.
@@ -383,7 +413,7 @@ If you do not configure any Connector, or your WordPress version is below 7.0, t
 
 = Sharing buttons =
 
-The social and AI sharing buttons render as `<a>` / `<button>` elements that open the respective destination only when the **visitor** clicks them — your server does not contact those services. The plugin's analytics endpoint that records button clicks runs locally on your own site.
+The social and AI sharing buttons render as `<a>` / `<button>` elements that open the respective destination only when the **visitor** clicks them — your server does not contact those services. The same goes for the Google Preferred Source button, a plain link to [Google's preferred sources tool](https://www.google.com/preferences/source) with your domain in it: no Google script is loaded ([Terms of service](https://policies.google.com/terms) · [Privacy policy](https://policies.google.com/privacy)). The plugin's analytics endpoint that records button clicks runs locally on your own site.
 
 == Screenshots ==
 
@@ -401,44 +431,24 @@ The social and AI sharing buttons render as `<a>` / `<button>` elements that ope
 
 == Changelog ==
 
-= 2.5.1 =
-The summary box is now actually kept out of Google snippets and AI Overviews: data-nosnippet moves from the aside, which Google ignores, to a div that wraps the whole box. Clear your page cache after updating.
+= 2.6.0 =
+New Google Preferred Source button. Short posts no longer show the AI reply saying there was nothing to summarize, analytics names Copy link and Native share, and themes can print the blocks in their own hooks.
 
-* Fix: The summary box was never actually kept out of Google snippets and AI Overviews, as the readme promised. Since 2.0.0 the `data-nosnippet` attribute sat on the `<aside>`, and Google only reads it on `div`, `span` and `section`. It now sits on a `div` that wraps everything inside the box, for both the summary and the Generate button. Classes, styles and the Schema.org microdata do not change. It takes effect the next time Google crawls each post, so if you use a page cache, clear it after updating so the new markup is the one being served.
-
-= 2.5.0 =
-New floating share bar, compact mode for phones, Copy link and native Share buttons, UTM tagging, and a reorganised settings screen where the three overlapping location settings become a single list.
-
-* New: The settings screen is reorganised. Where the buttons appear was governed by three settings that had to agree with each other (the locations, the content types and the insertion position), two of them listing overlapping things, and nothing on screen said the condition was an AND, so ticking one of them and seeing no buttons was the usual first experience. They are now a single list with one row per destination and its own position, which also makes possible something that was not before: buttons after the content on posts and before it on pages. Your current setup is migrated to the new list, keeping what visitors were actually seeing rather than the literal settings. The rest of the screen is grouped under headings, with related settings side by side, so the two halves of the same decision are no longer twelve rows apart.
-* New: The buttons you enable are shown as the real buttons, in the style you picked, and the preview repaints as you change the style, the icons or the corner shape. The AI Summary tab gets the same treatment: its thirteen settings are now four groups, and the block appearance is decided against a live sample instead of by saving and reloading.
-* New: The floating bar can have its own destinations, so the inline block and the bar no longer have to appear in the same places: the block on posts and the bar on the blog home, or the other way round.
-* New: Floating share bar. A new option pins the same enabled buttons, in icon form, to the left edge, the right edge or the bottom of the screen on single content. It can accompany the inline block or replace it entirely, it can use its own destinations so the two never have to coincide, it can be set to appear only while the reader scrolls down, and it can be told to stand aside on pages where the inline block is already showing. On phones it is hidden by default, and the side positions become a strip along the bottom when it is switched on, because a column pinned to the side of a small screen eats the reading area. Its CSS and JS are separate files, loaded only on pages where the bar is shown.
-* New: Compact mode on phones. The buttons block can now show a single Share button that opens the rest, or a few buttons plus a More button, so a long list of platforms no longer fills the screen on mobile. The desktop layout is unchanged, and which buttons stay visible follows the order you set by dragging.
-* New: Copy link button. A new platform that copies the post address to the clipboard, confirms it on screen and counts in the analytics like any other button.
-* New: Native share button. Uses the browser share sheet, which reaches WhatsApp, Signal, Instagram, Messages, AirDrop and any other app installed on the device. It is only rendered where the browser supports it, so it never shows as a dead button.
-* New: Optional UTM tagging. A checkbox adds utm_source (the platform), utm_medium (social, ai or share) and an optional campaign name to the shared link, so you can tell this traffic apart in your analytics.
-* New: The summary now has a position per content type, like the buttons: next to them on posts and before the content on pages, which a single global position could not express. "Do not display" becomes one of those positions, so a type can still generate its summary for the shortcode or the REST API without printing it.
-* Improved: The buttons you can enable are now shown in the settings as the buttons themselves, grouped into social networks, AI assistants and browser actions, each rendered with the style you picked. It replaces the row of bare icons, which said nothing about size, colour or shape.
-* Improved: The default label of the summary block is now "TL;DR (AI Generated)". It says what the block is in the words readers already use, and it states plainly that a machine wrote it, which is what the EU AI Act expects of generated content shown to the public. A label you set yourself is untouched.
-* Improved: Compact mode on phones is on by default for new installs, showing a single Share button that opens the rest. Updating sites keep whatever they had.
-* Improved: Meta AI now opens with the prompt already written, instead of copying it to the clipboard for you to paste. Checked platform by platform in September 2026: Gemini, DeepSeek, Copilot and Qwen still offer no way to pre-fill the prompt from the address, so those four keep copying it.
-* Improved: The settings screen uses the width it has. The form was capped well below what the browser offered while the promo cards ran along the bottom, where nobody scrolls; the content now sits in one column with the cards in a rail beside it that follows as you scroll, and folds underneath on narrower screens. Every field, description and heading shares one measure instead of two.
-* Improved: Less weight on pages that have nothing to show. The stylesheet and the script were loaded on every singular view, archive and blog home whenever the buttons were not placed there, in case a shortcode turned up; a site with the buttons on posts was downloading 71 KB on its home page and on every archive to render nothing at all. They now load where something is actually placed, plus singular views whose content really does carry the shortcode. The list of platform names sent with the script is trimmed to the buttons you enabled.
-* Improved: The front end no longer loads jQuery for the share buttons. The script was rewritten in plain JavaScript, so a block theme that does not use jQuery stops loading it (about 85 KB and one request) just to show the buttons. The same pass moved the hover effect and the mobile icon grid to the stylesheet, replaced a browser event removed from Chrome in 2024, reduced the tooltip to a single shared element instead of one per button, and sends click tracking with sendBeacon so it survives the page being replaced by the destination.
-* Improved: Accessibility of the buttons block. Each group of buttons is now announced with the section title you wrote, or with a description when there is none, the keyboard focus ring no longer appears on mouse clicks, and the copy confirmation is announced by screen readers.
-* Improved: Click tracking identifies the post directly from the buttons block, instead of relying on the theme marking the article in a particular way, so analytics are accurate on more themes.
-* Improved: The summary, provider and content-hash post fields are sanitized on save. They are written by the plugin itself and the output was already escaped, so nothing changes on screen; it closes the gap on the way in as well.
-* Fix: The Minimal and Outline styles of the summary block were indistinguishable, both drawing the same thin grey box. Minimal is now genuinely minimal, a rule above the block and nothing else, and Outline draws a real box in the accent colour with its heading to match.
-* Fix: With a filled style (Brand, Dark or Custom colours), the "Generate AI summary" button that visitors see was painted as a full-width slab of colour with a small outlined button floating inside it. The colour now belongs to the button itself.
-* Fix: The "fluid" button size behaved exactly like "normal" on phones. Both ended up as one full-width button per row, so choosing fluid changed nothing below 480 pixels; it now fills the row two buttons at a time, which is what it does on wider screens.
-* Fix: The visitor generation limit could be bypassed on sites that trust a proxy header. Since 2.4.4 those headers are only read when the site opts in, but the address was taken from the start of the forwarding chain, which is the part the visitor writes. It now reads the end of the chain, and only when the request actually arrives from the proxy: an address declared with the new ayudawp_aiss_trusted_proxies filter, or the site own network when no list is declared.
+* New: Google Preferred Source button. It takes readers to the Google tool where they mark your site as a preferred source, so your stories show up more for them in Top Stories, and Analytics counts the clicks per post, which Google does not tell you anywhere. It is a plain link with your domain in it, so nothing loads from Google until someone clicks. It is off until you tick it, and it can go with the social networks, in a section of its own at the end of the block with an optional title, or outside the block, where only a shortcode that names it shows it. It is not shown on a site that lives in a subfolder or asks search engines not to index it, because Google cannot list those, and the settings screen says so.
+* New: The `ayudawp_aiss_content_anchors` filter prints the blocks placed before and after the content in theme actions instead of inside the content, for themes that rewrite the content after it is filtered and end up duplicating whatever plugins added to it. Settings keep deciding where the buttons and the summary go, the stylesheet still loads in the head, exclusions and the floating bar keep working, and each block is printed once per page. Without the filter nothing changes: the content comes out byte for byte as before.
+* New: In Analytics, the click count of each button in the platforms table opens the posts it was clicked from, with the clicks of each, for the selected dates. For the Google Preferred Source button, that is the post readers were on when they chose to add your site, which Google does not report anywhere. The 20 posts with the most clicks are listed, and the CSV export has all of them.
+* Improved: The copy of the summary settings kept inside the buttons settings since 2.3.0, when the summary got its own tab, is deleted on update, along with the code that carried it over on every save. It was only there to go back to 2.2.x without losing them, so from now on a rollback keeps the summary settings down to 2.3.0.
+* Fix: Posts with very little text, such as a single image, a video or one line, got as their summary the AI answer saying there was nothing to summarize, and it was shown in the TL;DR box. A post now needs at least 50 words of text, not counting images, embeds, captions or tables, and on sites in Chinese, Japanese or another language that WordPress counts by characters, it is 50 characters. Below that no summary is generated, the visitor button does not appear and no request reaches the AI provider. Summaries already stored for those posts are no longer shown but stay in the database, so lowering the minimum with the `ayudawp_aiss_summary_min_words` filter brings them back. This also hides the good summaries some very short posts had. A summary written by hand is always shown.
+* Fix: Analytics showed the Copy link and Native share buttons with their internal key, in grey, and the dashboard widget showed Meta AI, Copy link and Native share as Meta_ai, Copy_link and Web_share. Names, colours and types now come from the same list as the settings screen, so a new button can no longer be left out. A few names change to match that list: Claude AI, Mistral AI and Microsoft Copilot.
+* Fix: When a theme module or a widget left another post loaded on a single post page, the position of the buttons could follow that other post type instead of the type of the post being read.
+* Fix: With compact mode on phones set to a single Share button, a block with only one button hid it behind a Share toggle that opened nothing else. A block with a single button now ignores compact mode.
 
 For older changelog entries, please check the [changelog.txt](https://plugins.svn.wordpress.org/ai-share-summarize/trunk/changelog.txt) file
 
 == Upgrade Notice ==
 
-= 2.5.1 =
-The summary box is now actually kept out of Google snippets and AI Overviews: data-nosnippet moves from the aside, which Google ignores, to a div that wraps the whole box. Clear your page cache after updating.
+= 2.6.0 =
+New Google Preferred Source button. Short posts no longer show the AI reply saying there was nothing to summarize, analytics names Copy link and Native share, and themes can print the blocks in their own hooks.
 
 == Advanced Usage ==
 
@@ -448,7 +458,7 @@ The `[ayudawp_share_buttons]` shortcode accepts several parameters:
 
 **buttons**: Comma-separated list of buttons to display
 - Example: `[ayudawp_share_buttons buttons="claude,chatgpt,deepseek,twitter,mastodon"]`
-- Available: twitter, linkedin, facebook, telegram, whatsapp, email, raindrop, reddit, bluesky, line, mastodon, threads, pinterest, copy_link, web_share, claude, chatgpt, google_ai, gemini, grok, perplexity, deepseek, mistral, copilot, qwen, meta_ai
+- Available: twitter, linkedin, facebook, telegram, whatsapp, email, raindrop, reddit, bluesky, line, mastodon, threads, pinterest, copy_link, web_share, google_preferred, claude, chatgpt, google_ai, gemini, grok, perplexity, deepseek, mistral, copilot, qwen, meta_ai
 
 **style**: Visual style to use
 - Example: `[ayudawp_share_buttons style="outline"]`
@@ -487,6 +497,9 @@ The `[ayudawp_share_buttons]` shortcode accepts several parameters:
 **social_title**: Section title for social buttons group
 - Example: `[ayudawp_share_buttons social_title="Share on social media"]`
 
+**google_title**: Title of the Google Preferred Source section, when it has a section of its own
+- Example: `[ayudawp_share_buttons google_title="Follow us on Google"]`
+
 **Combined examples:**
 
 `[ayudawp_share_buttons buttons="claude,deepseek,twitter" style="brand" show_icons="true"]`
@@ -512,6 +525,20 @@ The `[ayudawp_aiss_summary]` shortcode renders the AI-generated summary as a sta
 - Defaults to the current post in the loop when omitted
 
 The shortcode outputs nothing when the post has no stored summary, so it is safe to drop into templates without conditional wrappers.
+
+= Printing the blocks in theme hooks =
+
+Some themes rewrite the post content after WordPress filters it, for example to place ads, and end up duplicating whatever plugins added to it. For those, the `ayudawp_aiss_content_anchors` filter prints what goes before the content, what goes after it, or both, in an action of the theme instead:
+
+`add_filter( 'ayudawp_aiss_content_anchors', function ( $anchors ) {
+	$anchors['before'] = array( 'hook' => 'mytheme_before_content', 'priority' => 20 );
+	$anchors['after']  = array( 'hook' => 'mytheme_after_content', 'priority' => 1 );
+	return $anchors;
+} );`
+
+* The settings still decide whether the buttons and the summary show and where (before, after or both).
+* The stylesheet still loads in the head, exclusions and the floating bar keep working, and each block is printed once per page.
+* Leave an anchor as `the_content` to keep it inside the content.
 
 = CSS Customization Guide =
 
@@ -619,7 +646,7 @@ The main container has top and bottom border lines. You can hide either of them 
 * SEO-friendly markup options
 * Post meta for individual exclusions
 * Centralized platform color definitions
-* Filters to extend the 2.5.0 features: `ayudawp_aiss_floating_bar_buttons` (which buttons the bar shows), `ayudawp_aiss_show_floating_bar` (whether it renders on a given request), `ayudawp_aiss_utm_args` (the campaign parameters added to a shared link) and `ayudawp_aiss_trusted_proxies` (which addresses may set the forwarding header behind a CDN or load balancer)
+* Filters: `ayudawp_aiss_floating_bar_buttons` (which buttons the bar shows), `ayudawp_aiss_show_floating_bar` (whether it renders on a given request), `ayudawp_aiss_utm_args` (the campaign parameters added to a shared link), `ayudawp_aiss_trusted_proxies` (which addresses may set the forwarding header behind a CDN or load balancer), `ayudawp_aiss_content_anchors` (print the blocks in theme actions), `ayudawp_aiss_summary_min_words` (minimum length for a summary) and `ayudawp_aiss_google_preferred_domain` (the domain sent to Google)
 
 
 == Support ==

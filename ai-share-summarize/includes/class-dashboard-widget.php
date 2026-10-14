@@ -149,27 +149,10 @@ class AyudaWP_AISS_Dashboard_Widget {
 	 * @return array
 	 */
 	private static function ayudawp_get_platform_labels() {
-		return array(
-			'twitter'    => 'X (Twitter)',
-			'linkedin'   => 'LinkedIn',
-			'facebook'   => 'Facebook',
-			'telegram'   => 'Telegram',
-			'whatsapp'   => 'WhatsApp',
-			'email'      => 'Email',
-			'raindrop'   => 'Raindrop',
-			'reddit'     => 'Reddit',
-			'bluesky'    => 'Bluesky',
-			'line'       => 'LINE',
-			'claude'     => 'Claude',
-			'chatgpt'    => 'ChatGPT',
-			'google_ai'  => 'Google AI',
-			'gemini'     => 'Gemini',
-			'grok'       => 'Grok',
-			'perplexity' => 'Perplexity',
-			'deepseek'   => 'DeepSeek',
-			'mistral'    => 'Mistral',
-			'copilot'    => 'Copilot',
-		);
+		// Same list as the settings screen (v2.6.0). The map written here by
+		// hand had stopped at Copilot, and the ucfirst() fallback turned three
+		// of the later keys into Meta_ai, Copy_link and Web_share.
+		return ayudawp_aiss_get_available_buttons();
 	}
 
 	/**

@@ -68,7 +68,8 @@ window.AissPaginator = (function($) {
 	 * Get data rows (excluding loading/empty placeholders)
 	 */
 	Paginator.prototype._getRows = function() {
-		return this.$table.find('tbody tr').not('.aiss-no-data');
+		// The breakdown rows opened under a platform (v2.6.0) are not data rows.
+		return this.$table.find('tbody tr').not('.aiss-no-data').not('.aiss-platforms-drawer');
 	};
 
 	/**
@@ -85,6 +86,11 @@ window.AissPaginator = (function($) {
 	Paginator.prototype.goToPage = function(n) {
 		n = Math.max(1, Math.min(n, this.totalPages()));
 		this.currentPage = n;
+		// Told to the table (v2.6.0), so rows opened under a data row can
+		// close. A click handler on the pager buttons would miss the last
+		// page: the button is disabled within the same click, and jQuery does
+		// not pass clicks on disabled elements to delegated handlers.
+		this.$table.trigger('aiss:pagechange');
 		this._render();
 	};
 
@@ -186,89 +192,20 @@ window.AissPaginator = (function($) {
 	var currentTimelineMode    = 'platform'; // 'platform' or 'total'
 	var compareTimelineData    = null;
 
-	// Platform brand colors.
-	var platformColors = {
-		'twitter':    '#000000',
-		'linkedin':   '#0077b5',
-		'facebook':   '#1877f2',
-		'telegram':   '#26A5E4',
-		'whatsapp':   '#25d366',
-		'email':      '#6c757d',
-		'raindrop':   '#0F66E3',
-		'reddit':     '#FF4500',
-		'bluesky':    '#0085FF',
-		'line':       '#00C300',
-		'mastodon':   '#6364FF',
-		'threads':    '#000000',
-		'pinterest':  '#BD081C',
-		'claude':     '#D97757',
-		'chatgpt':    '#10a37f',
-		'google_ai':  '#E84430',
-		'gemini':     '#8E75B2',
-		'grok':       '#000000',
-		'perplexity': '#20808D',
-		'deepseek':   '#4D6BFE',
-		'mistral':    '#F7D046',
-		'copilot':    '#6264A7',
-		'qwen':       '#615CED',
-		'meta_ai':    '#0081FB'
-	};
-
-	// Platform type classification.
-	var platformTypes = {
-		'twitter':    'social',
-		'linkedin':   'social',
-		'facebook':   'social',
-		'telegram':   'social',
-		'whatsapp':   'social',
-		'email':      'social',
-		'raindrop':   'social',
-		'reddit':     'social',
-		'bluesky':    'social',
-		'line':       'social',
-		'mastodon':   'social',
-		'threads':    'social',
-		'pinterest':  'social',
-		'claude':     'ai',
-		'chatgpt':    'ai',
-		'google_ai':  'ai',
-		'gemini':     'ai',
-		'grok':       'ai',
-		'perplexity': 'ai',
-		'deepseek':   'ai',
-		'mistral':    'ai',
-		'copilot':    'ai',
-		'qwen':       'ai',
-		'meta_ai':    'ai'
-	};
-
-	// Platform display names.
-	var platformLabels = {
-		'twitter':    'X (Twitter)',
-		'linkedin':   'LinkedIn',
-		'facebook':   'Facebook',
-		'telegram':   'Telegram',
-		'whatsapp':   'WhatsApp',
-		'email':      'Email',
-		'raindrop':   'Raindrop',
-		'reddit':     'Reddit',
-		'bluesky':    'Bluesky',
-		'line':       'LINE',
-		'mastodon':   'Mastodon',
-		'threads':    'Threads',
-		'pinterest':  'Pinterest',
-		'claude':     'Claude',
-		'chatgpt':    'ChatGPT',
-		'google_ai':  'Google AI',
-		'gemini':     'Gemini',
-		'grok':       'Grok',
-		'perplexity': 'Perplexity',
-		'deepseek':   'DeepSeek',
-		'mistral':    'Mistral',
-		'copilot':    'Copilot',
-		'qwen':       'Qwen',
-		'meta_ai':    'Meta AI'
-	};
+	/*
+	 * Colour, type and display name of every platform (v2.6.0). They come from
+	 * PHP, from the same list the settings screen uses, instead of three maps
+	 * written by hand here: those missed the buttons added after them, so Copy
+	 * link and Native share showed up as raw keys, in grey, since 2.5.0.
+	 */
+	var platformColors = {};
+	var platformTypes  = {};
+	var platformLabels = {};
+	$.each(aissAdminData.platforms || {}, function(key, data) {
+		platformColors[key] = data.color;
+		platformTypes[key]  = data.type;
+		platformLabels[key] = data.name;
+	});
 
 	/**
 	 * Initialize on document ready
@@ -536,7 +473,7 @@ window.AissPaginator = (function($) {
 	/**
 	 * Make REST API request
 	 */
-	function apiRequest(endpoint, params, callback) {
+	function apiRequest(endpoint, params, callback, onError) {
 		var data = params || {};
 
 		if (currentDays === 'custom' && customDateFrom && customDateTo) {
@@ -557,6 +494,9 @@ window.AissPaginator = (function($) {
 			error: function() {
 				/* eslint-disable-next-line no-console */
 				console.error('AISS API request failed:', endpoint);
+				if (onError) {
+					onError();
+				}
 			}
 		});
 	}
@@ -1114,11 +1054,99 @@ window.AissPaginator = (function($) {
 		html += '<span class="dashicons ' + typeIcon + '"></span>';
 		html += escHtml(typeLabel);
 		html += '</span></td>';
-		html += '<td class="num">' + formatNumber(row.click_count) + '</td>';
+		// The count opens the posts this button was clicked from (v2.6.0).
+		html += '<td class="num">';
+		html += '<button type="button" class="aiss-expand-platforms" data-platform="' + escAttr(platform) + '" aria-expanded="false" aria-label="' + escAttr(aissAdminData.strings.showPosts || 'Show the posts it was clicked from') + '">';
+		html += '<span class="dashicons dashicons-arrow-right-alt2" aria-hidden="true"></span>';
+		html += '<span class="aiss-expand-count">' + formatNumber(row.click_count) + '</span>';
+		html += '</button></td>';
 		html += '</tr>';
 
 		return html;
 	}
+
+	/**
+	 * Close every open breakdown under the platforms table (v2.6.0)
+	 *
+	 * Called when the table paginates, so a breakdown never stays under a row
+	 * of another page.
+	 */
+	function collapsePlatformDrawers() {
+		$('#aiss-platforms-table .aiss-platforms-drawer').remove();
+		$('#aiss-platforms-table .aiss-expand-platforms[aria-expanded="true"]').each(function() {
+			$(this).attr('aria-expanded', 'false')
+				.find('.dashicons').removeClass('dashicons-arrow-down-alt2').addClass('dashicons-arrow-right-alt2');
+		});
+	}
+
+	/**
+	 * Breakdown of one platform: the posts it was clicked from (v2.6.0)
+	 *
+	 * @param {Array}   items Rows with title, url and clicks.
+	 * @param {boolean} more  Whether the list was cut.
+	 * @return {string} HTML.
+	 */
+	function renderPlatformPosts(items, more) {
+		var strings = aissAdminData.strings;
+		var inner   = '<div class="aiss-platforms-breakdown">';
+		inner += '<span class="aiss-platforms-breakdown-label">' + escHtml(strings.postsForButton || 'Posts it was clicked from') + '</span>';
+
+		if (!items.length) {
+			inner += '<p>' + escHtml(strings.noData || 'No data yet.') + '</p>';
+		} else {
+			inner += '<ol class="aiss-platforms-posts">';
+			items.forEach(function(item) {
+				var title = String(item.title || '');
+				var url   = String(item.url || '');
+				inner += '<li>';
+				// Only http(s) reaches the href; escaping the quotes would not
+				// stop a javascript: address.
+				if (/^https?:\/\//i.test(url)) {
+					inner += '<a href="' + escAttr(url) + '" target="_blank" rel="noopener noreferrer">' + escHtml(title) + '</a>';
+				} else {
+					inner += '<span>' + escHtml(title) + '</span>';
+				}
+				inner += ' <strong>' + formatNumber(item.clicks) + '</strong></li>';
+			});
+			inner += '</ol>';
+			if (more) {
+				inner += '<p class="description">' + escHtml(strings.topPostsOnly || 'Only the 20 posts with the most clicks are listed. The CSV export has all of them.') + '</p>';
+			}
+		}
+
+		return inner + '</div>';
+	}
+
+	// Open or close the breakdown of a platform, loaded on demand (v2.6.0).
+	$(document).on('click', '#aiss-platforms-table .aiss-expand-platforms', function() {
+		var $btn     = $(this);
+		var $row     = $btn.closest('tr');
+		var $icon    = $btn.find('.dashicons');
+		var platform = String($btn.data('platform') || '');
+
+		if ('true' === $btn.attr('aria-expanded')) {
+			$btn.attr('aria-expanded', 'false');
+			$icon.removeClass('dashicons-arrow-down-alt2').addClass('dashicons-arrow-right-alt2');
+			$row.next('.aiss-platforms-drawer').remove();
+			return;
+		}
+
+		$btn.attr('aria-expanded', 'true');
+		$icon.removeClass('dashicons-arrow-right-alt2').addClass('dashicons-arrow-down-alt2');
+
+		var colspan = $row.children('td').length;
+		var $drawer = $('<tr class="aiss-platforms-drawer"><td colspan="' + colspan + '"><div class="aiss-platforms-breakdown">' + escHtml(aissAdminData.strings.loading || 'Loading...') + '</div></td></tr>');
+		$row.after($drawer);
+
+		apiRequest('platforms/posts', { platform: platform }, function(response) {
+			$drawer.find('td').html(renderPlatformPosts((response && response.items) || [], !!(response && response.more)));
+		}, function() {
+			$drawer.find('td').html('<div class="aiss-platforms-breakdown">' + escHtml(aissAdminData.strings.loadError || 'Could not load the data. Please try again.') + '</div>');
+		});
+	});
+
+	// Close the breakdowns when the platforms table changes page.
+	$(document).on('aiss:pagechange', '#aiss-platforms-table', collapsePlatformDrawers);
 
 	/* ===== Top content table ===== */
 
@@ -1384,12 +1412,15 @@ window.AissPaginator = (function($) {
 /**
  * Settings screen interactions (v2.5.0)
  *
- * Three small things, all optional: the form works with this file blocked.
+ * Small things, all optional: the form works with this file blocked.
  *
  *   1. The button picker repaints as the style, the icons or the corner shape
  *      change, so you see the result before saving instead of saving to see it.
  *   2. The floating bar's own destinations fold away until you ask for them.
- *   3. A position whose destination is unticked is dimmed.
+ *   3. The summary block sample repaints as its style changes.
+ *   4. A position whose destination is unticked is dimmed.
+ *   5. Where the Google button goes dims its section title and takes it in or
+ *      out of the social order list (v2.6.0).
  */
 (function () {
 	'use strict';
@@ -1569,6 +1600,32 @@ window.AissPaginator = (function($) {
 					row.classList.toggle('is-on', box.checked);
 				});
 			})(rows[r]);
+		}
+
+		// --- 5. Where the Google button goes (v2.6.0) -------------------------
+		// Its section title only matters in a section of its own, and it only
+		// has a place in the social order while it goes with the networks.
+		var googleSelect = document.getElementById('aiss-google-placement');
+		if (googleSelect) {
+			var googleTitle = document.querySelector('.aiss-google-title-field');
+			var googleItem  = document.querySelector('#ayudawp-sortable-social li[data-button="google_preferred"]');
+			var googleNotes = document.querySelectorAll('.aiss-google-order-note');
+
+			var syncGoogle = function () {
+				var place = googleSelect.value;
+				if (googleTitle) {
+					googleTitle.classList.toggle('is-off', 'section' !== place);
+				}
+				if (googleItem) {
+					googleItem.hidden = 'social' !== place;
+				}
+				for (var g = 0; g < googleNotes.length; g++) {
+					googleNotes[g].hidden = googleNotes[g].getAttribute('data-placement') !== place;
+				}
+			};
+
+			googleSelect.addEventListener('change', syncGoogle);
+			syncGoogle();
 		}
 	}
 

@@ -1236,3 +1236,97 @@
 
 /* The order lists follow the live style too, icons included. */
 .aiss-order-preview.aiss-hide-icons .aiss-order-list .ayudawp-icon-wrapper { display: none; }
+
+/* =============================================
+   Google preferred source button (v2.6.0)
+   ============================================= */
+
+/* Where it goes and the title of its section, side by side when they fit. */
+.aiss-google-placement {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-end;
+	gap: 12px 24px;
+	max-width: 900px;
+	margin-top: 12px;
+}
+
+.aiss-google-field label {
+	display: block;
+	margin-bottom: 4px;
+}
+
+.aiss-google-field select,
+.aiss-google-field input {
+	max-width: 100%;
+}
+
+/* The title only applies to a section of its own. */
+.aiss-google-title-field.is-off {
+	opacity: .45;
+}
+
+/* `hidden` loses against the flex the list rows get from their class. */
+.aiss-order-list li[hidden],
+.aiss-google-order-note[hidden] {
+	display: none;
+}
+
+/* =============================================
+   Platforms table: posts each button was clicked from (v2.6.0)
+   Same look as the crawler breakdown of VigIA.
+   ============================================= */
+
+.aiss-expand-platforms {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: 0;
+	margin: 0;
+	border: none;
+	background: none;
+	color: #2271b1;
+	font-size: inherit;
+	font-variant-numeric: tabular-nums;
+	cursor: pointer;
+}
+
+.aiss-expand-platforms:hover {
+	color: #135e96;
+}
+
+.aiss-expand-platforms .dashicons {
+	width: 18px;
+	height: 18px;
+	font-size: 18px;
+	line-height: 1;
+}
+
+.aiss-platforms-drawer td {
+	background: #f6f7f7;
+}
+
+.aiss-platforms-breakdown {
+	padding: 6px 4px;
+}
+
+.aiss-platforms-breakdown-label {
+	display: block;
+	margin-bottom: 8px;
+	color: #787c82;
+	font-size: 11px;
+	letter-spacing: .02em;
+	text-transform: uppercase;
+}
+
+.aiss-platforms-posts {
+	margin: 0 0 0 20px;
+}
+
+.aiss-platforms-posts li {
+	margin-bottom: 4px;
+}
+
+.aiss-platforms-posts strong {
+	font-variant-numeric: tabular-nums;
+}

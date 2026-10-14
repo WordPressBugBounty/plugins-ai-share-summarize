@@ -55,6 +55,9 @@ function ayudawp_aiss_get_available_buttons() {
 		// Translatable, unlike the platform names above, which are brands.
 		'copy_link' => __( 'Copy link', 'ai-share-summarize' ),
 		'web_share' => __( 'Native share', 'ai-share-summarize' ),
+		// Google preferred source (v2.6.0): a link to Google's own tool, not a
+		// share. Translatable for the same reason as the browser actions.
+		'google_preferred' => __( 'Google preferred source', 'ai-share-summarize' ),
 	);
 }
 
@@ -64,7 +67,7 @@ function ayudawp_aiss_get_available_buttons() {
  * @return array Social media button keys.
  */
 function ayudawp_aiss_get_social_buttons() {
-	return array( 'twitter', 'linkedin', 'facebook', 'telegram', 'whatsapp', 'email', 'raindrop', 'reddit', 'bluesky', 'line', 'mastodon', 'threads', 'pinterest', 'copy_link', 'web_share' );
+	return array( 'twitter', 'linkedin', 'facebook', 'telegram', 'whatsapp', 'email', 'raindrop', 'reddit', 'bluesky', 'line', 'mastodon', 'threads', 'pinterest', 'copy_link', 'web_share', 'google_preferred' );
 }
 
 /**
@@ -177,6 +180,9 @@ function ayudawp_aiss_validate_options( $input ) {
 		// Mobile compact mode and UTM tagging (v2.5.0).
 		'mobile_compact',
 		'utm_campaign',
+		// Google preferred source button (v2.6.0).
+		'google_preferred_placement',
+		'google_section_title',
 	);
 	$textarea_fields = array( 'default_prompt', 'custom_text' );
 	$array_fields    = array( 'enabled_buttons', 'button_custom_order_ai', 'button_custom_order_social' );
@@ -281,6 +287,11 @@ function ayudawp_aiss_validate_options( $input ) {
 		}
 	}
 
+	// Where the Google preferred source button goes (v2.6.0).
+	if ( isset( $validated['google_preferred_placement'] ) && ! in_array( $validated['google_preferred_placement'], array( 'social', 'section', 'outside' ), true ) ) {
+		$validated['google_preferred_placement'] = 'social';
+	}
+
 	// Validate mobile_compact (v2.5.0).
 	$valid_compact_modes = array( 'disabled', 'single', 'partial' );
 	if ( isset( $validated['mobile_compact'] ) && ! in_array( $validated['mobile_compact'], $valid_compact_modes, true ) ) {
@@ -321,30 +332,22 @@ function ayudawp_aiss_validate_options( $input ) {
 	}
 
 	/*
-	 * Carry over the frozen pre-2.3.0 `ai_summary_*` snapshot (v2.3.0).
-	 *
-	 * The 2.3.0 migration copies (does not move) the AI-summary keys into
-	 * `ayudawp_aiss_summary_options`, leaving the originals here so a rollback
-	 * to 2.2.x finds its configuration intact. Rebuilding the option from
-	 * scratch on every save would silently drop that snapshot on the first
-	 * buttons-tab save after updating. The snapshot (and this carry-over) is
-	 * scheduled for removal in a future release once 2.3.0 has settled.
+	 * The frozen pre-2.3.0 `ai_summary_*` snapshot was carried over here on
+	 * every save until 2.6.0, so a rollback to 2.2.x found its configuration.
+	 * The 2.6.0 migration deletes it, and without this carry-over the next
+	 * save does not bring it back. A rollback is safe to 2.3.0 or later, where
+	 * the summary has its own option.
 	 */
 	$stored = get_option( 'ayudawp_aiss_options', array() );
 	if ( is_array( $stored ) ) {
-		foreach ( $stored as $key => $value ) {
-			if ( 0 === strpos( $key, 'ai_summary' ) && ! isset( $validated[ $key ] ) ) {
-				$validated[ $key ] = $value;
-			}
-		}
-
 		/*
-		 * Same idea for the three keys `placements` replaced in 2.5.0
+		 * Rollback snapshot of the three keys `placements` replaced in 2.5.0
 		 * (`display_locations`, `auto_insert_content_types` and
 		 * `auto_insert_position`). The form no longer posts them, so without
 		 * this they would disappear on the first save and a rollback to 2.4.x
-		 * would land on a site with no buttons anywhere. Scheduled for removal
-		 * with the rest of the legacy snapshot, entry 38 of the roadmap.
+		 * would land on a site with no buttons anywhere. Kept when the 2.3.0
+		 * snapshot went in 2.6.0: 2.5.0 is recent, and its removal has its own
+		 * release once the 2.5 series has settled (roadmap, entry 38).
 		 */
 		foreach ( array( 'display_locations', 'auto_insert_content_types', 'auto_insert_position' ) as $legacy_key ) {
 			if ( isset( $stored[ $legacy_key ] ) && ! isset( $validated[ $legacy_key ] ) ) {
@@ -800,7 +803,10 @@ function ayudawp_aiss_get_placement_for_context( $key = 'placements' ) {
 	}
 
 	if ( is_singular() ) {
-		$post_type = get_post_type();
+		// The queried post, not the global one (v2.6.0): a theme action, a
+		// widget or a related-posts module can leave another post in $post,
+		// and its type would decide where this page's blocks go.
+		$post_type = get_post_type( get_queried_object_id() );
 		return isset( $placements[ $post_type ] ) ? $placements[ $post_type ] : '';
 	}
 
@@ -1266,7 +1272,35 @@ function ayudawp_aiss_get_platform_colors() {
 		'meta_ai'    => '#0081FB',
 		'copy_link'  => '#5F6C7B',
 		'web_share'  => '#2F6FED',
+		// Google blue; white text on it measures 4.5:1, the AA minimum.
+		'google_preferred' => '#1A73E8',
 	);
+}
+
+/**
+ * Colour, type and name of every platform, for the analytics screens (v2.6.0)
+ *
+ * One place for what the analytics page and the dashboard widget used to keep
+ * in maps of their own, which fell behind every time a button was added.
+ * Platforms no longer offered keep their raw key on screen, as before.
+ *
+ * @since 2.6.0
+ * @return array Platform key => array( name, color, type ).
+ */
+function ayudawp_aiss_get_platforms_meta() {
+	$colors = ayudawp_aiss_get_platform_colors();
+	$ai     = ayudawp_aiss_get_ai_buttons();
+	$meta   = array();
+
+	foreach ( ayudawp_aiss_get_available_buttons() as $key => $name ) {
+		$meta[ $key ] = array(
+			'name'  => $name,
+			'color' => isset( $colors[ $key ] ) ? $colors[ $key ] : '#999999',
+			'type'  => in_array( $key, $ai, true ) ? 'ai' : 'social',
+		);
+	}
+
+	return $meta;
 }
 
 /**
@@ -1374,6 +1408,77 @@ function ayudawp_aiss_kses_buttons() {
 }
 
 /**
+ * Allowed tags for the blocks printed in a theme action (v2.6.0)
+ *
+ * What ayudawp_aiss_kses_buttons() allows, plus the tags the inline block
+ * uses for its titles (headings and paragraphs, which the floating bar never
+ * prints) and everything the summary box and its "Generate" button use, since
+ * the summary can be glued to the buttons. Tags present in both lists get the
+ * attributes of both.
+ *
+ * @since 2.6.0
+ * @return array Allowed HTML for wp_kses().
+ */
+function ayudawp_aiss_kses_content_blocks() {
+	$allowed = ayudawp_aiss_kses_buttons();
+	$title   = array(
+		'id'    => array(),
+		'class' => array(),
+	);
+	$class   = array( 'class' => array() );
+
+	$extra = array(
+		'h2'      => $title,
+		'h3'      => $title,
+		'h4'      => $title,
+		'h5'      => $title,
+		'h6'      => $title,
+		'p'       => $title,
+		'aside'   => array(
+			'class'         => array(),
+			'style'         => array(),
+			'role'          => array(),
+			'aria-label'    => array(),
+			'data-provider' => array(),
+			'data-post-id'  => array(),
+			'itemscope'     => array(),
+			'itemtype'      => array(),
+		),
+		'div'     => array(
+			'class'          => array(),
+			'data-nosnippet' => array(),
+			'itemprop'       => array(),
+		),
+		'meta'    => array(
+			'itemprop' => array(),
+			'content'  => array(),
+		),
+		'details' => array(
+			'class' => array(),
+			'open'  => array(),
+		),
+		'button'  => array(
+			'type'  => array(),
+			'class' => array(),
+		),
+		'span'    => array(
+			'class'       => array(),
+			'aria-hidden' => array(),
+		),
+		'summary' => $class,
+		'ul'      => $class,
+		'li'      => $class,
+		'small'   => $class,
+	);
+
+	foreach ( $extra as $tag => $attributes ) {
+		$allowed[ $tag ] = isset( $allowed[ $tag ] ) ? array_merge( $allowed[ $tag ], $attributes ) : $attributes;
+	}
+
+	return $allowed;
+}
+
+/**
  * Buttons that act on the current page instead of opening a destination (v2.5.0)
  *
  * "Copy link" writes to the clipboard and "Native share" opens the operating
@@ -1386,6 +1491,90 @@ function ayudawp_aiss_kses_buttons() {
  */
 function ayudawp_aiss_get_action_buttons() {
 	return array( 'copy_link', 'web_share' );
+}
+
+/**
+ * Domain for the "Google preferred source" button (v2.6.0)
+ *
+ * Google only accepts a domain or a subdomain, so a site whose home URL has a
+ * path (WordPress in a subfolder, a subdirectory network site) gets '' and no
+ * button. So does a site that asks search engines not to index it: it is not
+ * in Google, and the button would open an empty search. A leading "www." is
+ * dropped because Google's own example is the bare domain.
+ *
+ * @since 2.6.0
+ * @return string Domain, or '' when the button cannot be offered.
+ */
+function ayudawp_aiss_get_google_preferred_domain() {
+	$domain = '';
+
+	if ( (int) get_option( 'blog_public', 1 ) >= 1 ) {
+		$home = home_url();
+		$host = wp_parse_url( $home, PHP_URL_HOST );
+		$path = wp_parse_url( $home, PHP_URL_PATH );
+
+		if ( is_string( $host ) && '' !== $host && ( ! is_string( $path ) || '' === trim( $path, '/' ) ) ) {
+			$domain = preg_replace( '/^www\./', '', strtolower( $host ) );
+		}
+	}
+
+	/**
+	 * Filter the domain sent to Google's preferred sources tool.
+	 *
+	 * Return '' to hide the button, or another domain when the public one is
+	 * not the host WordPress runs on.
+	 *
+	 * @since 2.6.0
+	 * @param string $domain Domain, or '' when the site is not eligible.
+	 */
+	$domain = apply_filters( 'ayudawp_aiss_google_preferred_domain', $domain );
+
+	return is_string( $domain ) ? $domain : '';
+}
+
+/**
+ * Where the "Google preferred source" button goes (v2.6.0)
+ *
+ * 'social' keeps it with the social networks, 'section' gives it a section of
+ * its own at the end of the inline block, and 'outside' keeps it out of the
+ * block and the floating bar, so it only shows where a shortcode asks for it
+ * by name.
+ *
+ * @since 2.6.0
+ * @param array|null $options Plugin options.
+ * @return string 'social', 'section' or 'outside'.
+ */
+function ayudawp_aiss_get_google_preferred_placement( $options = null ) {
+	if ( null === $options ) {
+		$options = get_option( 'ayudawp_aiss_options' );
+	}
+
+	$placement = is_array( $options ) && isset( $options['google_preferred_placement'] ) ? $options['google_preferred_placement'] : 'social';
+
+	return in_array( $placement, array( 'social', 'section', 'outside' ), true ) ? $placement : 'social';
+}
+
+/**
+ * Drop the buttons this site cannot offer (v2.6.0)
+ *
+ * Today only "Google preferred source", when the site is not eligible.
+ * Applied before rendering, so the mobile compact count and the section
+ * titles only see buttons that will be printed.
+ *
+ * @since 2.6.0
+ * @param array $buttons Button keys.
+ * @return array Button keys, reindexed.
+ */
+function ayudawp_aiss_remove_unavailable_buttons( $buttons ) {
+	if ( ! is_array( $buttons ) || ! in_array( 'google_preferred', $buttons, true ) ) {
+		return $buttons;
+	}
+
+	if ( '' !== ayudawp_aiss_get_google_preferred_domain() ) {
+		return $buttons;
+	}
+
+	return array_values( array_diff( $buttons, array( 'google_preferred' ) ) );
 }
 
 /**
@@ -1666,6 +1855,7 @@ function ayudawp_aiss_get_localized_platform_names( $options ) {
 		'meta_ai'    => 'Meta AI',
 		'copy_link'  => __( 'Copy link', 'ai-share-summarize' ),
 		'web_share'  => __( 'Share', 'ai-share-summarize' ),
+		'google_preferred' => __( 'Google preferred source', 'ai-share-summarize' ),
 	);
 
 	$enabled = isset( $options['enabled_buttons'] ) && is_array( $options['enabled_buttons'] )
@@ -1834,6 +2024,64 @@ function ayudawp_aiss_clean_html_for_summary( $html ) {
 	$text = preg_replace( '/\.{2,}/', '.', $text );          // ".." → "."
 
 	return trim( $text );
+}
+
+/**
+ * Words of real text in a post, counted the way its summary would see them (v2.6.0)
+ *
+ * Counts on the text ayudawp_aiss_clean_html_for_summary() leaves, so images,
+ * embeds, tables and shortcodes do not count. Counts like core's
+ * wp_trim_words(): by spaces, or by characters in the locales core counts that
+ * way (Chinese, Japanese...), where a post would otherwise never reach the
+ * minimum. Tokens with no letter or digit (a stray dash, the full stops the
+ * cleaner inserts between blocks) are not words.
+ *
+ * @since 2.6.0
+ * @param string $content Raw post content.
+ * @return int Number of words (or characters, in character-count locales).
+ */
+function ayudawp_aiss_count_summary_words( $content ) {
+	$text = ayudawp_aiss_clean_html_for_summary( (string) $content );
+	if ( '' === $text ) {
+		return 0;
+	}
+
+	// wp_get_word_count_type() exists since WordPress 6.2; the plugin still
+	// runs on 6.1, where counting by spaces is what core did too.
+	$type = function_exists( 'wp_get_word_count_type' ) ? wp_get_word_count_type() : 'words';
+
+	if ( 0 === strpos( $type, 'characters' ) ) {
+		return (int) preg_match_all( '/[\p{L}\p{N}]/u', $text );
+	}
+
+	$tokens = preg_split( '/\s+/u', $text, -1, PREG_SPLIT_NO_EMPTY );
+	if ( ! is_array( $tokens ) ) {
+		return 0;
+	}
+
+	return count( preg_grep( '/[\p{L}\p{N}]/u', $tokens ) );
+}
+
+/**
+ * Minimum length of a post for it to get an automatic summary (v2.6.0)
+ *
+ * Below it the AI tends to answer that there is nothing to summarize, and
+ * that answer used to be stored and shown as the summary.
+ *
+ * @since 2.6.0
+ * @return int Minimum number of words, 0 for no minimum.
+ */
+function ayudawp_aiss_get_summary_min_words() {
+	/**
+	 * Filter the minimum number of words a post needs for a summary.
+	 *
+	 * Counted on the text the summary is built from (no images, embeds,
+	 * tables or shortcodes). Return 0 to summarize posts of any length.
+	 *
+	 * @since 2.6.0
+	 * @param int $min_words Minimum number of words. Default 50.
+	 */
+	return max( 0, (int) apply_filters( 'ayudawp_aiss_summary_min_words', 50 ) );
 }
 
 /**

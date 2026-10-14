@@ -3,7 +3,7 @@
  * Plugin Name: Share Buttons & AI-powered Summaries
  * Plugin URI: https://servicios.ayudawp.com/
  * Description: Inline AI summary on every post + one-click sharing to social networks and 11 AI assistants (Claude, ChatGPT, Gemini, Grok, Perplexity, DeepSeek, Mistral, Copilot, Qwen, Meta AI). Powered by the new WordPress 7.x AI Connectors.
- * Version: 2.5.1
+ * Version: 2.6.0
  * Author: Fernando Tellado
  * Author URI: https://ayudawp.com/
  * Text Domain: ai-share-summarize
@@ -22,7 +22,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Define plugin constants.
-define( 'AYUDAWP_AISS_VERSION', '2.5.1' );
+define( 'AYUDAWP_AISS_VERSION', '2.6.0' );
 define( 'AYUDAWP_AISS_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'AYUDAWP_AISS_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'AYUDAWP_AISS_PLUGIN_BASENAME', plugin_basename( __FILE__ ) );
@@ -300,8 +300,8 @@ class AyudaWP_AI_Share_Summarize {
 		 * option, `ayudawp_aiss_summary_options`, behind the new AI Summary
 		 * settings tab. COPY, do not move: the `ai_summary_*` keys stay in
 		 * `ayudawp_aiss_options` as a frozen snapshot so a rollback to 2.2.x
-		 * finds its configuration intact (the snapshot is scheduled for
-		 * removal in a future release). The derivation also materializes the
+		 * finds its configuration intact (deleted by the 2.6.0 migration
+		 * below). The derivation also materializes the
 		 * old read-time inheritance of the buttons' content-type list, which
 		 * 2.3.0 removes from the runtime resolver.
 		 */
@@ -310,6 +310,30 @@ class AyudaWP_AI_Share_Summarize {
 				add_option( 'ayudawp_aiss_summary_options', ayudawp_aiss_derive_summary_options_from_legacy() );
 			}
 			$this->ayudawp_migrate_summary_exclusion_meta();
+		}
+
+		/*
+		 * Migration for v2.6.0: delete that frozen `ai_summary_*` snapshot.
+		 * After eight releases of the 2.3+ series with no migration problem
+		 * reported, going back to 2.2.x is not worth the weight these keys add
+		 * to an autoloaded option. Runs after the 2.3.0 block, so a site
+		 * coming straight from 2.2.x gets its summary option first, and only
+		 * when that option exists: until then ayudawp_aiss_get_summary_options()
+		 * still reads these keys.
+		 */
+		if ( version_compare( $from_version, '2.6.0', '<' ) && is_array( get_option( 'ayudawp_aiss_summary_options' ) ) ) {
+			$current = get_option( 'ayudawp_aiss_options' );
+			if ( is_array( $current ) ) {
+				$kept = array();
+				foreach ( $current as $key => $value ) {
+					if ( 0 !== strpos( (string) $key, 'ai_summary' ) ) {
+						$kept[ $key ] = $value;
+					}
+				}
+				if ( count( $kept ) !== count( $current ) ) {
+					update_option( 'ayudawp_aiss_options', $kept );
+				}
+			}
 		}
 	}
 

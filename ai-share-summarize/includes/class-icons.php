@@ -139,6 +139,11 @@ class AyudaWP_AISS_Icons {
 			// Native share - the OS share glyph (three nodes joined by two lines).
 			'web_share' => '<path d="M18 16.08a2.9 2.9 0 0 0-1.96.77L8.91 12.7c.05-.23.09-.46.09-.7s-.04-.47-.09-.7l7.05-4.11c.51.48 1.2.78 1.96.78a2.92 2.92 0 1 0-2.92-2.92c0 .24.04.47.09.7L8.04 9.86A2.9 2.9 0 0 0 6.08 9.1a2.92 2.92 0 0 0 0 5.83c.76 0 1.45-.3 1.96-.78l7.12 4.16c-.05.21-.08.43-.08.65a2.84 2.84 0 1 0 2.92-2.88Z"/>',
 
+			// Google preferred source (v2.6.0) - five-point star, the symbol Google
+			// shows next to Top Stories for preferred sources. Not Google's logo,
+			// which its brand rules do not allow to be recoloured.
+			'google_preferred' => '<path d="M12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/>',
+
 			// --- Plugin UI icons ---
 
 			// AI Summary - text-lines glyph used in the frontend collapsible block (v2.0.0).

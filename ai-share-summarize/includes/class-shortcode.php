@@ -30,6 +30,7 @@ class AyudaWP_AISS_Shortcode {
 	 * Usage: [ayudawp_share_buttons]
 	 * or:    [ayudawp_share_buttons buttons="twitter,claude,google_ai"]
 	 * or:    [ayudawp_share_buttons ai_title="Summarize with AI" social_title="Share"]
+	 * or:    [ayudawp_share_buttons buttons="google_preferred" title_text="Follow us on Google"]
 	 *
 	 * @param array $atts Shortcode attributes.
 	 * @return string Shortcode output.
@@ -51,6 +52,7 @@ class AyudaWP_AISS_Shortcode {
 				'icon_style'   => '',
 				'ai_title'     => '',
 				'social_title' => '',
+				'google_title' => '',
 			),
 			$atts,
 			'ayudawp_share_buttons'
@@ -59,11 +61,13 @@ class AyudaWP_AISS_Shortcode {
 		$options = get_option( 'ayudawp_aiss_options' );
 
 		// Override options with shortcode attributes.
-		$shortcode_options = $options;
+		$shortcode_options = is_array( $options ) ? $options : array();
 
-		// Handle buttons parameter.
+		// Handle buttons parameter. A list given here is the one wanted, so a
+		// button set to go outside the block still shows when named (v2.6.0).
 		if ( ! empty( $atts['buttons'] ) ) {
-			$enabled_buttons = array_map( 'trim', explode( ',', $atts['buttons'] ) );
+			$enabled_buttons                           = array_map( 'trim', explode( ',', $atts['buttons'] ) );
+			$shortcode_options['_sc_explicit_buttons'] = true;
 		} else {
 			$enabled_buttons = isset( $options['enabled_buttons'] ) ? $options['enabled_buttons'] : array();
 		}
@@ -111,6 +115,9 @@ class AyudaWP_AISS_Shortcode {
 		}
 		if ( ! empty( $atts['social_title'] ) ) {
 			$shortcode_options['_sc_social_title'] = sanitize_text_field( $atts['social_title'] );
+		}
+		if ( ! empty( $atts['google_title'] ) ) {
+			$shortcode_options['_sc_google_title'] = sanitize_text_field( $atts['google_title'] );
 		}
 
 		$current_url   = get_permalink();
