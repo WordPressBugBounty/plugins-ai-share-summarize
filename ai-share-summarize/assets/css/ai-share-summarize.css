@@ -168,7 +168,9 @@
 	background: transparent;
 	color: #333;
 	font-family: inherit;
-	text-transform: capitalize;
+	/* Labels show as written (v2.7.0). capitalize turned "Copiar enlace" into
+	   "Copiar Enlace"; none still overrides themes that uppercase buttons. */
+	text-transform: none;
 	gap: 6px;
 	cursor: pointer;
 	position: relative;
@@ -591,6 +593,23 @@ button.ayudawp-share-btn:focus {
 	font-size: 11px;
 	color: #6c757d;
 	font-style: italic;
+}
+
+/* Custom content below the summary (v2.7.0). Only spacing and the optional
+   label: the space itself (#ayudawp-aiss-custom) is left to its content,
+   apart from the heights set in the settings, which go inline. The label
+   inherits the text colour, so it stays legible on every style variant
+   without its own rules. */
+.ayudawp-aiss-custom {
+	margin-top: 12px;
+}
+
+.ayudawp-aiss-custom-label {
+	display: block;
+	margin-bottom: 4px;
+	font-size: 11px;
+	line-height: 1.4;
+	opacity: 0.75;
 }
 
 /* Placeholder variant: contains the "Generate AI summary" button shown to

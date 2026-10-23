@@ -96,10 +96,12 @@
      *
      * Checked again on 12 Sep 2026 against each platform, with Perplexity's
      * working ?q= as the positive control: Meta AI does pre-fill from
-     * ?prompt= and left this list in 2.5.0; Gemini, DeepSeek, Copilot and
-     * Qwen still do not.
+     * ?prompt= and left this list in 2.5.0. On 23 Oct 2026 Qwen pre-filled
+     * from ?text= (not ?prompt= or ?q=) and left it in 2.7.0. Gemini ignored
+     * ?q= and ?prompt=, and DeepSeek and Copilot, tried signed in, pre-filled
+     * nothing either, so the three stay here.
      */
-    var copyPromptPlatforms = ['gemini', 'deepseek', 'copilot', 'qwen'];
+    var copyPromptPlatforms = ['gemini', 'deepseek', 'copilot'];
 
     /**
      * Landing pages for the copy-prompt platforms.
@@ -107,8 +109,7 @@
     var platformBaseUrls = {
         'gemini':   'https://gemini.google.com/app',
         'deepseek': 'https://chat.deepseek.com/',
-        'copilot':  'https://copilot.microsoft.com/',
-        'qwen':     'https://chat.qwen.ai/'
+        'copilot':  'https://copilot.microsoft.com/'
     };
 
     /** Platforms that open in a sized popup window instead of a tab. */
@@ -633,7 +634,8 @@
                 method:      'POST',
                 credentials: 'same-origin',
                 headers:     { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-                body:        JSON.stringify({ post_id: postId })
+                // The custom content only on the post's own page (v2.7.0).
+                body:        JSON.stringify({ post_id: postId, with_custom: postId === parseInt(L.singularPostId, 10) })
             }).then(function (response) {
                 return response.json().then(function (data) {
                     return { ok: response.ok, data: data };
@@ -685,5 +687,134 @@
         document.addEventListener('DOMContentLoaded', ayudawpAissInitSummaryButton);
     } else {
         ayudawpAissInitSummaryButton();
+    }
+})();
+
+/**
+ * Custom content inside the summary box (v2.7.0).
+ *
+ * Text, HTML or scripts (an ad, a form, a map...). It arrives inert, inside a
+ * <template> in #ayudawp-aiss-custom, and is put in place the first time its
+ * box is open: on load when the box starts open, on the first click
+ * otherwise, and also for a box that arrives later through the visitor
+ * button. Nothing is requested into a folded box, where an ad would have no
+ * size.
+ *
+ * Each <script> is created anew rather than taken from the template. One
+ * that came in through innerHTML (the visitor button) is marked as already
+ * run, the copy keeps that mark and would never execute; one parsed with the
+ * page would run on insertion. So scripts are pulled out before the rest goes
+ * in, then recreated one by one, an external one without async waiting for
+ * its load before the next, which keeps the order the code was written in.
+ *
+ * Opening the box also fires an ayudawp_aiss_custom_visible event on the slot and
+ * pushes the same event to the dataLayer when there is one, so an ad server
+ * or a Tag Manager tag that fills the slot itself can wait for it.
+ *
+ * @since 2.7.0
+ */
+(function () {
+    'use strict';
+
+    var EVENT = 'ayudawp_aiss_custom_visible';
+
+    function freshScript(old) {
+        var script = document.createElement('script');
+        for (var i = 0; i < old.attributes.length; i++) {
+            script.setAttribute(old.attributes[i].name, old.attributes[i].value);
+        }
+        if (script.src && !old.hasAttribute('async')) {
+            script.async = false;
+        }
+        script.text = old.textContent;
+        return script;
+    }
+
+    function runScripts(pairs, index) {
+        if (index >= pairs.length) {
+            return;
+        }
+        var stub   = pairs[index].stub;
+        var script = freshScript(pairs[index].old);
+        var next   = function () { runScripts(pairs, index + 1); };
+
+        if (!stub.parentNode) {
+            next();
+            return;
+        }
+        if (script.src && !script.async) {
+            script.onload  = next;
+            script.onerror = next;
+            stub.parentNode.replaceChild(script, stub);
+            return;
+        }
+        stub.parentNode.replaceChild(script, stub);
+        next();
+    }
+
+    function inject(template) {
+        if (!template.content || !template.parentNode) {
+            return;
+        }
+        var fragment = document.importNode(template.content, true);
+        var olds     = fragment.querySelectorAll('script');
+        var pairs    = [];
+
+        for (var i = 0; i < olds.length; i++) {
+            var stub = document.createComment('');
+            olds[i].parentNode.replaceChild(stub, olds[i]);
+            pairs.push({ old: olds[i], stub: stub });
+        }
+
+        template.parentNode.replaceChild(fragment, template);
+        runScripts(pairs, 0);
+    }
+
+    function announce(slot) {
+        try {
+            slot.dispatchEvent(new CustomEvent(EVENT, { bubbles: true }));
+        } catch (e) {}
+        if (window.dataLayer && typeof window.dataLayer.push === 'function') {
+            window.dataLayer.push({ event: EVENT });
+        }
+    }
+
+    function show(details) {
+        if (!details.open) {
+            return;
+        }
+        var slots = details.querySelectorAll('.ayudawp-aiss-custom-slot');
+        for (var i = 0; i < slots.length; i++) {
+            if (slots[i].__aissCustomShown) {
+                continue;
+            }
+            slots[i].__aissCustomShown = true;
+            var template = slots[i].querySelector('template.ayudawp-aiss-custom-code');
+            if (template) {
+                inject(template);
+            }
+            announce(slots[i]);
+        }
+    }
+
+    // toggle does not bubble: listen in the capture phase.
+    document.addEventListener('toggle', function (e) {
+        var target = e.target;
+        if (target && target.matches && target.matches('details.ayudawp-aiss-summary-details')) {
+            show(target);
+        }
+    }, true);
+
+    function showOpenBoxes() {
+        var open = document.querySelectorAll('details.ayudawp-aiss-summary-details[open]');
+        for (var i = 0; i < open.length; i++) {
+            show(open[i]);
+        }
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', showOpenBoxes);
+    } else {
+        showOpenBoxes();
     }
 })();

@@ -422,6 +422,13 @@ class AyudaWP_AISS_Admin {
 			'ayudawp_aiss_summary_settings'
 		);
 
+		add_settings_section(
+			'ayudawp_aiss_summary_custom',
+			esc_html__( 'Custom content inside the box', 'ai-share-summarize' ),
+			'__return_false',
+			'ayudawp_aiss_summary_settings'
+		);
+
 		$this->ayudawp_register_settings_fields();
 	}
 
@@ -473,6 +480,8 @@ class AyudaWP_AISS_Admin {
 			'ai_summary_wording'   => array( esc_html__( 'Label and format', 'ai-share-summarize' ), 'ayudawp_aiss_summary_block' ),
 
 			'ai_summary_visitor'   => array( esc_html__( 'Let visitors generate it', 'ai-share-summarize' ), 'ayudawp_aiss_summary_visitor' ),
+
+			'ai_summary_custom'    => array( esc_html__( 'Content below the summary', 'ai-share-summarize' ), 'ayudawp_aiss_summary_custom' ),
 		);
 
 		foreach ( $summary_fields as $field_id => $field ) {
@@ -1702,6 +1711,83 @@ class AyudaWP_AISS_Admin {
 					<?php esc_html_e( 'Visitors only get the built-in summarizer, never the AI provider', 'ai-share-summarize' ); ?>
 				</label>
 				<p class="description"><?php esc_html_e( 'Leave this on unless you want reader clicks to spend AI credit. Generation is rate limited per visitor and capped per hour either way.', 'ai-share-summarize' ); ?></p>
+			</div>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Custom content inside the summary box (v2.7.0)
+	 *
+	 * Anything goes in it: text, HTML or scripts, such as an ad, a newsletter
+	 * form, a map or a notice. The content field is read-only for anyone
+	 * without `unfiltered_html`, who cannot change it anyway (see
+	 * ayudawp_aiss_validate_summary_custom_code()). The other settings are
+	 * ordinary values and stay editable.
+	 */
+	public function ayudawp_ai_summary_custom_callback() {
+		$options    = ayudawp_aiss_get_summary_options();
+		$enabled    = ! empty( $options['ai_summary_custom_content_enabled'] );
+		$code       = isset( $options['ai_summary_custom_content_code'] ) && is_string( $options['ai_summary_custom_content_code'] ) ? $options['ai_summary_custom_content_code'] : '';
+		$label      = ! empty( $options['ai_summary_custom_content_label'] );
+		$label_text = isset( $options['ai_summary_custom_content_label_text'] ) && is_string( $options['ai_summary_custom_content_label_text'] ) ? $options['ai_summary_custom_content_label_text'] : '';
+		$min        = isset( $options['ai_summary_custom_content_min_height'] ) ? absint( $options['ai_summary_custom_content_min_height'] ) : 0;
+		$max        = isset( $options['ai_summary_custom_content_max_height'] ) ? absint( $options['ai_summary_custom_content_max_height'] ) : 0;
+		$can_edit   = current_user_can( 'unfiltered_html' );
+		?>
+		<label class="aiss-stacked">
+			<input type="checkbox" name="ayudawp_aiss_summary_options[ai_summary_custom_content_enabled]" value="1" <?php checked( $enabled, true ); ?>>
+			<?php esc_html_e( 'Show custom content inside the summary box, below the summary', 'ai-share-summarize' ); ?>
+		</label>
+		<p class="description">
+			<?php esc_html_e( 'Anything fits: text, HTML or scripts, such as an ad, a newsletter form, a map or a notice. It only appears when a reader opens the box, and only on the post itself, never in listings.', 'ai-share-summarize' ); ?>
+			<?php
+			printf(
+				/* translators: 1: HTML id of the custom content space, 2: name of the JavaScript event. */
+				esc_html__( 'The space is the element with id %1$s, so an ad server or Google Tag Manager can also fill it directly, and the %2$s event (also pushed to the dataLayer) tells them when the box opens.', 'ai-share-summarize' ),
+				'<code>ayudawp-aiss-custom</code>',
+				'<code>ayudawp_aiss_custom_visible</code>'
+			);
+			?>
+		</p>
+		<div style="margin-top:12px">
+			<label for="aiss-custom-code"><strong><?php esc_html_e( 'Content: text, HTML or scripts (optional)', 'ai-share-summarize' ); ?></strong></label>
+			<textarea id="aiss-custom-code" class="large-text code" rows="8" spellcheck="false"
+				name="ayudawp_aiss_summary_options[ai_summary_custom_content_code]" <?php wp_readonly( $can_edit, false ); ?>><?php echo esc_textarea( $code ); ?></textarea>
+			<?php if ( $can_edit ) : ?>
+				<p class="description"><?php esc_html_e( 'Kept exactly as you paste it and loaded the first time the box is opened. Scripts that queue their work, like AdSense, Google Ad Manager or Tag Manager, work this way; scripts that rely on document.write do not.', 'ai-share-summarize' ); ?></p>
+			<?php else : ?>
+				<p class="description"><?php esc_html_e( 'Only users allowed to publish unfiltered HTML can change this content (on a network, the super admin). It is shown here read-only.', 'ai-share-summarize' ); ?></p>
+			<?php endif; ?>
+		</div>
+		<div class="aiss-two-col" style="margin-top:12px">
+			<div>
+				<strong><?php esc_html_e( 'Label', 'ai-share-summarize' ); ?></strong>
+				<label class="aiss-stacked">
+					<input type="checkbox" name="ayudawp_aiss_summary_options[ai_summary_custom_content_label]" value="1" <?php checked( $label, true ); ?>>
+					<?php esc_html_e( 'Show a label above it', 'ai-share-summarize' ); ?>
+				</label>
+				<label class="aiss-stacked" for="aiss-custom-label-text">
+					<?php esc_html_e( 'Label text:', 'ai-share-summarize' ); ?>
+					<input type="text" id="aiss-custom-label-text" class="regular-text"
+						name="ayudawp_aiss_summary_options[ai_summary_custom_content_label_text]" value="<?php echo esc_attr( $label_text ); ?>"
+						placeholder="<?php esc_attr_e( 'Advertisement', 'ai-share-summarize' ); ?>">
+				</label>
+				<p class="description"><?php esc_html_e( 'Leave it empty for the default. With an ad, the label is usually required.', 'ai-share-summarize' ); ?></p>
+			</div>
+			<div>
+				<strong><?php esc_html_e( 'Height of the space', 'ai-share-summarize' ); ?></strong>
+				<label class="aiss-stacked" for="aiss-custom-min-height">
+					<?php esc_html_e( 'Minimum (px):', 'ai-share-summarize' ); ?>
+					<input type="number" id="aiss-custom-min-height" min="0" max="2000" step="1" style="width:90px"
+						name="ayudawp_aiss_summary_options[ai_summary_custom_content_min_height]" value="<?php echo esc_attr( (string) $min ); ?>">
+				</label>
+				<label class="aiss-stacked" for="aiss-custom-max-height">
+					<?php esc_html_e( 'Maximum (px):', 'ai-share-summarize' ); ?>
+					<input type="number" id="aiss-custom-max-height" min="0" max="2000" step="1" style="width:90px"
+						name="ayudawp_aiss_summary_options[ai_summary_custom_content_max_height]" value="<?php echo esc_attr( (string) $max ); ?>">
+				</label>
+				<p class="description"><?php esc_html_e( '0 means no limit. The minimum keeps the space while the content loads, so the text below does not jump. Anything taller than the maximum is cut off; with an ad that can break your ad network policies, so better size the ad unit itself.', 'ai-share-summarize' ); ?></p>
 			</div>
 		</div>
 		<?php

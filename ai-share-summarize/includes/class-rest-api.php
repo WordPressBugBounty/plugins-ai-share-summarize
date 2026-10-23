@@ -240,6 +240,13 @@ class AyudaWP_AISS_Rest_API {
 						'required'          => true,
 						'sanitize_callback' => 'absint',
 					),
+					// Whether the button sits on the post's own page (v2.7.0),
+					// so the returned box carries the custom content only there.
+					'with_custom' => array(
+						'type'              => 'boolean',
+						'default'           => false,
+						'sanitize_callback' => 'rest_sanitize_boolean',
+					),
 				),
 			)
 		);
@@ -920,6 +927,15 @@ class AyudaWP_AISS_Rest_API {
 
 		$options = ayudawp_aiss_get_summary_options();
 
+		/*
+		 * The custom content (v2.7.0) only goes on the post's own page, and a REST
+		 * request cannot tell where the button was clicked, so the script says
+		 * it. The caller chooses this, but it decides nothing that needs
+		 * protecting: the slot is the same public markup that page already
+		 * prints for anyone who opens the box.
+		 */
+		$with_custom = (bool) $request->get_param( 'with_custom' );
+
 		if ( empty( $options['ai_summary_frontend_button'] ) ) {
 			return self::ayudawp_nocache_response( array( 'error' => 'frontend_disabled' ), 403 );
 		}
@@ -934,7 +950,7 @@ class AyudaWP_AISS_Rest_API {
 		$existing = (string) get_post_meta( $post_id, AyudaWP_AISS_AI_Summary::META_SUMMARY, true );
 		if ( '' !== $existing ) {
 			return self::ayudawp_nocache_response( array(
-				'html'     => AyudaWP_AISS_AI_Summary::get_summary_html( $post_id ),
+				'html'     => AyudaWP_AISS_AI_Summary::get_summary_html( $post_id, $with_custom ),
 				'provider' => (string) get_post_meta( $post_id, AyudaWP_AISS_AI_Summary::META_PROVIDER, true ),
 			) );
 		}
@@ -1003,7 +1019,7 @@ class AyudaWP_AISS_Rest_API {
 		}
 
 		return self::ayudawp_nocache_response( array(
-			'html'     => AyudaWP_AISS_AI_Summary::get_summary_html( $post_id ),
+			'html'     => AyudaWP_AISS_AI_Summary::get_summary_html( $post_id, $with_custom ),
 			'provider' => (string) get_post_meta( $post_id, AyudaWP_AISS_AI_Summary::META_PROVIDER, true ),
 		) );
 	}

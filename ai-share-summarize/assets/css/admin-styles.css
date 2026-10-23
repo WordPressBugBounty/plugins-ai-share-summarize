@@ -1330,3 +1330,41 @@
 .aiss-platforms-posts strong {
 	font-variant-numeric: tabular-nums;
 }
+
+/* =============================================
+   Analytics on a laptop screen (v2.7.0)
+   On a 13" screen the two tables sat side by side in a column about 900px
+   wide: the content table gave its title a third of that, so a title broke
+   into five lines and "AI Crawls" was cut off. The tables now go side by side
+   only when the content column itself has room (a container query: the
+   viewport also counts the admin menu and the promo rail), the count columns
+   take just their width and the title the rest.
+   ============================================= */
+.aiss-layout-main {
+	container-type: inline-size;
+	container-name: aiss-main;
+}
+
+@container aiss-main (max-width: 1100px) {
+	.aiss-tables-row {
+		grid-template-columns: 1fr;
+	}
+}
+
+/* Title, period and pager share a line while they fit, and wrap after. */
+.aiss-table-header {
+	flex-wrap: wrap;
+}
+
+.aiss-table-header h3 {
+	min-width: 12em;
+}
+
+.aiss-table-container table th.aiss-col-count {
+	width: 96px;
+	white-space: normal;
+}
+
+.aiss-table-container #aiss-content-table td:first-child {
+	overflow-wrap: anywhere;
+}

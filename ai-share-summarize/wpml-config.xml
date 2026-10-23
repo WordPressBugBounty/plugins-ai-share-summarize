@@ -29,6 +29,7 @@
 		</key>
 		<key name="ayudawp_aiss_summary_options">
 			<key name="ai_summary_label" />
+			<key name="ai_summary_custom_content_label_text" />
 			<key name="ai_summary_generate_button_label" />
 		</key>
 	</admin-texts>

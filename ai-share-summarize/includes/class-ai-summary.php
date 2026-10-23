@@ -1172,10 +1172,14 @@ class AyudaWP_AISS_AI_Summary {
 	 * Returns an empty string when there is no stored summary so callers
 	 * can simply concatenate without checking.
 	 *
-	 * @param int $post_id Post ID.
+	 * @since 2.7.0 The custom content, and the `$with_custom` parameter.
+	 * @param int       $post_id Post ID.
+	 * @param bool|null $with_custom Whether to include the custom content. null decides it
+	 *                           from the request: only on the singular view of
+	 *                           this same post, never in listings.
 	 * @return string HTML for the collapsible summary block, or ''.
 	 */
-	public static function get_summary_html( $post_id ) {
+	public static function get_summary_html( $post_id, $with_custom = null ) {
 		$post_id = (int) $post_id;
 		if ( ! $post_id ) {
 			return '';
@@ -1284,11 +1288,118 @@ class AyudaWP_AISS_AI_Summary {
 							<small class="ayudawp-aiss-summary-attribution"><?php esc_html_e( 'Basic summary', 'ai-share-summarize' ); ?></small>
 						<?php endif; ?>
 					</div>
-				</details>
-			</div>
-		</aside>
 		<?php
-		return (string) ob_get_clean();
+		$html = (string) ob_get_clean();
+
+		if ( null === $with_custom ) {
+			$with_custom = ! is_feed() && is_singular() && (int) get_queried_object_id() === $post_id;
+		}
+
+		/*
+		 * The custom content (v2.7.0) is the last child of the <details>:
+		 * folded with the box, below the summary and its attribution, under the
+		 * data-nosnippet wrapper and outside itemprop="abstract". It is a
+		 * sibling of .ayudawp-aiss-summary-content, not a child, because the
+		 * critical CSS styles the p, ul and li inside that div and would reach
+		 * into it. Concatenated rather than echoed in the template above: the
+		 * content is raw by design (see get_custom_slot_html()).
+		 */
+		if ( $with_custom ) {
+			$html .= self::get_custom_slot_html( $post_id );
+		}
+
+		return $html . "\n\t\t\t\t</details>\n\t\t\t</div>\n\t\t</aside>\n";
+	}
+
+	/**
+	 * The custom content that goes inside the summary box (v2.7.0)
+	 *
+	 * Anything the site wants there: text, HTML or scripts, such as an ad, a
+	 * newsletter form, a map or a notice. Two elements, so whatever an ad
+	 * server or Tag Manager does to the space never touches the label:
+	 * `.ayudawp-aiss-custom` holds the optional label and `#ayudawp-aiss-custom`,
+	 * the space itself, with the optional heights. The pasted content goes in a
+	 * <template> inside it, inert until ai-share-summarize.js puts it in place
+	 * the first time the box is open. That way nothing is ever requested into a
+	 * hidden container (an ad would get no size), and a box that arrives later
+	 * through the visitor button behaves the same.
+	 *
+	 * The content is not escaped: running its scripts is the feature, and only
+	 * a user with `unfiltered_html` can store it
+	 * (ayudawp_aiss_validate_summary_custom_code(), functions-helpers.php). The
+	 * label and the heights are escaped here.
+	 *
+	 * Built once per post, site and settings in a request, so the
+	 * theme-anchor printer can find the exact same string inside the block
+	 * and print it outside wp_kses() (AyudaWP_AISS_Frontend::ayudawp_print_anchor()),
+	 * even when a filter below returns something different on every call.
+	 *
+	 * @since 2.7.0
+	 * @param int $post_id Post ID.
+	 * @return string Custom content HTML, or '' when it is off.
+	 */
+	public static function get_custom_slot_html( $post_id ) {
+		static $built = array();
+
+		$post_id = (int) $post_id;
+		$options = ayudawp_aiss_get_summary_options();
+		$enabled = ! empty( $options['ai_summary_custom_content_enabled'] );
+		$label   = ! empty( $options['ai_summary_custom_content_label'] );
+		$code    = isset( $options['ai_summary_custom_content_code'] ) && is_string( $options['ai_summary_custom_content_code'] ) ? $options['ai_summary_custom_content_code'] : '';
+		$min     = isset( $options['ai_summary_custom_content_min_height'] ) ? absint( $options['ai_summary_custom_content_min_height'] ) : 0;
+		$max     = isset( $options['ai_summary_custom_content_max_height'] ) ? absint( $options['ai_summary_custom_content_max_height'] ) : 0;
+
+		// The label text is resolved on every request, never stored as the
+		// default, so a multilingual site shows it in each reader's language.
+		$text = isset( $options['ai_summary_custom_content_label_text'] ) && is_string( $options['ai_summary_custom_content_label_text'] ) && '' !== $options['ai_summary_custom_content_label_text']
+			? $options['ai_summary_custom_content_label_text']
+			: __( 'Advertisement', 'ai-share-summarize' );
+
+		// Keyed by site and settings as well as post: after switch_to_blog() the
+		// same post ID is another post with other settings.
+		$key = get_current_blog_id() . ':' . $post_id . ':' . md5( (string) wp_json_encode( array( $enabled, $label, $text, $code, $min, $max ) ) );
+		if ( isset( $built[ $key ] ) ) {
+			return $built[ $key ];
+		}
+
+		$html = '';
+
+		if ( $enabled ) {
+			$style = '';
+			if ( $min > 0 ) {
+				$style .= 'min-height:' . $min . 'px;';
+			}
+			if ( $max > 0 ) {
+				$style .= 'max-height:' . $max . 'px;overflow:hidden;';
+			}
+
+			$html = '<div class="ayudawp-aiss-custom">'
+				. ( $label
+					? '<span class="ayudawp-aiss-custom-label">' . esc_html( $text ) . '</span>'
+					: '' )
+				. '<div class="ayudawp-aiss-custom-slot" id="ayudawp-aiss-custom"' . ( '' !== $style ? ' style="' . esc_attr( $style ) . '"' : '' ) . '>'
+				. ( '' !== $code ? '<template class="ayudawp-aiss-custom-code">' . $code . '</template>' : '' )
+				. '</div>'
+				. '</div>';
+		}
+
+		/**
+		 * Filters the custom content printed inside the summary box.
+		 *
+		 * Return '' to leave a post without it. Whatever is returned is
+		 * printed as is, below the summary and inside the box, and only when
+		 * the box is shown on the post's own page. It runs once per post in a
+		 * request: hook it before the content is rendered.
+		 *
+		 * @since 2.7.0
+		 * @param string $html    Custom content HTML, or '' when it is off.
+		 * @param int    $post_id Post ID.
+		 */
+		$html = (string) apply_filters( 'ayudawp_aiss_summary_custom_html', $html, $post_id );
+
+		$built[ $key ] = $html;
+
+		return $html;
 	}
 
 	/**

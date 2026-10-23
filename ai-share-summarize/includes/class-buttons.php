@@ -558,7 +558,7 @@ class AyudaWP_AISS_Buttons {
 			),
 			'qwen'      => array(
 				'label' => 'Qwen',
-				'url'   => 'https://chat.qwen.ai/?prompt=' . urlencode( $full_prompt ),
+				'url'   => 'https://chat.qwen.ai/?text=' . urlencode( $full_prompt ),
 				'class' => 'qwen ai',
 			),
 			'meta_ai'   => array(

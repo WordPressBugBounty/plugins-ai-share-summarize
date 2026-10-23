@@ -166,7 +166,7 @@ class AyudaWP_AISS_Analytics_Page {
 						<tr>
 							<th><?php echo esc_html__( 'Platform', 'ai-share-summarize' ); ?></th>
 							<th class="aiss-col-type"><?php echo esc_html__( 'Type', 'ai-share-summarize' ); ?></th>
-							<th class="num"><?php echo esc_html__( 'Clicks', 'ai-share-summarize' ); ?></th>
+							<th class="num aiss-col-count"><?php echo esc_html__( 'Clicks', 'ai-share-summarize' ); ?></th>
 						</tr>
 					</thead>
 					<tbody>
@@ -194,9 +194,9 @@ class AyudaWP_AISS_Analytics_Page {
 						<tr>
 							<th><?php echo esc_html__( 'Title', 'ai-share-summarize' ); ?></th>
 							<th class="num aiss-col-id"><?php echo esc_html__( 'ID', 'ai-share-summarize' ); ?></th>
-							<th class="num"><?php echo esc_html__( 'Clicks', 'ai-share-summarize' ); ?></th>
+							<th class="num aiss-col-count"><?php echo esc_html__( 'Clicks', 'ai-share-summarize' ); ?></th>
 							<?php if ( class_exists( 'VigIA_Database' ) ) : ?>
-								<th class="num"><?php echo esc_html__( 'AI Crawls', 'ai-share-summarize' ); ?></th>
+								<th class="num aiss-col-count"><?php echo esc_html__( 'AI Crawls', 'ai-share-summarize' ); ?></th>
 							<?php endif; ?>
 						</tr>
 					</thead>

@@ -539,7 +539,115 @@ function ayudawp_aiss_validate_summary_options( $input ) {
 	$validated['ai_summary_frontend_button']           = ! empty( $input['ai_summary_frontend_button'] );
 	$validated['ai_summary_frontend_force_extractive'] = ! empty( $input['ai_summary_frontend_force_extractive'] );
 
+	/*
+	 * Custom content inside the box (v2.7.0). Heights in pixels, 0 meaning no
+	 * limit, and a maximum below the minimum is raised to it rather than
+	 * producing a space that can never fit its content. A label text equal to
+	 * the default in any installed language is not stored, so the default
+	 * keeps coming from the language pack (empty means the default).
+	 */
+	$validated['ai_summary_custom_content_enabled']    = ! empty( $input['ai_summary_custom_content_enabled'] );
+	$validated['ai_summary_custom_content_label']      = ! empty( $input['ai_summary_custom_content_label'] );
+	$validated['ai_summary_custom_content_label_text'] = isset( $input['ai_summary_custom_content_label_text'] ) ? sanitize_text_field( $input['ai_summary_custom_content_label_text'] ) : '';
+	if ( ayudawp_aiss_is_default_custom_label( $validated['ai_summary_custom_content_label_text'] ) ) {
+		$validated['ai_summary_custom_content_label_text'] = '';
+	}
+	$validated['ai_summary_custom_content_min_height'] = isset( $input['ai_summary_custom_content_min_height'] ) ? min( 2000, absint( $input['ai_summary_custom_content_min_height'] ) ) : 0;
+	$validated['ai_summary_custom_content_max_height'] = isset( $input['ai_summary_custom_content_max_height'] ) ? min( 2000, absint( $input['ai_summary_custom_content_max_height'] ) ) : 0;
+	if ( $validated['ai_summary_custom_content_max_height'] > 0 && $validated['ai_summary_custom_content_max_height'] < $validated['ai_summary_custom_content_min_height'] ) {
+		$validated['ai_summary_custom_content_max_height'] = $validated['ai_summary_custom_content_min_height'];
+	}
+	$validated['ai_summary_custom_content_code'] = ayudawp_aiss_validate_summary_custom_code( $input );
+
 	return $validated;
+}
+
+/**
+ * Whether a label text is just the default label in some language (v2.7.0)
+ *
+ * Same check as ayudawp_aiss_is_default_prompt(): every installed locale plus
+ * the original English.
+ *
+ * @since 2.7.0
+ * @param string $text Label text to check.
+ * @return bool True when it is the default label in some locale.
+ */
+function ayudawp_aiss_is_default_custom_label( $text ) {
+	if ( '' === $text ) {
+		return false;
+	}
+
+	$locales = array_unique( array_merge( array( 'en_US', get_locale() ), get_available_languages() ) );
+
+	foreach ( $locales as $locale ) {
+		$switched = switch_to_locale( $locale );
+		$default  = __( 'Advertisement', 'ai-share-summarize' );
+
+		if ( $switched ) {
+			restore_previous_locale();
+		}
+
+		if ( $text === $default ) {
+			return true;
+		}
+	}
+
+	return false;
+}
+
+/**
+ * The custom content to store for the summary box (v2.7.0)
+ *
+ * Text, HTML or JavaScript kept exactly as typed: running whatever script was
+ * pasted (an ad, a form, a map) is the feature, so there is nothing to
+ * sanitize it into. That is why only a user with `unfiltered_html` can change it, on top of the
+ * `manage_options` the settings screen already requires. On a single site
+ * both belong to the administrator. On a network only the super admin has
+ * `unfiltered_html` (`map_meta_cap()`, `wp-includes/capabilities.php:595-603`
+ * in 7.1.3): a subsite administrator has `manage_options`, and letting them
+ * store a script would let them run it in the super admin's session when
+ * they visit that subsite. Under DISALLOW_UNFILTERED_HTML nobody has it.
+ *
+ * Anyone else keeps what is stored, untouched. A filtered copy (kses) would
+ * leave content that silently stops working, which is worse than no change.
+ * A request that does not carry the key (a programmatic partial update, an
+ * upgrade routine) keeps it too.
+ *
+ * @since 2.7.0
+ * @param array $input Raw input of the summary options.
+ * @return string Custom content to store.
+ */
+function ayudawp_aiss_validate_summary_custom_code( $input ) {
+	$stored = ayudawp_aiss_get_summary_options();
+	$stored = isset( $stored['ai_summary_custom_content_code'] ) && is_string( $stored['ai_summary_custom_content_code'] )
+		? $stored['ai_summary_custom_content_code']
+		: '';
+
+	if ( ! isset( $input['ai_summary_custom_content_code'] ) || ! is_string( $input['ai_summary_custom_content_code'] ) ) {
+		return $stored;
+	}
+
+	if ( ! current_user_can( 'unfiltered_html' ) ) {
+		return $stored;
+	}
+
+	$code = trim( $input['ai_summary_custom_content_code'] );
+
+	// The code is printed inside a <template> so it stays inert until the box
+	// opens: a closing tag of its own would end that template early and run
+	// the rest of the code on page load, hidden box or not.
+	if ( false !== stripos( $code, '</template' ) ) {
+		if ( function_exists( 'add_settings_error' ) ) {
+			add_settings_error(
+				'ayudawp_aiss_summary_options',
+				'ayudawp_aiss_custom_template',
+				__( 'The custom content was not saved: it cannot contain a closing template tag. The previous content is kept.', 'ai-share-summarize' )
+			);
+		}
+		return $stored;
+	}
+
+	return $code;
 }
 
 /**
@@ -1932,6 +2040,9 @@ function ayudawp_aiss_enqueue_frontend_assets() {
 		'publicGenerateUrl'    => esc_url_raw( rest_url( 'aiss/v1/summary/generate' ) ),
 		'summaryGenerating'    => __( 'Generating…', 'ai-share-summarize' ),
 		'summaryGenerateError' => __( 'Generation failed. Try again.', 'ai-share-summarize' ),
+		// The post whose own page this is (v2.7.0), so a box generated by the
+		// visitor button asks for the custom content only there, never in a listing.
+		'singularPostId'       => is_singular() ? (int) get_queried_object_id() : 0,
 		// Copy link and native share (v2.5.0).
 		'linkCopied'           => __( 'Link copied to clipboard!', 'ai-share-summarize' ),
 		'copyFailed'           => __( 'Could not copy. Copy the address from the browser bar.', 'ai-share-summarize' ),

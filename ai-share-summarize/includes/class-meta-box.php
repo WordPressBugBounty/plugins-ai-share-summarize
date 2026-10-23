@@ -47,6 +47,78 @@ class AyudaWP_AISS_Meta_Box {
 
 		// Sidebar panel for the block editor (v1.7.3+).
 		add_action( 'enqueue_block_editor_assets', array( $this, 'ayudawp_enqueue_editor_sidebar' ) );
+
+		// Whether the post is too short for a summary, for that panel (v2.7.0).
+		add_action( 'rest_api_init', array( $this, 'ayudawp_register_rest_fields' ) );
+	}
+
+	/**
+	 * Tell the block editor when a post is too short for a summary (v2.7.0)
+	 *
+	 * Since 2.6.0 a post under the minimum gets no summary and a stored AI one
+	 * is not shown, but both editors kept showing that stored text, so the
+	 * author only found out by pressing Regenerate. The classic box asks
+	 * is_below_minimum() while it renders. The block panel cannot, because
+	 * the text changes as it is typed, and counting in JavaScript would mean a
+	 * second copy of the rule (the cleaner drops tables, embeds, captions and
+	 * shortcodes). So the server answers in a read-only field of the edit
+	 * context: the editor gets it with the post and again in the response of
+	 * every save, and the notice follows the saved text.
+	 *
+	 * Registered on the same post types as the panel's meta. It is true only
+	 * where the summary applies, so a post type without summaries never shows
+	 * the notice. It also shows over a summary written by hand, which is
+	 * displayed: the notice says that only such a summary reaches the site.
+	 *
+	 * @since 2.7.0
+	 * @return void
+	 */
+	public function ayudawp_register_rest_fields() {
+		if ( ! class_exists( 'AyudaWP_AISS_AI_Summary' ) ) {
+			return;
+		}
+
+		register_rest_field(
+			get_post_types( array( 'public' => true ), 'names' ),
+			'ayudawp_aiss_too_short',
+			array(
+				'get_callback' => static function ( $data ) {
+					$post_id = isset( $data['id'] ) ? (int) $data['id'] : 0;
+					return $post_id
+						&& ayudawp_aiss_should_apply_summary( $post_id )
+						&& AyudaWP_AISS_AI_Summary::is_below_minimum( $post_id );
+				},
+				'schema'       => array(
+					'description' => __( 'Whether the post is too short for an automatic summary.', 'ai-share-summarize' ),
+					'type'        => 'boolean',
+					'context'     => array( 'edit' ),
+					'readonly'    => true,
+				),
+			)
+		);
+	}
+
+	/**
+	 * The notice both editors show on a post too short for a summary (v2.7.0)
+	 *
+	 * @since 2.7.0
+	 * @return string Translated notice with the current minimum.
+	 */
+	public static function ayudawp_too_short_notice() {
+		$min      = ayudawp_aiss_get_summary_min_words();
+		$by_chars = function_exists( 'wp_get_word_count_type' ) && 0 === strpos( wp_get_word_count_type(), 'characters' );
+
+		return $by_chars
+			? sprintf(
+				/* translators: %s: minimum number of characters of text a post needs for an automatic summary. */
+				_n( 'This post is too short for an automatic summary (it needs at least %s character of text). The site only shows a summary you write here.', 'This post is too short for an automatic summary (it needs at least %s characters of text). The site only shows a summary you write here.', $min, 'ai-share-summarize' ),
+				number_format_i18n( $min )
+			)
+			: sprintf(
+				/* translators: %s: minimum number of words of text a post needs for an automatic summary. */
+				_n( 'This post is too short for an automatic summary (it needs at least %s word of text). The site only shows a summary you write here.', 'This post is too short for an automatic summary (it needs at least %s words of text). The site only shows a summary you write here.', $min, 'ai-share-summarize' ),
+				number_format_i18n( $min )
+			);
 	}
 
 	/**
@@ -185,6 +257,9 @@ class AyudaWP_AISS_Meta_Box {
 					<span style="display:block;font-size:11px;color:#646970;margin-top:2px;"><?php echo esc_html( $provider_label ); ?></span>
 				<?php endif; ?>
 			</p>
+			<?php if ( ayudawp_aiss_should_apply_summary( $post->ID ) && AyudaWP_AISS_AI_Summary::is_below_minimum( $post ) ) : ?>
+				<p class="ayudawp-aiss-too-short" style="margin:0 0 8px;color:#8a6100;"><?php echo esc_html( self::ayudawp_too_short_notice() ); ?></p>
+			<?php endif; ?>
 			<p>
 				<label>
 					<?php
@@ -373,6 +448,7 @@ class AyudaWP_AISS_Meta_Box {
 			'providerExtractive' => __( 'Basic summary (extractive)', 'ai-share-summarize' ),
 			'providerManual'     => __( 'Manually edited', 'ai-share-summarize' ),
 			'manualOverrideHelp' => __( 'Editing this text marks the summary as manual — it will not be regenerated automatically.', 'ai-share-summarize' ),
+			'tooShort'           => self::ayudawp_too_short_notice(),
 		) );
 	}
 

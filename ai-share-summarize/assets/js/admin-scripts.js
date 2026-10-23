@@ -1203,7 +1203,7 @@ window.AissPaginator = (function($) {
 		var hasAiCol = $thead.find('th').length > 3;
 
 		if (vigiaActive && !hasAiCol) {
-			$thead.append('<th class="num">' + (aissAdminData.strings.aiCrawls || 'AI Crawls') + '</th>');
+			$thead.append('<th class="num aiss-col-count">' + (aissAdminData.strings.aiCrawls || 'AI Crawls') + '</th>');
 		} else if (!vigiaActive && hasAiCol) {
 			$thead.find('th:last').remove();
 		}

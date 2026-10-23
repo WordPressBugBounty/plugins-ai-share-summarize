@@ -72,6 +72,16 @@
 			return select( 'core/editor' ).isSavingPost() && ! select( 'core/editor' ).isAutosavingPost();
 		}, [] );
 
+		/*
+		 * Too short for a summary (v2.7.0): worked out by the server with the
+		 * same rule as the front end and read from the saved post, which the
+		 * editor receives again in the response of every save. So it follows
+		 * the saved text, not what is being typed.
+		 */
+		var tooShort = useSelect( function ( select ) {
+			return !! select( 'core/editor' ).getCurrentPostAttribute( 'ayudawp_aiss_too_short' );
+		}, [] );
+
 		var editPost = useDispatch( 'core/editor' ).editPost;
 
 		var isExcluded        = meta[ META_EXCLUDE ] ? true : false;
@@ -242,16 +252,25 @@
 			onChange: setSummaryExclusion,
 		} ) );
 
+		var showTooShort = tooShort && ! isSummaryExcluded;
+
 		if ( providerLabel ) {
 			children.push( el( 'p', {
 				key:   'provider',
 				style: { margin: '0 0 8px', fontSize: '12px', color: '#646970' },
 			}, providerLabel ) );
-		} else {
+		} else if ( ! showTooShort ) {
 			children.push( el( 'p', {
 				key:   'empty',
 				style: { margin: '0 0 8px', fontSize: '12px', color: '#646970' },
 			}, i18n.noSummaryYet || 'Summary will be generated when this post is published.' ) );
+		}
+
+		if ( showTooShort && i18n.tooShort ) {
+			children.push( el( 'p', {
+				key:   'too-short',
+				style: { margin: '0 0 8px', fontSize: '12px', color: '#8a6100' },
+			}, i18n.tooShort ) );
 		}
 
 		// 4) Editable textarea.

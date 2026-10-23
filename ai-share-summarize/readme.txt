@@ -3,7 +3,7 @@ Contributors: fernandot,ayudawp
 Tags: claude, chatgpt, social share, ai, perplexity
 Requires at least: 6.1
 Tested up to: 7.1
-Stable tag: 2.6.0
+Stable tag: 2.7.0
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -24,6 +24,7 @@ Among the **first plugins to integrate the native WordPress 7.0 AI Connectors AP
 * **Collapsible inline block** with native `<details>`, `data-nosnippet` and Schema.org `CreativeWork` microdata, so Google leaves the summary out of its snippets and AI Overviews and it never competes with your own text.
 * **Editor controls** in the block sidebar and the classic meta box: view, edit manually, regenerate on demand, hide per post (independently from the buttons).
 * **Visitor-facing "Generate AI summary" button** for posts without a stored summary, restrictable to extractive-only or open to the AI Client.
+* **Your own content inside the box**: anything you want below the summary, as text, HTML or scripts (an ad, a newsletter form, a map, a notice), loaded when a reader opens the box, with an optional label.
 * **Only where there is something to summarize**: posts with fewer than 50 words of text get no summary, so the box never shows an AI reply saying there was nothing to summarize.
 * **Async generation via WP-Cron**. `[ayudawp_aiss_summary]` shortcode also available.
 
@@ -130,7 +131,19 @@ A post needs at least 50 words of text. Images, embeds, captions and tables do n
 * Below that, the AI tends to answer that there is nothing to summarize, and that answer would end up in the box.
 * So no summary is generated and the visitor button does not appear.
 * A summary you write by hand in the editor is always shown.
+* The editor tells you when a post is below the minimum.
 * Developers can change the minimum with the `ayudawp_aiss_summary_min_words` filter (0 turns it off).
+
+= Can I add my own content or ads inside the summary box? =
+
+Yes, in **Settings > Share Buttons & AI-powered Summaries > AI Summary**, under Custom content inside the box.
+
+* Anything fits: text, HTML or scripts, such as an ad, a newsletter form, a map or a notice.
+* It goes below the summary, on the post itself, and only loads when a reader opens the box.
+* You can also leave it empty and fill the element with id `ayudawp-aiss-custom` from an ad server or Google Tag Manager. The `ayudawp_aiss_custom_visible` event, also pushed to the dataLayer, tells a tag when the box opens.
+* Scripts that queue their work (AdSense, Google Ad Manager, Tag Manager) work. Scripts that use document.write do not.
+* An optional label goes above it: Advertisement, or your own text.
+* Only users who can publish unfiltered HTML can change it. On a network, that is the super admin.
 
 = How do I choose the AI generation mode and model? =
 
@@ -299,15 +312,15 @@ Gemini has a special behavior:
 - Opens Gemini in a new tab
 - User can paste the prompt directly and get the summary
 
-= How do DeepSeek, Copilot, and Qwen work? =
+= How do DeepSeek and Copilot work? =
 
-DeepSeek, Copilot, and Qwen work the same way as Gemini:
+DeepSeek and Copilot work the same way as Gemini:
 - Clicking the button automatically copies the prompt to clipboard
 - A notification appears confirming the copy
 - The platform opens in a new tab
 - User can paste the prompt with Ctrl+V and get the summary
 
-This approach is used because these platforms don't support URL parameters for prompts. Meta AI worked this way until 2.5.0; it now accepts the prompt in the address, like Claude or ChatGPT, so its button opens with the prompt already written. The list is checked on every release, because platforms add and remove this support over time.
+This approach is used because these platforms don't support URL parameters for prompts. Meta AI and Qwen used to work this way. Now they accept the prompt in the address, like Claude or ChatGPT, so their buttons open with the prompt already written. The list is checked on every release, because platforms add and remove this support over time.
 
 = What is the floating bar and how is it different from the inline buttons? =
 
@@ -431,24 +444,21 @@ The social and AI sharing buttons render as `<a>` / `<button>` elements that ope
 
 == Changelog ==
 
-= 2.6.0 =
-New Google Preferred Source button. Short posts no longer show the AI reply saying there was nothing to summarize, analytics names Copy link and Native share, and themes can print the blocks in their own hooks.
+= 2.7.0 =
+New space for your own content inside the summary box (an ad, a form, any script), loaded only when a reader opens it. Qwen now opens with the prompt already written, the editor warns when a post is too short for a summary, and button labels show as written.
 
-* New: Google Preferred Source button. It takes readers to the Google tool where they mark your site as a preferred source, so your stories show up more for them in Top Stories, and Analytics counts the clicks per post, which Google does not tell you anywhere. It is a plain link with your domain in it, so nothing loads from Google until someone clicks. It is off until you tick it, and it can go with the social networks, in a section of its own at the end of the block with an optional title, or outside the block, where only a shortcode that names it shows it. It is not shown on a site that lives in a subfolder or asks search engines not to index it, because Google cannot list those, and the settings screen says so.
-* New: The `ayudawp_aiss_content_anchors` filter prints the blocks placed before and after the content in theme actions instead of inside the content, for themes that rewrite the content after it is filtered and end up duplicating whatever plugins added to it. Settings keep deciding where the buttons and the summary go, the stylesheet still loads in the head, exclusions and the floating bar keep working, and each block is printed once per page. Without the filter nothing changes: the content comes out byte for byte as before.
-* New: In Analytics, the click count of each button in the platforms table opens the posts it was clicked from, with the clicks of each, for the selected dates. For the Google Preferred Source button, that is the post readers were on when they chose to add your site, which Google does not report anywhere. The 20 posts with the most clicks are listed, and the CSV export has all of them.
-* Improved: The copy of the summary settings kept inside the buttons settings since 2.3.0, when the summary got its own tab, is deleted on update, along with the code that carried it over on every save. It was only there to go back to 2.2.x without losing them, so from now on a rollback keeps the summary settings down to 2.3.0.
-* Fix: Posts with very little text, such as a single image, a video or one line, got as their summary the AI answer saying there was nothing to summarize, and it was shown in the TL;DR box. A post now needs at least 50 words of text, not counting images, embeds, captions or tables, and on sites in Chinese, Japanese or another language that WordPress counts by characters, it is 50 characters. Below that no summary is generated, the visitor button does not appear and no request reaches the AI provider. Summaries already stored for those posts are no longer shown but stay in the database, so lowering the minimum with the `ayudawp_aiss_summary_min_words` filter brings them back. This also hides the good summaries some very short posts had. A summary written by hand is always shown.
-* Fix: Analytics showed the Copy link and Native share buttons with their internal key, in grey, and the dashboard widget showed Meta AI, Copy link and Native share as Meta_ai, Copy_link and Web_share. Names, colours and types now come from the same list as the settings screen, so a new button can no longer be left out. A few names change to match that list: Claude AI, Mistral AI and Microsoft Copilot.
-* Fix: When a theme module or a widget left another post loaded on a single post page, the position of the buttons could follow that other post type instead of the type of the post being read.
-* Fix: With compact mode on phones set to a single Share button, a block with only one button hid it behind a Share toggle that opened nothing else. A block with a single button now ignores compact mode.
+* New: Custom content inside the summary box, below the summary. Anything fits: text, HTML or scripts, such as an ad (AdSense, Google Ad Manager or any other), a newsletter form, a map or a notice. It can also be left empty for an ad server or Google Tag Manager to fill the space, the element with id `ayudawp-aiss-custom`. It only loads the first time a reader opens the box, so nothing is requested into a folded box, and opening it fires the `ayudawp_aiss_custom_visible` event, also pushed to the dataLayer, so a tag can wait for it. Scripts that queue their work, like AdSense, Google Ad Manager or Tag Manager, work this way; scripts that rely on document.write do not. It shows only on the post's own page, never in listings or feeds, and stays out of Google snippets with the rest of the box. Optional label above it, Advertisement unless you write your own, and optional minimum and maximum heights. Only users who can publish unfiltered HTML can change the content: on a network, the super admin, not the administrator of each site, who sees it read-only. Developers can remove or change it per post with the `ayudawp_aiss_summary_custom_html` filter.
+* Improved: Qwen now opens with the prompt already written, instead of copying it to the clipboard for you to paste. Checked platform by platform in October 2026: Gemini, DeepSeek and Copilot still offer no way to pre-fill the prompt from the address, so those three keep copying it.
+* Improved: The block editor panel and the classic box now say when a post is too short for an automatic summary. Since 2.6.0 such a post shows no automatic summary on the site, but the editor kept showing the stored one, and you only found out when Regenerate failed. The notice also says that a summary you write by hand is shown.
+* Fix: Button labels showed every word capitalized, such as Copiar Enlace or Fuente Preferida De Google, on the site and in the settings preview. They now show as written.
+* Fix: On a laptop screen, Analytics put its two tables side by side in too little room, so post titles broke into several lines and column headers were cut off. They now sit side by side only when the content column has room for both, and the click columns take just the width they need.
 
 For older changelog entries, please check the [changelog.txt](https://plugins.svn.wordpress.org/ai-share-summarize/trunk/changelog.txt) file
 
 == Upgrade Notice ==
 
-= 2.6.0 =
-New Google Preferred Source button. Short posts no longer show the AI reply saying there was nothing to summarize, analytics names Copy link and Native share, and themes can print the blocks in their own hooks.
+= 2.7.0 =
+New space for your own content inside the summary box (an ad, a form, any script), loaded only when a reader opens it. Qwen now opens with the prompt already written, the editor warns when a post is too short for a summary, and button labels show as written.
 
 == Advanced Usage ==
 
@@ -646,7 +656,7 @@ The main container has top and bottom border lines. You can hide either of them 
 * SEO-friendly markup options
 * Post meta for individual exclusions
 * Centralized platform color definitions
-* Filters: `ayudawp_aiss_floating_bar_buttons` (which buttons the bar shows), `ayudawp_aiss_show_floating_bar` (whether it renders on a given request), `ayudawp_aiss_utm_args` (the campaign parameters added to a shared link), `ayudawp_aiss_trusted_proxies` (which addresses may set the forwarding header behind a CDN or load balancer), `ayudawp_aiss_content_anchors` (print the blocks in theme actions), `ayudawp_aiss_summary_min_words` (minimum length for a summary) and `ayudawp_aiss_google_preferred_domain` (the domain sent to Google)
+* Filters: `ayudawp_aiss_floating_bar_buttons` (which buttons the bar shows), `ayudawp_aiss_show_floating_bar` (whether it renders on a given request), `ayudawp_aiss_utm_args` (the campaign parameters added to a shared link), `ayudawp_aiss_trusted_proxies` (which addresses may set the forwarding header behind a CDN or load balancer), `ayudawp_aiss_content_anchors` (print the blocks in theme actions), `ayudawp_aiss_summary_min_words` (minimum length for a summary), `ayudawp_aiss_summary_custom_html` (the custom content inside the summary box, per post) and `ayudawp_aiss_google_preferred_domain` (the domain sent to Google)
 
 
 == Support ==
