@@ -531,18 +531,23 @@ class AyudaWP_AISS_Admin {
 
 			<?php
 			/*
-			 * Content and promo side by side since 2.5.0, the same shape
-			 * Vigilant and Widget Visibility Control use: a column of content
-			 * and a 300px rail that folds underneath below 1200px. The banner
-			 * was a full-width strip at the very bottom, which on a wide screen
-			 * meant nobody ever scrolled to it and the form was left narrower
-			 * than it needed to be for no reason.
+			 * The settings tabs keep content and promo side by side, as since
+			 * 2.5.0: the shape Vigilant and Widget Visibility Control use, a
+			 * column of content and a 300px rail that folds underneath below
+			 * 1200px. Analytics goes full width with the banner as a strip at
+			 * the bottom (v2.7.1), as VigIA's data panel does: the rail left the
+			 * charts and the two tables in a narrow column. The main column stays
+			 * in both, because the analytics tables decide whether they fit side
+			 * by side with a container query on it.
 			 */
+			$is_analytics = 'analytics' === $active_tab;
+			$layout_class = $is_analytics ? 'aiss-layout aiss-layout--full' : 'aiss-layout';
+			$promo_banner = new AyudaWP_AISS_Promo_Banner( 'aiss' );
 			?>
-			<div class="aiss-layout">
+			<div class="<?php echo esc_attr( $layout_class ); ?>">
 				<div class="aiss-layout-main">
 					<?php
-					if ( 'analytics' === $active_tab ) {
+					if ( $is_analytics ) {
 						AyudaWP_AISS_Analytics_Page::ayudawp_render();
 					} elseif ( 'ai-summary' === $active_tab ) {
 						$this->ayudawp_render_summary_tab();
@@ -551,14 +556,20 @@ class AyudaWP_AISS_Admin {
 					}
 					?>
 				</div>
+				<?php if ( ! $is_analytics ) : ?>
 				<aside class="aiss-layout-side">
 					<?php
 					// Promo banner - random rotation of AyudaWP services.
-					$promo_banner = new AyudaWP_AISS_Promo_Banner( 'aiss' );
 					$promo_banner->render( 'vertical' );
 					?>
 				</aside>
+				<?php endif; ?>
 			</div>
+			<?php
+			if ( $is_analytics ) {
+				$promo_banner->render( 'horizontal' );
+			}
+			?>
 		</div>
 		<?php
 	}

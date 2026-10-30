@@ -3,7 +3,7 @@ Contributors: fernandot,ayudawp
 Tags: claude, chatgpt, social share, ai, perplexity
 Requires at least: 6.1
 Tested up to: 7.1
-Stable tag: 2.7.0
+Stable tag: 2.7.1
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -444,6 +444,12 @@ The social and AI sharing buttons render as `<a>` / `<button>` elements that ope
 
 == Changelog ==
 
+= 2.7.1 =
+Fixes AI summaries that now and then came out in English on posts written in another language: the language is now named in the request itself. Analytics uses the full width, with the banner at the bottom.
+
+* Improved: Analytics now uses the full width of the screen, with the AyudaWP services banner as a strip at the bottom instead of a side column, as in VigIA. The charts and the two tables have room again, and on a laptop screen the tables sit side by side. The Share Buttons and AI Summary tabs keep the banner in the side column.
+* Fix: Now and then an AI summary came out in English for a post written in another language. The only language rule was a single line in English asking the AI to match the post, in a request that is otherwise in English too. The language is now named in the instructions and again in the request: the language of the post when Polylang or WPML is active, and otherwise the language the post is written in, with the site language named as the usual one unless it is English (many sites that write in another language never change the default English setting). Quotes, names and technical terms in another language no longer count. Existing summaries are not regenerated: use Regenerate on any that came out in the wrong language. Developers can set the language per post with the `ayudawp_aiss_summary_locale` filter.
+
 = 2.7.0 =
 New space for your own content inside the summary box (an ad, a form, any script), loaded only when a reader opens it. Qwen now opens with the prompt already written, the editor warns when a post is too short for a summary, and button labels show as written.
 
@@ -457,8 +463,8 @@ For older changelog entries, please check the [changelog.txt](https://plugins.sv
 
 == Upgrade Notice ==
 
-= 2.7.0 =
-New space for your own content inside the summary box (an ad, a form, any script), loaded only when a reader opens it. Qwen now opens with the prompt already written, the editor warns when a post is too short for a summary, and button labels show as written.
+= 2.7.1 =
+Fixes AI summaries that now and then came out in English on posts written in another language: the language is now named in the request itself. Analytics uses the full width, with the banner at the bottom.
 
 == Advanced Usage ==
 

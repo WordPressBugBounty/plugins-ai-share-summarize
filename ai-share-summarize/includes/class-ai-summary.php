@@ -589,7 +589,7 @@ class AyudaWP_AISS_AI_Summary {
 				$provider = '';
 			} else {
 				// Level A — WP AI Client (WordPress 7.0+).
-				$summary  = self::generate_with_wp_ai_client( $content, $title );
+				$summary  = self::generate_with_wp_ai_client( $content, $title, $post_id );
 				$provider = 'wp_ai_client';
 			}
 
@@ -699,11 +699,14 @@ class AyudaWP_AISS_AI_Summary {
 	 * text capability, etc.).
 	 *
 	 * @since 2.2.1 Ordered candidate chain with degradation + model-cache self-heal.
+	 * @since 2.7.1 The `$post_id` parameter, for the language of the summary
+	 *              (ayudawp_aiss_summary_language_instruction()).
 	 * @param string $content Post content.
 	 * @param string $title   Post title.
+	 * @param int    $post_id Post the summary is for, 0 when unknown.
 	 * @return string|WP_Error Summary text on success.
 	 */
-	public static function generate_with_wp_ai_client( $content, $title ) {
+	public static function generate_with_wp_ai_client( $content, $title, $post_id = 0 ) {
 		if ( ! function_exists( 'wp_ai_client_prompt' ) ) {
 			return new WP_Error( 'no_wp_ai_client', __( 'WP AI Client is not available (requires WordPress 7.0+).', 'ai-share-summarize' ) );
 		}
@@ -712,9 +715,22 @@ class AyudaWP_AISS_AI_Summary {
 		$n_sentences = isset( $options['ai_summary_sentences'] ) ? max( 1, min( 5, (int) $options['ai_summary_sentences'] ) ) : 3;
 		$bullets     = ! empty( $options['ai_summary_bullets'] );
 
-		$system  = 'You are a content summarizer. Return ONLY the summary in plain text, no markdown, no quotes, no preamble. Match the language of the input.';
-		$clean   = ayudawp_aiss_clean_html_for_summary( (string) $content );
-		$excerpt = function_exists( 'mb_substr' )
+		/*
+		 * The language goes in the system instruction and again in the request
+		 * itself (v2.7.1). Measured on 30 Oct 2026 with a post in Spanish whose
+		 * summary had come out in English on a live site: sending the request
+		 * without the system instruction, the old "Match the language of the
+		 * input" gave English 5 times out of 40 with Haiku 5.5 and Gemini 3.5
+		 * Flash-Lite, because the request itself is in English; with the
+		 * language sentence in the request, 0 out of 43. With the system
+		 * instruction in place the old wording gave no English in 105 tries
+		 * across seven models, so the copy in the request is what covers a model
+		 * that gives the system instruction little weight, or does not get it.
+		 */
+		$language = ayudawp_aiss_summary_language_instruction( $post_id );
+		$system   = 'You are a content summarizer. Return ONLY the summary in plain text, no markdown, no quotes, no preamble. ' . $language;
+		$clean    = ayudawp_aiss_clean_html_for_summary( (string) $content );
+		$excerpt  = function_exists( 'mb_substr' )
 			? mb_substr( $clean, 0, 3000 )
 			: substr( $clean, 0, 3000 );
 
@@ -723,15 +739,17 @@ class AyudaWP_AISS_AI_Summary {
 			// on newlines and prints one <li> per point.
 			$system .= ' Write each point on its own line, with no list markers or numbering.';
 			$prompt  = sprintf(
-				"Summarize the following content in exactly %d concise key points, one per line:\n\n%s\n\n%s",
+				"Summarize the following content in exactly %d concise key points, one per line. %s\n\n%s\n\n%s",
 				$n_sentences,
+				$language,
 				$title,
 				$excerpt
 			);
 		} else {
 			$prompt = sprintf(
-				"Summarize the following content in exactly %d sentences:\n\n%s\n\n%s",
+				"Summarize the following content in exactly %d sentences. %s\n\n%s\n\n%s",
 				$n_sentences,
+				$language,
 				$title,
 				$excerpt
 			);

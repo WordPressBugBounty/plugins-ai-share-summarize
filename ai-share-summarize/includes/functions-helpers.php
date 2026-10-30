@@ -2196,6 +2196,131 @@ function ayudawp_aiss_get_summary_min_words() {
 }
 
 /**
+ * Locale a post is written in, when a multilingual plugin knows it (v2.7.1)
+ *
+ * Polylang and WPML store the language of every post, so on a multilingual
+ * site the answer is exact. Without them there is no certain answer: plenty
+ * of sites write in a language other than their settings (many never change
+ * the default en_US), so the site locale is only a hint, given by
+ * ayudawp_aiss_summary_language_instruction().
+ *
+ * @since 2.7.1
+ * @param int $post_id Post ID.
+ * @return string Locale such as 'es_ES', or '' when it is not known for certain.
+ */
+function ayudawp_aiss_get_post_locale( $post_id ) {
+	$post_id = (int) $post_id;
+	$locale  = '';
+
+	if ( $post_id > 0 ) {
+		try {
+			if ( function_exists( 'pll_get_post_language' ) ) {
+				// Polylang: the locale string, or false when the post has none.
+				$locale = pll_get_post_language( $post_id, 'locale' );
+			} else {
+				// WPML (registered in sitepress.class.php): an array with
+				// 'locale', or a WP_Error. Null when no plugin answers.
+				$details = apply_filters( 'wpml_post_language_details', null, $post_id ); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Consuming WPML's own documented filter, not a hook defined by this plugin.
+				if ( is_array( $details ) && isset( $details['locale'] ) ) {
+					$locale = $details['locale'];
+				}
+			}
+		} catch ( \Throwable $e ) {
+			// A multilingual plugin half set up (no languages yet) must never
+			// stop the summary: it just goes without a certain language.
+			unset( $e );
+			$locale = '';
+		}
+	}
+
+	/**
+	 * Filters the language the AI summary of a post is written in.
+	 *
+	 * Comes from Polylang or WPML when one of them is active, and is empty
+	 * otherwise. Return a locale ('es_ES', 'ca', 'pt_BR') to fix the language
+	 * of the summary, for example on a site whose settings say en_US but that
+	 * writes in another language. Return '' to let the AI follow the language
+	 * of the post.
+	 *
+	 * @since 2.7.1
+	 * @param string $locale  Locale of the post, or ''.
+	 * @param int    $post_id Post ID (0 when unknown).
+	 */
+	$locale = apply_filters( 'ayudawp_aiss_summary_locale', is_string( $locale ) ? $locale : '', $post_id );
+
+	// It goes into the instruction sent to the AI: only something shaped like a locale.
+	if ( ! is_string( $locale ) || ! preg_match( '/^[a-z]{2,3}(?:[_-][A-Za-z0-9]{2,8}){0,3}$/', $locale ) ) {
+		return '';
+	}
+
+	return $locale;
+}
+
+/**
+ * How to name a locale in the instruction sent to the AI (v2.7.1)
+ *
+ * "Spanish (Spain), locale es_ES" when PHP has the intl extension, which
+ * knows every language name in English; just "locale es_ES" otherwise, which
+ * the models understand too. WordPress variants (de_DE_formal, pt_PT_ao90)
+ * are named by their language and region.
+ *
+ * @since 2.7.1
+ * @param string $locale Locale.
+ * @return string Description of the locale, in English.
+ */
+function ayudawp_aiss_describe_locale( $locale ) {
+	$locale = (string) $locale;
+	$code   = (string) preg_replace( '/^([a-z]{2,3}(?:_[A-Z]{2})?).*$/', '$1', $locale );
+	$name   = class_exists( 'Locale' ) ? (string) Locale::getDisplayName( $code, 'en' ) : '';
+
+	if ( '' === $name || $name === $code ) {
+		return sprintf( 'locale %s', $locale );
+	}
+
+	return sprintf( '%1$s, locale %2$s', $name, $locale );
+}
+
+/**
+ * The sentence of the AI instruction that sets the language of the summary (v2.7.1)
+ *
+ * Until 2.7.0 the instruction only said "Match the language of the input",
+ * in English like the rest of it, and now and then a model answered in
+ * English for a post written in another language. Now:
+ *
+ * - When the language of the post is known (Polylang, WPML or the
+ *   ayudawp_aiss_summary_locale filter), it is named and required.
+ * - Otherwise the AI follows the language of the post's own sentences, and a
+ *   site language other than English is named as the usual answer. An
+ *   English site language is not named: en_US is the default that many sites
+ *   writing in another language never change, so naming it would push their
+ *   summaries into English.
+ *
+ * Both say that quotes, names and technical terms in another language, and
+ * the language of the instruction itself, do not count.
+ *
+ * @since 2.7.1
+ * @param int $post_id Post ID, or 0 when unknown.
+ * @return string Instruction sentence, in English like the rest of the prompt.
+ */
+function ayudawp_aiss_summary_language_instruction( $post_id = 0 ) {
+	$rule   = 'Quotes, names or technical terms in another language inside the post do not change that, and neither does the language of these instructions.';
+	$locale = ayudawp_aiss_get_post_locale( $post_id );
+
+	if ( '' !== $locale ) {
+		return sprintf( 'Write the summary in %1$s: it is the language this post is written in. %2$s', ayudawp_aiss_describe_locale( $locale ), $rule );
+	}
+
+	$base = 'Write the summary in the language the post itself is written in, judging by its own sentences. ' . $rule;
+	$site = (string) get_locale();
+
+	if ( '' === $site || preg_match( '/^en(?:_|$)/', $site ) ) {
+		return $base;
+	}
+
+	return sprintf( '%1$s This site publishes in %2$s, so it is almost always that one.', $base, ayudawp_aiss_describe_locale( $site ) );
+}
+
+/**
  * Split a block of text into sentences (v2.1.0)
  *
  * Single source of truth for sentence segmentation, shared by the extractive

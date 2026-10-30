@@ -1176,6 +1176,21 @@
 	}
 }
 
+/*
+ * Analytics without the rail (v2.7.1): content at full width, without the
+ * 1500px cap, and the banner as a strip at the bottom, as in VigIA's data
+ * panel. The strip reuses the .aiss-promo-notice rules above, which are the
+ * ones it had before 2.5.0 and the same ones VigIA uses.
+ */
+.aiss-layout--full {
+	grid-template-columns: minmax(0, 1fr);
+	max-width: none;
+}
+
+.aiss-wrap > .aiss-promo-notice {
+	margin-top: 26px;
+}
+
 .aiss-wrap .form-table td > p.description,
 .aiss-wrap .form-table td > .description,
 .aiss-wrap .aiss-two-col,
@@ -1337,8 +1352,8 @@
    wide: the content table gave its title a third of that, so a title broke
    into five lines and "AI Crawls" was cut off. The tables now go side by side
    only when the content column itself has room (a container query: the
-   viewport also counts the admin menu and the promo rail), the count columns
-   take just their width and the title the rest.
+   viewport also counts the admin menu, and until 2.7.1 the promo rail), the
+   count columns take just their width and the title the rest.
    ============================================= */
 .aiss-layout-main {
 	container-type: inline-size;
