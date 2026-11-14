@@ -1,6 +1,6 @@
 <?php
 /**
- * Frontend functionality for Share Buttons & AI-powered Summaries plugin
+ * Frontend functionality for AI Summaries & Share Buttons plugin
  *
  * Handles selective asset loading and button insertion.
  * CSS/JS only loads where buttons will actually display,

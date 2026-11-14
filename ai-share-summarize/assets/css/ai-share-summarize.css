@@ -1,5 +1,5 @@
 /**
- * Share Buttons & AI-powered Summaries Plugin - CSS Styles
+ * AI Summaries & Share Buttons Plugin - CSS Styles
  * Refactored with CSS custom properties, no !important overrides.
  * Version: 2.5.0
  */
@@ -277,7 +277,9 @@ button.ayudawp-share-btn:focus {
 }
 
 /* =============================================
-   ICONS-ONLY style
+   ICONS-ONLY: the shape of a button that is only an icon
+   Since 2.8.0 .icons-only only makes the button a square of the chosen size;
+   its colours come from the colour class, as for any other button.
    ============================================= */
 .ayudawp-share-buttons.icons-only .ayudawp-share-btn {
 	min-width: 44px;
@@ -289,11 +291,26 @@ button.ayudawp-share-btn:focus {
 	transition: all 0.3s ease;
 }
 
-.ayudawp-share-buttons.icons-only.square .ayudawp-share-btn {
+/* =============================================
+   Corners (v2.8.0), for every button
+   Rounded is the default and adds no class: 4px on buttons with text (the
+   base rule) and 6px on icon buttons (the rule above), what each has always
+   had. Until 2.7.x only icon buttons had corners, as .circular and .square.
+   Square keeps the 4px that "Square corners" drew on icon buttons.
+   ============================================= */
+.ayudawp-share-buttons.corners-circle .ayudawp-share-btn {
+	border-radius: 999px;
+}
+
+.ayudawp-share-buttons.corners-square .ayudawp-share-btn {
+	border-radius: 2px;
+}
+
+.ayudawp-share-buttons.icons-only.corners-square .ayudawp-share-btn {
 	border-radius: 4px;
 }
 
-.ayudawp-share-buttons.icons-only.circular .ayudawp-share-btn {
+.ayudawp-share-buttons.icons-only.corners-circle .ayudawp-share-btn {
 	border-radius: 50%;
 }
 
@@ -449,38 +466,12 @@ button.ayudawp-share-btn:focus {
 }
 
 /* =============================================
-   ICONS-ONLY style with brand colors
+   Brand colours on icon buttons (v2.8.0)
+   The colours themselves are the BRAND rules above, which until 2.7.x were
+   copied here under .icons-only. Only the hover is its own: a slightly
+   smaller shadow than the one of the brand buttons with text.
    ============================================= */
-.ayudawp-share-buttons.icons-only .ayudawp-share-btn.twitter    { background: var(--ayudawp-twitter); border-color: var(--ayudawp-twitter); color: #fff; }
-.ayudawp-share-buttons.icons-only .ayudawp-share-btn.linkedin   { background: var(--ayudawp-linkedin); border-color: var(--ayudawp-linkedin); color: #fff; }
-.ayudawp-share-buttons.icons-only .ayudawp-share-btn.facebook   { background: var(--ayudawp-facebook); border-color: var(--ayudawp-facebook); color: #fff; }
-.ayudawp-share-buttons.icons-only .ayudawp-share-btn.telegram   { background: var(--ayudawp-telegram); border-color: var(--ayudawp-telegram); color: #fff; }
-.ayudawp-share-buttons.icons-only .ayudawp-share-btn.whatsapp   { background: var(--ayudawp-whatsapp); border-color: var(--ayudawp-whatsapp); color: #fff; }
-.ayudawp-share-buttons.icons-only .ayudawp-share-btn.email      { background: var(--ayudawp-email); border-color: var(--ayudawp-email); color: #fff; }
-.ayudawp-share-buttons.icons-only .ayudawp-share-btn.raindrop   { background: var(--ayudawp-raindrop); border-color: var(--ayudawp-raindrop); color: #fff; }
-.ayudawp-share-buttons.icons-only .ayudawp-share-btn.reddit     { background: var(--ayudawp-reddit); border-color: var(--ayudawp-reddit); color: #fff; }
-.ayudawp-share-buttons.icons-only .ayudawp-share-btn.bluesky    { background: var(--ayudawp-bluesky); border-color: var(--ayudawp-bluesky); color: #fff; }
-.ayudawp-share-buttons.icons-only .ayudawp-share-btn.line       { background: var(--ayudawp-line); border-color: var(--ayudawp-line); color: #fff; }
-.ayudawp-share-buttons.icons-only .ayudawp-share-btn.mastodon   { background: var(--ayudawp-mastodon); border-color: var(--ayudawp-mastodon); color: #fff; }
-.ayudawp-share-buttons.icons-only .ayudawp-share-btn.threads    { background: var(--ayudawp-threads); border-color: var(--ayudawp-threads); color: #fff; }
-.ayudawp-share-buttons.icons-only .ayudawp-share-btn.pinterest  { background: var(--ayudawp-pinterest); border-color: var(--ayudawp-pinterest); color: #fff; }
-.ayudawp-share-buttons.icons-only .ayudawp-share-btn.claude     { background: var(--ayudawp-claude); border-color: var(--ayudawp-claude); color: #fff; }
-.ayudawp-share-buttons.icons-only .ayudawp-share-btn.chatgpt    { background: var(--ayudawp-chatgpt); border-color: var(--ayudawp-chatgpt); color: #fff; }
-.ayudawp-share-buttons.icons-only .ayudawp-share-btn.google-ai  { background: var(--ayudawp-google-ai); border-color: var(--ayudawp-google-ai); color: #fff; }
-.ayudawp-share-buttons.icons-only .ayudawp-share-btn.gemini     { background: var(--ayudawp-gemini); border-color: var(--ayudawp-gemini); color: #fff; }
-.ayudawp-share-buttons.icons-only .ayudawp-share-btn.grok       { background: var(--ayudawp-grok); border-color: var(--ayudawp-grok); color: #fff; }
-.ayudawp-share-buttons.icons-only .ayudawp-share-btn.perplexity { background: var(--ayudawp-perplexity); border-color: var(--ayudawp-perplexity); color: #fff; }
-.ayudawp-share-buttons.icons-only .ayudawp-share-btn.deepseek   { background: var(--ayudawp-deepseek); border-color: var(--ayudawp-deepseek); color: #fff; }
-.ayudawp-share-buttons.icons-only .ayudawp-share-btn.mistral    { background: var(--ayudawp-mistral); border-color: var(--ayudawp-mistral); color: #1a1a1a; }
-.ayudawp-share-buttons.icons-only .ayudawp-share-btn.copilot    { background: var(--ayudawp-copilot); border-color: var(--ayudawp-copilot); color: #fff; }
-.ayudawp-share-buttons.icons-only .ayudawp-share-btn.qwen       { background: var(--ayudawp-qwen); border-color: var(--ayudawp-qwen); color: #fff; }
-.ayudawp-share-buttons.icons-only .ayudawp-share-btn.meta-ai    { background: var(--ayudawp-meta-ai); border-color: var(--ayudawp-meta-ai); color: #fff; }
-.ayudawp-share-buttons.icons-only .ayudawp-share-btn.copy-link  { background: var(--ayudawp-copy-link); border-color: var(--ayudawp-copy-link); color: #fff; }
-.ayudawp-share-buttons.icons-only .ayudawp-share-btn.web-share  { background: var(--ayudawp-web-share); border-color: var(--ayudawp-web-share); color: #fff; }
-.ayudawp-share-buttons.icons-only .ayudawp-share-btn.google-preferred  { background: var(--ayudawp-google-preferred); border-color: var(--ayudawp-google-preferred); color: #fff; }
-
-/* Icons-only hover */
-.ayudawp-share-buttons.icons-only .ayudawp-share-btn:hover {
+.ayudawp-share-buttons.icons-only.brand .ayudawp-share-btn:hover {
 	filter: brightness(0.88);
 	transform: translateY(-2px);
 	box-shadow: 0 3px 10px rgba(0,0,0,0.15);
@@ -857,12 +848,12 @@ button.ayudawp-share-btn:focus {
 }
 
 /* MINIMAL on dark: legible text and visible border */
-.ayudawp-share-buttons.is-on-dark:not(.brand):not(.outline):not(.custom):not(.icons-only):not(.dark) .ayudawp-share-btn {
+.ayudawp-share-buttons.is-on-dark:not(.brand):not(.outline):not(.custom):not(.dark) .ayudawp-share-btn {
 	color: var(--ayudawp-on-dark-fg);
 	border-color: var(--ayudawp-on-dark-border);
 }
 
-.ayudawp-share-buttons.is-on-dark:not(.brand):not(.outline):not(.custom):not(.icons-only):not(.dark) .ayudawp-share-btn:hover {
+.ayudawp-share-buttons.is-on-dark:not(.brand):not(.outline):not(.custom):not(.dark) .ayudawp-share-btn:hover {
 	background: rgba(255,255,255,0.08);
 	color: #fff;
 	border-color: #888;
@@ -881,14 +872,11 @@ button.ayudawp-share-btn:focus {
 	color: var(--ayudawp-mistral);
 }
 
-/* BRAND and ICONS-ONLY on dark: black-branded platforms get a subtle
-   light border so they stand out from the dark page background */
+/* BRAND on dark, icon buttons included: black-branded platforms get a
+   subtle light border so they stand out from the dark page background */
 .ayudawp-share-buttons.is-on-dark.brand .ayudawp-share-btn.twitter,
 .ayudawp-share-buttons.is-on-dark.brand .ayudawp-share-btn.threads,
-.ayudawp-share-buttons.is-on-dark.brand .ayudawp-share-btn.grok,
-.ayudawp-share-buttons.is-on-dark.icons-only .ayudawp-share-btn.twitter,
-.ayudawp-share-buttons.is-on-dark.icons-only .ayudawp-share-btn.threads,
-.ayudawp-share-buttons.is-on-dark.icons-only .ayudawp-share-btn.grok {
+.ayudawp-share-buttons.is-on-dark.brand .ayudawp-share-btn.grok {
 	border-color: var(--ayudawp-on-dark-border-subtle);
 	box-shadow: 0 0 0 1px var(--ayudawp-on-dark-border-subtle) inset;
 }
@@ -1018,7 +1006,8 @@ button.ayudawp-share-btn:focus {
 	 */
 	.ayudawp-share-buttons.is-mobile-compact .ayudawp-aiss-more-btn,
 	.ayudawp-share-buttons.icons-only.is-mobile-compact .ayudawp-aiss-more-btn,
-	.ayudawp-share-buttons.icons-only.circular.is-mobile-compact .ayudawp-aiss-more-btn {
+	.ayudawp-share-buttons.icons-only.corners-circle.is-mobile-compact .ayudawp-aiss-more-btn,
+	.ayudawp-share-buttons.icons-only.corners-square.is-mobile-compact .ayudawp-aiss-more-btn {
 		width: auto;
 		min-width: 0;
 		max-width: none;
@@ -1027,6 +1016,16 @@ button.ayudawp-share-btn:focus {
 		padding: 8px 18px;
 		border-radius: 6px;
 		gap: 8px;
+	}
+
+	/* With text, the toggle takes the corners of its neighbours (v2.8.0).
+	   Next to icon buttons it stays a 6px pill, as it always was. */
+	.ayudawp-share-buttons.corners-circle:not(.icons-only).is-mobile-compact .ayudawp-aiss-more-btn {
+		border-radius: 999px;
+	}
+
+	.ayudawp-share-buttons.corners-square:not(.icons-only).is-mobile-compact .ayudawp-aiss-more-btn {
+		border-radius: 2px;
 	}
 
 	/* The same caret as the summary block, rotating when the block opens. */
@@ -1060,10 +1059,15 @@ button.ayudawp-share-btn:focus {
 		justify-content: center;
 	}
 
-	/* Single-button mode: nothing but the toggle until it is expanded. */
-	.ayudawp-share-buttons.compact-single:not(.is-expanded) .ayudawp-buttons-container,
-	.ayudawp-share-buttons.compact-single:not(.is-expanded) .ayudawp-title,
-	.ayudawp-share-buttons.compact-single:not(.is-expanded) .ayudawp-section-separator {
+	/*
+	 * Single-button mode: nothing but the toggle until it is expanded. One
+	 * class more than the 480px rules below (v2.8.0): the one that centres an
+	 * icons-only block sets display:flex with the same weight and comes later,
+	 * so on a phone that block showed every button and the toggle at once.
+	 */
+	.ayudawp-share-buttons.is-mobile-compact.compact-single:not(.is-expanded) .ayudawp-buttons-container,
+	.ayudawp-share-buttons.is-mobile-compact.compact-single:not(.is-expanded) .ayudawp-title,
+	.ayudawp-share-buttons.is-mobile-compact.compact-single:not(.is-expanded) .ayudawp-section-separator {
 		display: none;
 	}
 
@@ -1073,7 +1077,7 @@ button.ayudawp-share-btn:focus {
 
 	/* "N visible + more": the buttons past the count, and any section title
 	   left with nothing under it, are marked .aiss-overflow by PHP. */
-	.ayudawp-share-buttons.compact-partial:not(.is-expanded) .aiss-overflow {
+	.ayudawp-share-buttons.is-mobile-compact.compact-partial:not(.is-expanded) .aiss-overflow {
 		display: none;
 	}
 

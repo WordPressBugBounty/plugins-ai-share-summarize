@@ -1,5 +1,5 @@
 /**
- * Share Buttons & AI-powered Summaries - Admin Scripts
+ * AI Summaries & Share Buttons - Admin Scripts
  *
  * Reusable paginator class, analytics dashboard with period comparison,
  * chart rendering (per-platform + comparison modes), export dropdown.
@@ -232,15 +232,6 @@ window.AissPaginator = (function($) {
 			});
 		}
 
-		// Toggle custom colors visibility when style changes (v1.6.0).
-		$('input[name="ayudawp_aiss_options[button_colors]"]').on('change', function() {
-			if ($(this).val() === 'custom') {
-				$('#ayudawp-custom-colors').show();
-			} else {
-				$('#ayudawp-custom-colors').hide();
-			}
-		});
-
 		// Toggle the AI summary custom colors when its style changes (v2.1.0).
 		$('input[name="ayudawp_aiss_summary_options[ai_summary_style]"]').on('change', function() {
 			if ($(this).val() === 'custom') {
@@ -250,14 +241,26 @@ window.AissPaginator = (function($) {
 			}
 		});
 
-		// Init jQuery UI Sortable for both group lists (v1.6.0).
+		/*
+		 * Init jQuery UI Sortable for the order lists (v1.6.0). Since 2.8.0
+		 * they are rows of chips, one list per group and section, so the
+		 * drag is free in both axes and stays inside its list. A new order
+		 * is announced as a change of the form, which is what the previews
+		 * listen to.
+		 */
 		if ($.fn.sortable) {
 			$('.ayudawp-sortable-list').sortable({
-				axis: 'y',
 				cursor: 'grabbing',
-				handle: '.dashicons-menu',
+				items: '> li',
+				tolerance: 'pointer',
 				placeholder: 'ayudawp-sortable-placeholder',
-				opacity: 0.7
+				opacity: 0.7,
+				update: function () {
+					var form = this.closest('form');
+					if (form) {
+						form.dispatchEvent(new Event('change', { bubbles: true }));
+					}
+				}
 			});
 		}
 
@@ -1287,7 +1290,7 @@ window.AissPaginator = (function($) {
 				var endDate   = response.end_date || '';
 
 				var siteName = aissAdminData.siteName || '';
-				var csvTitle = siteName + ' - Share Buttons & AI-powered Summaries Analytics - ' + startDate + ' to ' + endDate;
+				var csvTitle = siteName + ' - AI Summaries & Share Buttons Analytics - ' + startDate + ' to ' + endDate;
 				var csvLines = [];
 				csvLines.push(csvEscapeField(csvTitle));
 				csvLines.push('');
@@ -1414,117 +1417,823 @@ window.AissPaginator = (function($) {
  *
  * Small things, all optional: the form works with this file blocked.
  *
- *   1. The button picker repaints as the style, the icons or the corner shape
- *      change, so you see the result before saving instead of saving to see it.
- *   2. The floating bar's own destinations fold away until you ask for them.
+ *   1. The buttons tab (v2.8.0): the catalog reaches the order lists of both
+ *      sections at once, what depends on a choice is hidden until it applies,
+ *      the floating bar section folds away while the bar is off, and a sample
+ *      of the bar follows every change before saving.
+ *   6. The buttons block preview (v2.8.0): the last row of "In-content
+ *      buttons", where the server draws the real block from the unsaved form,
+ *      laid out at a real width and scaled to fit.
  *   3. The summary block sample repaints as its style changes.
  *   4. A position whose destination is unticked is dimmed.
- *   5. Where the Google button goes dims its section title and takes it in or
- *      out of the social order list (v2.6.0).
  */
 (function () {
 	'use strict';
 
-	function init() {
-		var preview = document.querySelector('.aiss-picker-preview');
+	/** The + of the "More" button, same path as the front end. Constant. */
+	var BAR_PLUS = '<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M11 5h2v6h6v2h-6v6h-2v-6H5v-2h6z"/></svg>';
 
-		// --- 1. Live preview -------------------------------------------------
-		// Both places that show sample buttons: the picker and the order lists.
-		var orderPreview = document.getElementById('ayudawp-sortable-wrapper');
-		if (preview || orderPreview) {
-			var styleInputs = document.querySelectorAll('.aiss-style-input');
-			var iconsInput = document.querySelector('.aiss-icons-input');
-			var cornerInput = document.querySelector('.aiss-icon-style-input');
+	/** A page of grey blocks for the sample bar to sit on. Constant. */
+	var BAR_PAGE = '<div class="aiss-bar-page"><div class="aiss-bar-page-top"><span></span><span></span></div>'
+		+ '<div class="aiss-bar-page-body"><div class="aiss-bar-page-main"><i class="is-title"></i><i></i><i></i><i></i><i></i><i class="is-img"></i><i></i><i></i><i></i><i></i><i></i><i></i></div>'
+		+ '<div class="aiss-bar-page-side"><b></b><b></b><b></b></div></div></div>';
 
-			var repaint = function () {
-				var style = 'brand';
-				for (var i = 0; i < styleInputs.length; i++) {
-					if (styleInputs[i].checked) {
-						style = styleInputs[i].value;
-					}
-				}
+	/**
+	 * Replace %s, %1$s and %2$s in a translated string.
+	 *
+	 * @param {string} text Template.
+	 * @param {Array}  args Values, in order.
+	 * @return {string}
+	 */
+	function fill(text, args) {
+		var n = 0;
+		return String(text || '').replace(/%(\d+)\$s|%s/g, function (m, pos) {
+			var i = pos ? parseInt(pos, 10) - 1 : n++;
+			return undefined !== args[i] ? String(args[i]) : '';
+		});
+	}
 
-				var extra = [];
-				if ('icons-only' === style) {
-					extra.push('icons-only');
-					extra.push(cornerInput ? cornerInput.value : 'circular');
-				} else if ('minimal' !== style) {
-					extra.push(style);
-				}
+	/**
+	 * The buttons tab (v2.8.0).
+	 *
+	 * "In-content buttons" and "Floating bar" are set up the same way, and
+	 * everything here keeps them in step with the form as it is now, before
+	 * saving: what is ticked in the catalog shows up at once in the order lists
+	 * of both sections, a setting that depends on another is hidden (not
+	 * dimmed) until it applies, the bar's own lists and look start as the
+	 * content's the first time they are chosen, the bar section folds away
+	 * while the bar is off, and the bar preview is drawn the way the front end
+	 * draws the bar (ayudawp_aiss_get_floating_bar_buttons(),
+	 * ayudawp_aiss_split_floating_bar_buttons() and
+	 * ayudawp_aiss_get_look_classes()).
+	 *
+	 * @param {Element} form The settings form.
+	 */
+	function initButtonsTab(form) {
+		var catalog = form.querySelectorAll('input[name="ayudawp_aiss_options[enabled_buttons][]"]');
+		var contentBoard = form.querySelector('.aiss-order-board[data-section="content"]');
+		var barBoard = form.querySelector('.aiss-order-board[data-section="bar"]');
+		var barOwn = form.querySelector('.aiss-bar-own');
+		var barOwnLook = form.querySelector('.aiss-bar-own-look');
+		var section = form.querySelector('.aiss-bar-section');
+		var dock = form.querySelector('.aiss-bar-dock');
+		var stage = dock ? dock.querySelector('.aiss-bar-stage') : null;
+		var readout = dock ? dock.querySelector('.aiss-bar-readout') : null;
+		var tpl = dock ? dock.querySelector('.aiss-bar-tpl') : null;
+		var googleSelect = form.querySelector('#aiss-google-placement');
+		var googleOff = !!dock && '1' === dock.getAttribute('data-google-off');
+		var strings = (window.aissAdminData && window.aissAdminData.strings) || {};
+		var expanded = false;
+		var viewPicked = false;
 
-				// The "add icons" checkbox does not apply to icons-only, which
-				// is all icon by definition.
-				var hideIcons = iconsInput && !iconsInput.checked && 'icons-only' !== style;
-
-				if (preview) {
-					preview.className = ['ayudawp-share-buttons', 'aiss-picker-preview', 'with-icons'].concat(extra).join(' ');
-					preview.classList.toggle('aiss-hide-icons', !!hideIcons);
-				}
-
-				if (orderPreview) {
-					orderPreview.className = ['ayudawp-share-buttons', 'aiss-order-preview', 'with-icons'].concat(extra).join(' ');
-					orderPreview.classList.toggle('aiss-hide-icons', !!hideIcons);
-				}
-			};
-
-			for (var i = 0; i < styleInputs.length; i++) {
-				styleInputs[i].addEventListener('change', repaint);
-			}
-			if (iconsInput) { iconsInput.addEventListener('change', repaint); }
-			if (cornerInput) { cornerInput.addEventListener('change', repaint); }
-
-			// Custom colours: the WP colour picker is a jQuery widget, so its
-			// updates arrive as jQuery change events.
-			var applyCustomColours = function () {
-				var bg = document.getElementById('ayudawp_custom_bg');
-				var fg = document.getElementById('ayudawp_custom_text');
-				[preview, orderPreview].forEach(function (node) {
-					if (!node) { return; }
-					if (bg && bg.value) { node.style.setProperty('--ayudawp-custom-bg', bg.value); }
-					if (fg && fg.value) { node.style.setProperty('--ayudawp-custom-text', fg.value); }
-				});
-			};
-			if (window.jQuery) {
-				window.jQuery('#ayudawp_custom_bg, #ayudawp_custom_text').on('change keyup aiss:colorchange', applyCustomColours);
-			}
-
-			repaint();
+		if (!catalog.length) {
+			return;
 		}
 
-		// --- 2. The bar's own destinations -----------------------------------
-		var ownToggle = document.getElementById('aiss-bar-own-placements');
-		var ownBlock = document.getElementById('aiss-bar-placements');
-		if (ownToggle && ownBlock) {
-			ownToggle.addEventListener('change', function () {
-				ownBlock.hidden = !ownToggle.checked;
+		// One sample per button key, cloned into the bar preview.
+		var samples = {};
+		if (tpl && tpl.content) {
+			var tplNodes = tpl.content.querySelectorAll('[data-key]');
+			for (var t = 0; t < tplNodes.length; t++) {
+				samples[tplNodes[t].getAttribute('data-key')] = tplNodes[t];
+			}
+		}
+
+		function each(list, fn) {
+			Array.prototype.forEach.call(list || [], fn);
+		}
+
+		function radio(name, fallback) {
+			var input = form.querySelector('input[name="ayudawp_aiss_options[' + name + ']"]:checked');
+			return input ? input.value : fallback;
+		}
+
+		function setRadio(name, value) {
+			var input = form.querySelector('input[name="ayudawp_aiss_options[' + name + ']"][value="' + value + '"]');
+			if (input) {
+				input.checked = true;
+			}
+		}
+
+		function enabledKeys() {
+			var out = [];
+			each(catalog, function (box) {
+				if (box.checked) {
+					out.push(box.value);
+				}
+			});
+			return out;
+		}
+
+		function chips(board, group) {
+			return board ? board.querySelectorAll('ul[data-group="' + group + '"] > .aiss-order-chip') : [];
+		}
+
+		function pickBox(chip) {
+			return chip.querySelector('.aiss-order-pick');
+		}
+
+		function picking(board) {
+			return !!board && board.classList.contains('is-picking');
+		}
+
+		/*
+		 * A section's list, in its order: the chips of each group as they are
+		 * now, available and (while choosing) ticked, then the groups in the
+		 * order chosen. "ai", "social" and "mixed" are the bar's words; the
+		 * content's button_order is turned into them first.
+		 */
+		function sectionList(board, groups) {
+			var enabled = enabledKeys();
+			var choose = picking(board);
+			var take = function (group) {
+				var out = [];
+				each(chips(board, group), function (chip) {
+					var key = chip.getAttribute('data-key');
+					var box = pickBox(chip);
+					if (enabled.indexOf(key) !== -1 && (!choose || (box && box.checked))) {
+						out.push(key);
+					}
+				});
+				return out;
+			};
+			var ai = take('ai');
+			var social = take('social');
+			var list = [];
+
+			if ('social' === groups) {
+				list = social.concat(ai);
+			} else if ('mixed' === groups) {
+				for (var m = 0; m < Math.max(ai.length, social.length); m++) {
+					if (social[m]) { list.push(social[m]); }
+					if (ai[m]) { list.push(ai[m]); }
+				}
+			} else {
+				list = ai.concat(social);
+			}
+
+			if (googleOff || (googleSelect && 'outside' === googleSelect.value)) {
+				list = list.filter(function (k) { return 'google_preferred' !== k; });
+			}
+			return list;
+		}
+
+		function contentGroups() {
+			var order = radio('button_order', 'ayudawp_ai_first');
+			if ('ayudawp_social_first' === order) {
+				return 'social';
+			}
+			return 'ayudawp_mixed' === order ? 'mixed' : 'ai';
+		}
+
+		function contentList() {
+			return sectionList(contentBoard, contentGroups());
+		}
+
+		function barList() {
+			if ('pick' !== radio('floating_bar_buttons', 'inherit') || !barBoard) {
+				return contentList();
+			}
+			var list = sectionList(barBoard, radio('floating_bar_groups', 'ai'));
+			return list.length ? list : contentList();
+		}
+
+		// --- Show what applies, hide what does not ----------------------------
+
+		function syncCatalog() {
+			var enabled = enabledKeys();
+			each([contentBoard, barBoard], function (board) {
+				each(board ? board.querySelectorAll('.aiss-order-chip') : [], function (chip) {
+					chip.hidden = enabled.indexOf(chip.getAttribute('data-key')) === -1;
+				});
 			});
 		}
 
-		// The bar's other settings are noise while the bar is off.
-		var barInputs = document.querySelectorAll('input[name="ayudawp_aiss_options[floating_bar]"]');
-		if (barInputs.length && ownToggle) {
-			var barExtras = [];
-			var row = ownToggle.closest('td') || ownToggle.parentNode;
-			if (row) {
-				barExtras = [].slice.call(row.querySelectorAll('.aiss-stacked, .aiss-bar-placements'));
+		function syncGoogle() {
+			var place = googleSelect ? googleSelect.value : 'social';
+			var googleOn = enabledKeys().indexOf('google_preferred') !== -1;
+			var title = form.querySelector('.aiss-google-title-field');
+			if (title) {
+				title.hidden = 'section' !== place;
+			}
+			each(form.querySelectorAll('.aiss-google-order-note'), function (note) {
+				note.hidden = !googleOn || note.getAttribute('data-placement') !== place;
+			});
+		}
+
+		function syncModes() {
+			if (contentBoard) {
+				contentBoard.classList.toggle('is-picking', 'pick' === radio('content_buttons_mode', 'all'));
+			}
+			if (barOwn) {
+				barOwn.hidden = 'pick' !== radio('floating_bar_buttons', 'inherit');
+			}
+			var own = 'own' === radio('floating_bar_look', 'inherit');
+			if (barOwnLook) {
+				barOwnLook.hidden = !own;
+			}
+			var pickers = form.querySelector('#ayudawp-custom-colors');
+			if (pickers) {
+				pickers.hidden = !('custom' === radio('button_colors', 'minimal') || (own && 'custom' === radio('floating_bar_color', 'minimal')));
+			}
+		}
+
+		function barOn() {
+			var on = false;
+			each(section ? section.querySelectorAll('.aiss-placement-toggle') : [], function (box) {
+				if (box.checked) {
+					on = true;
+				}
+			});
+			return on;
+		}
+
+		function syncBarSection() {
+			var on = barOn();
+			each(section ? section.querySelectorAll('tr.aiss-bar-extra') : [], function (row) {
+				row.hidden = !on;
+			});
+		}
+
+		// --- Starting points ------------------------------------------------
+
+		/*
+		 * The bar's own list, the first time "Choose and order its own" is
+		 * picked: the content's groups, order and buttons, as the form has
+		 * them now.
+		 */
+		function seedBarButtons() {
+			if (!barOwn || !barBoard || '1' !== barOwn.getAttribute('data-fresh')) {
+				return;
+			}
+			barOwn.removeAttribute('data-fresh');
+			setRadio('floating_bar_groups', contentGroups());
+
+			var list = contentList();
+			['ai', 'social'].forEach(function (group) {
+				var ul = barBoard.querySelector('ul[data-group="' + group + '"]');
+				if (!ul) {
+					return;
+				}
+				each(chips(contentBoard, group), function (source) {
+					var chip = ul.querySelector('.aiss-order-chip[data-key="' + source.getAttribute('data-key') + '"]');
+					if (chip) {
+						ul.appendChild(chip);
+					}
+				});
+			});
+			each(barBoard.querySelectorAll('.aiss-order-chip'), function (chip) {
+				var box = pickBox(chip);
+				if (box) {
+					box.checked = list.indexOf(chip.getAttribute('data-key')) !== -1;
+				}
+			});
+		}
+
+		// The bar's own look, the first time "Its own" is picked: the content's.
+		function seedBarLook() {
+			if (!barOwnLook || '1' !== barOwnLook.getAttribute('data-fresh')) {
+				return;
+			}
+			barOwnLook.removeAttribute('data-fresh');
+			var size = radio('button_size', 'normal');
+			setRadio('floating_bar_color', radio('button_colors', 'minimal'));
+			setRadio('floating_bar_corners', radio('button_corners', 'rounded'));
+			setRadio('floating_bar_size', 'fluid' === size ? 'normal' : size);
+			setRadio('floating_bar_dark', radio('dark_mode_adaptation', 'disabled'));
+		}
+
+		// "Choose" with none left: tick the ones the section shows now.
+		function seedPicks(board) {
+			if (!picking(board)) {
+				return;
+			}
+			var any = false;
+			each(board.querySelectorAll('.aiss-order-chip:not([hidden]) .aiss-order-pick'), function (box) {
+				if (box.checked) {
+					any = true;
+				}
+			});
+			if (!any) {
+				each(board.querySelectorAll('.aiss-order-chip:not([hidden]) .aiss-order-pick'), function (box) {
+					box.checked = true;
+				});
+			}
+		}
+
+		// --- The bar preview -------------------------------------------------
+
+		function sample(key) {
+			return samples[key] ? samples[key].cloneNode(true) : document.createElement('span');
+		}
+
+		function barLook() {
+			if ('own' === radio('floating_bar_look', 'inherit')) {
+				return {
+					colors: radio('floating_bar_color', 'minimal'),
+					corners: radio('floating_bar_corners', 'rounded'),
+					size: radio('floating_bar_size', 'normal'),
+					dark: radio('floating_bar_dark', 'disabled')
+				};
+			}
+			var size = radio('button_size', 'normal');
+			return {
+				colors: radio('button_colors', 'minimal'),
+				corners: radio('button_corners', 'rounded'),
+				size: 'fluid' === size ? 'normal' : size,
+				dark: radio('dark_mode_adaptation', 'disabled')
+			};
+		}
+
+		function currentView() {
+			var picked = dock ? dock.querySelector('input[name="aiss_bar_view"]:checked') : null;
+			if (viewPicked && picked) {
+				return picked.value;
+			}
+			// Until one is picked, the position of the first destination ticked.
+			var view = 'right';
+			var boxes = section ? section.querySelectorAll('.aiss-placement-toggle') : [];
+			for (var i = 0; i < boxes.length; i++) {
+				if (boxes[i].checked) {
+					var row = boxes[i].closest('.aiss-placement-row');
+					var select = row ? row.querySelector('select') : null;
+					if (select && ['left', 'right', 'bottom'].indexOf(select.value) !== -1) {
+						view = select.value;
+					}
+					break;
+				}
+			}
+			var input = dock ? dock.querySelector('input[name="aiss_bar_view"][value="' + view + '"]') : null;
+			if (input) {
+				input.checked = true;
+			}
+			return view;
+		}
+
+		function buttonSize(view, size) {
+			if ('compact' === size) { return 36; }
+			if ('large' === size) { return 54; }
+			return 'phone' === view ? 40 : 44;
+		}
+
+		function panelColumns(view, count) {
+			if ('bottom' === view) { return Math.min(count, 6); }
+			if ('phone' === view) { return Math.min(count, 5); }
+			if (count <= 4) { return 1; }
+			return count <= 10 ? 2 : 3;
+		}
+
+		function drawBar() {
+			if (!stage) {
+				return;
+			}
+			var list = barList();
+			var view = currentView();
+			var look = barLook();
+			var mode = radio('floating_bar_compact', 'partial');
+			var countInput = form.querySelector('input[name="ayudawp_aiss_options[floating_bar_compact_visible]"]');
+			var visible = Math.max(1, Math.min(5, parseInt(countInput ? countInput.value : '4', 10) || 4));
+			var shown = list;
+			var rest = [];
+			if ('single' === mode && list.length > 1) {
+				shown = [];
+				rest = list;
+			} else if ('partial' === mode && list.length > visible + 1) {
+				shown = list.slice(0, visible);
+				rest = list.slice(visible);
+			}
+			if (!rest.length) {
+				expanded = false;
 			}
 
-			var syncBar = function () {
-				var off = true;
-				for (var b = 0; b < barInputs.length; b++) {
-					if (barInputs[b].checked && 'disabled' !== barInputs[b].value) {
-						off = false;
-					}
+			var darkBox = dock.querySelector('input[name="aiss_bar_dark"]');
+			var darkPage = !!(darkBox && darkBox.checked);
+
+			// The classes of ayudawp_aiss_get_look_classes(), always icons.
+			var cls = ['ayudawp-share-buttons'];
+			if ('normal' !== look.size) { cls.push('size-' + look.size); }
+			cls.push('icons-only');
+			if ('minimal' !== look.colors) { cls.push(look.colors); }
+			if ('rounded' !== look.corners) { cls.push('corners-' + look.corners); }
+			cls.push('ayudawp-aiss-bar', 'aiss-bar-mock', 'aiss-bar-mock--' + view);
+			if (rest.length) { cls.push('has-more'); }
+			if (!shown.length) { cls.push('is-single'); }
+			if (darkPage && 'auto' === look.dark && 'dark' !== look.colors && 'custom' !== look.colors) { cls.push('is-on-dark'); }
+
+			stage.className = 'aiss-bar-stage' + ('phone' === view ? ' is-phone' : '') + (darkPage ? ' is-dark' : '');
+			stage.innerHTML = BAR_PAGE;
+
+			if (list.length) {
+				var bar = document.createElement('div');
+				bar.className = cls.join(' ');
+				if ('custom' === look.colors) {
+					var bg = document.getElementById('ayudawp_custom_bg');
+					var fg = document.getElementById('ayudawp_custom_text');
+					if (bg && bg.value) { bar.style.setProperty('--ayudawp-custom-bg', bg.value); }
+					bar.style.setProperty('--ayudawp-custom-text', fg && fg.value ? fg.value : '#ffffff');
 				}
-				for (var e = 0; e < barExtras.length; e++) {
-					barExtras[e].style.opacity = off ? '.45' : '';
+				var box = document.createElement('div');
+				box.className = 'ayudawp-buttons-container';
+				shown.forEach(function (k) { box.appendChild(sample(k)); });
+
+				if (rest.length) {
+					var single = !shown.length;
+					var wrap = document.createElement('span');
+					wrap.className = 'ayudawp-aiss-bar-more' + (single ? ' is-single' : '') + (expanded ? ' is-open' : '');
+					var more = single ? sample('__share') : document.createElement('span');
+					more.className = 'ayudawp-share-btn ayudawp-aiss-bar-more-btn';
+					more.removeAttribute('data-key');
+					more.title = String(single ? (strings.barShareLabel || 'Share (%d)') : (strings.barMoreLabel || 'More (%d)')).replace('%d', String(rest.length));
+					if (!single) {
+						more.innerHTML = BAR_PLUS;
+					}
+					more.addEventListener('click', function () {
+						expanded = !expanded;
+						drawBar();
+					});
+					wrap.appendChild(more);
+
+					if (expanded) {
+						var panel = document.createElement('div');
+						panel.className = 'ayudawp-aiss-bar-panel';
+						panel.style.setProperty('--aiss-cols', String(panelColumns(view, rest.length)));
+						rest.forEach(function (k) { panel.appendChild(sample(k)); });
+						wrap.appendChild(panel);
+					}
+					box.appendChild(wrap);
+				}
+
+				bar.appendChild(box);
+				stage.appendChild(bar);
+			}
+
+			if (!readout) {
+				return;
+			}
+			if (!list.length) {
+				readout.textContent = strings.barNone || '';
+				return;
+			}
+			var text = fill(strings.barVisible || '%1$s / %2$s', [shown.length, list.length]);
+			if (rest.length) {
+				text += ' · ' + fill(strings.barMore || '+ %s', [rest.length]);
+			}
+			if ('phone' !== view) {
+				var count = shown.length + (rest.length ? 1 : 0);
+				var length = count * buttonSize(view, look.size) + (count - 1) * 8 + 16;
+				text += ' · ' + fill('bottom' === view ? strings.barWide : strings.barTall, [length]);
+			}
+			readout.textContent = text;
+		}
+
+		function repaint() {
+			syncCatalog();
+			syncGoogle();
+			syncModes();
+			syncBarSection();
+			if (barOn()) {
+				drawBar();
+			}
+		}
+
+		// --- Events ------------------------------------------------------------
+
+		form.addEventListener('change', function (e) {
+			var target = e.target;
+			var name = target && target.name ? target.name : '';
+
+			// Ticked in the catalog: chosen too wherever the section shows all
+			// of them, or takes them from the content, so switching to "Choose"
+			// later starts from what is seen.
+			if ('ayudawp_aiss_options[enabled_buttons][]' === name && target.checked) {
+				each([contentBoard, 'pick' === radio('floating_bar_buttons', 'inherit') ? null : barBoard], function (board) {
+					var chip = board ? board.querySelector('.aiss-order-chip[data-key="' + target.value + '"]') : null;
+					var box = chip ? pickBox(chip) : null;
+					if (box && (board !== contentBoard || !picking(board))) {
+						box.checked = true;
+					}
+				});
+			}
+
+			// "Choose" keeps at least one ticked: a section with nothing in it
+			// is the section turned off, and that is what "Where" is for.
+			if (target && target.classList && target.classList.contains('aiss-order-pick') && !target.checked) {
+				var board = target.closest('.aiss-order-board');
+				if (board && !board.querySelector('.aiss-order-chip:not([hidden]) .aiss-order-pick:checked')) {
+					target.checked = true;
+				}
+			}
+
+			if ('ayudawp_aiss_options[content_buttons_mode]' === name) {
+				syncModes();
+				seedPicks(contentBoard);
+			}
+			if ('ayudawp_aiss_options[floating_bar_buttons]' === name && 'pick' === target.value) {
+				seedBarButtons();
+				syncModes();
+				seedPicks(barBoard);
+			}
+			if ('ayudawp_aiss_options[floating_bar_look]' === name && 'own' === target.value) {
+				seedBarLook();
+			}
+			if ('aiss_bar_view' === name) {
+				viewPicked = true;
+				expanded = false;
+			}
+			if ('ayudawp_aiss_options[floating_bar_compact]' === name || 'ayudawp_aiss_options[floating_bar_buttons]' === name) {
+				expanded = false;
+			}
+
+			repaint();
+		});
+
+		// Typing a number of buttons in sight picks "A few and More".
+		each(form.querySelectorAll('.aiss-compact-count'), function (input) {
+			var pick = function () {
+				var partial = input.closest('fieldset') ? input.closest('fieldset').querySelector('input[type="radio"][value="partial"]') : null;
+				if (partial && !partial.checked) {
+					partial.checked = true;
+					partial.dispatchEvent(new Event('change', { bubbles: true }));
 				}
 			};
+			input.addEventListener('focus', pick);
+			input.addEventListener('input', function () {
+				pick();
+				drawBar();
+			});
+		});
 
-			for (var b = 0; b < barInputs.length; b++) {
-				barInputs[b].addEventListener('change', syncBar);
+		if (window.jQuery) {
+			window.jQuery('#ayudawp_custom_bg, #ayudawp_custom_text').on('change keyup aiss:colorchange', drawBar);
+		}
+
+		if (dock) {
+			dock.hidden = false;
+		}
+		repaint();
+	}
+
+	/**
+	 * Encode a value for an HTML attribute (quotes included).
+	 *
+	 * @param {string} text Value.
+	 * @return {string}
+	 */
+	function escAttr(text) {
+		return String(null === text || undefined === text ? '' : text)
+			.replace(/&/g, '&amp;')
+			.replace(/</g, '&lt;')
+			.replace(/>/g, '&gt;')
+			.replace(/"/g, '&quot;')
+			.replace(/'/g, '&#039;');
+	}
+
+	/** The page the block sits on inside the frame. Constant. */
+	var BLOCK_PAGE_CSS = 'html,body{margin:0}'
+		+ 'body{padding:10px 18px;background:#fff;color:#1d2327;font:15px/1.6 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}'
+		+ 'body.is-dark{background:#1e1e1e;color:#e6e6e6}'
+		+ '.aiss-pg>i{display:block;width:60%;height:8px;border-radius:3px;background:#eef0f3}'
+		+ 'body.is-dark .aiss-pg>i{background:#3a3a3a}'
+		// Less air around the block than a theme usually gives it, so the
+		// sample is the block and not the gap above it.
+		+ '.aiss-pg .ayudawp-share-buttons{margin:14px 0}'
+		+ '.aiss-pg-empty{margin:14px 0;color:#646970;font-size:14px}';
+
+	/** Width the block is laid out at: a content column, and a phone. */
+	var BLOCK_WIDTH = { desktop: 720, phone: 375 };
+
+	/** Largest width the desktop sample is shown at, and the phone scale. */
+	var BLOCK_SHOWN_MAX = 600;
+	var BLOCK_PHONE_SCALE = 0.8;
+
+	/**
+	 * The buttons block preview (v2.8.0).
+	 *
+	 * A row at the end of "The buttons", aligned with the table. It sends the
+	 * form as it is now to the server, which runs it through the same sanitizer
+	 * as Save and the same renderer as the site, and draws the answer in an
+	 * iframe laid out at a real width (a content column, or a phone) and
+	 * scaled to fit: the site stylesheet applies its own phone rules to it, so
+	 * the compact mode is the real one.
+	 *
+	 * @param {Element} dock The preview row.
+	 */
+	function initBlockPreview(dock) {
+		var frame = dock.querySelector('.aiss-block-iframe');
+		var box = dock.querySelector('.aiss-block-frame');
+		var body = dock;
+		var data = window.aissAdminData || {};
+		var strings = data.strings || {};
+		var form = dock.closest('form');
+		if (!frame || !box || !form || !data.ajaxUrl || !data.blockPreviewNonce) {
+			return;
+		}
+
+		var status = dock.querySelector('.aiss-block-status');
+		var darkBox = dock.querySelector('input[name="aiss_block_dark"]');
+		var lastHtml = null;
+		var seq = 0;
+		var timer = null;
+
+		function view() {
+			var radio = dock.querySelector('input[name="aiss_block_view"]:checked');
+			return radio ? radio.value : 'desktop';
+		}
+
+		function scale() {
+			if ('phone' === view()) {
+				return BLOCK_PHONE_SCALE;
 			}
-			syncBar();
+			var room = body ? body.clientWidth : BLOCK_SHOWN_MAX;
+			return Math.min(1, Math.min(room, BLOCK_SHOWN_MAX) / BLOCK_WIDTH.desktop);
+		}
+
+		function setStatus(text) {
+			if (status) {
+				status.textContent = text || '';
+			}
+		}
+
+		// Lay the frame out at its real width and scale it down to fit. The
+		// height is measured on the body: inside an iframe the document is
+		// never shorter than the frame, so measuring it could only grow.
+		function fit() {
+			var width = BLOCK_WIDTH[view()];
+			var k = scale();
+			var doc = frame.contentDocument;
+			var height = (doc && doc.body) ? Math.ceil(doc.body.getBoundingClientRect().height) : 120;
+
+			frame.style.width = width + 'px';
+			frame.style.height = height + 'px';
+			frame.style.transform = 'scale(' + k + ')';
+			box.style.width = Math.ceil(width * k) + 'px';
+			box.style.height = Math.ceil(height * k) + 'px';
+		}
+
+		// What the front-end script does to a block, minus the tracking: open
+		// and close the compact mode, and keep links from leaving the frame.
+		function wireFrame() {
+			var doc = frame.contentDocument;
+			if (!doc) {
+				return;
+			}
+
+			var block = doc.querySelector('.ayudawp-share-buttons');
+			var darkRadio = form.querySelector('input[name="ayudawp_aiss_options[dark_mode_adaptation]"]:checked');
+			if (block && darkBox && darkBox.checked && darkRadio && 'auto' === darkRadio.value) {
+				block.classList.add('is-on-dark');
+			}
+
+			if (navigator.share) {
+				var hidden = doc.querySelectorAll('.ayudawp-aiss-needs-share-api[hidden]');
+				for (var h = 0; h < hidden.length; h++) {
+					hidden[h].removeAttribute('hidden');
+				}
+			}
+
+			doc.addEventListener('click', function (e) {
+				var target = e.target && e.target.closest ? e.target.closest('.ayudawp-aiss-more-btn, a, button') : null;
+				if (!target) {
+					return;
+				}
+				e.preventDefault();
+				if (!target.classList.contains('ayudawp-aiss-more-btn')) {
+					return;
+				}
+				var owner = target.closest('.ayudawp-share-buttons');
+				if (!owner) {
+					return;
+				}
+				var open = owner.classList.toggle('is-expanded');
+				target.setAttribute('aria-expanded', open ? 'true' : 'false');
+				var label = target.querySelector('.ayudawp-button-text');
+				if (label) {
+					if (!target.hasAttribute('data-collapsed-label')) {
+						target.setAttribute('data-collapsed-label', label.textContent);
+					}
+					label.textContent = open
+						? (owner.classList.contains('compact-single') ? strings.compactClose || 'Close' : strings.compactLess || 'Less')
+						: target.getAttribute('data-collapsed-label');
+				}
+				fit();
+			});
+
+			fit();
+		}
+
+		function draw() {
+			if (null === lastHtml) {
+				return;
+			}
+			var dark = !!(darkBox && darkBox.checked);
+			var content = lastHtml
+				? lastHtml
+				: '<p class="aiss-pg-empty">' + escAttr(strings.blockEmpty || '') + '</p>';
+
+			box.classList.toggle('is-phone', 'phone' === view());
+			frame.onload = wireFrame;
+			frame.srcdoc = '<!doctype html><html><head><meta charset="utf-8">'
+				+ '<meta name="viewport" content="width=device-width, initial-scale=1">'
+				+ '<link rel="stylesheet" href="' + escAttr(data.frontCss || '') + '">'
+				+ '<style>' + BLOCK_PAGE_CSS + '</style></head>'
+				+ '<body' + (dark ? ' class="is-dark"' : '') + '><div class="aiss-pg"><i></i>'
+				+ content
+				+ '<i></i></div></body></html>';
+			fit();
+		}
+
+		function request() {
+			var mine = ++seq;
+			var payload = new FormData();
+			payload.append('action', 'ayudawp_aiss_block_preview');
+			payload.append('nonce', data.blockPreviewNonce);
+
+			// The form as it is now; the server keeps only what shapes the block.
+			var fields = new FormData(form);
+			fields.forEach(function (value, name) {
+				if (0 === name.indexOf('ayudawp_aiss_options[')) {
+					payload.append('options' + name.slice('ayudawp_aiss_options'.length), value);
+				}
+			});
+
+			setStatus(strings.blockUpdating || '');
+			fetch(data.ajaxUrl, { method: 'POST', credentials: 'same-origin', body: payload })
+				.then(function (response) {
+					return response.text().then(function (body) {
+						var text = String(body || '').trim();
+						// -1: the nonce has expired (check_ajax_referer). 0: the
+						// session is gone, and admin-ajax.php has no such action
+						// for visitors. Both are fixed by reloading, so say that.
+						if ('-1' === text || '0' === text) {
+							var expired = new Error('expired');
+							expired.expired = true;
+							throw expired;
+						}
+						return JSON.parse(text);
+					});
+				})
+				.then(function (json) {
+					if (mine !== seq) {
+						return;
+					}
+					if (!json || !json.success || !json.data || 'string' !== typeof json.data.html) {
+						throw new Error('bad response');
+					}
+					lastHtml = json.data.html;
+					setStatus('');
+					draw();
+				})
+				.catch(function (err) {
+					if (mine === seq) {
+						setStatus(err && err.expired ? (strings.blockExpired || '') : (strings.blockError || ''));
+					}
+				});
+		}
+
+		function schedule() {
+			window.clearTimeout(timer);
+			timer = window.setTimeout(request, 300);
+		}
+
+		dock.addEventListener('change', function (e) {
+			var name = e.target && e.target.name;
+			if ('aiss_block_view' === name || 'aiss_block_dark' === name) {
+				e.stopPropagation();
+				draw();
+			}
+		});
+
+		form.addEventListener('change', schedule);
+		form.addEventListener('input', function (e) {
+			if (e.target && 'text' === e.target.type) {
+				schedule();
+			}
+		});
+		if (window.jQuery) {
+			window.jQuery('#ayudawp_custom_bg, #ayudawp_custom_text').on('change keyup aiss:colorchange', schedule);
+		}
+
+		var resizing = null;
+		window.addEventListener('resize', function () {
+			window.clearTimeout(resizing);
+			resizing = window.setTimeout(fit, 150);
+		});
+
+		dock.hidden = false;
+		request();
+	}
+
+	function init() {
+		// --- 1. The buttons tab (v2.8.0) ---------------------------------------
+		var tabForm = document.querySelector('.aiss-order-board') ? document.querySelector('.aiss-order-board').closest('form') : null;
+		if (tabForm) {
+			initButtonsTab(tabForm);
+		}
+
+		// --- 6. Buttons block preview (v2.8.0) --------------------------------
+		var blockDock = document.querySelector('.aiss-block-dock');
+		if (blockDock) {
+			initBlockPreview(blockDock);
 		}
 
 		// --- 3. Live preview of the summary block ----------------------------
@@ -1600,32 +2309,6 @@ window.AissPaginator = (function($) {
 					row.classList.toggle('is-on', box.checked);
 				});
 			})(rows[r]);
-		}
-
-		// --- 5. Where the Google button goes (v2.6.0) -------------------------
-		// Its section title only matters in a section of its own, and it only
-		// has a place in the social order while it goes with the networks.
-		var googleSelect = document.getElementById('aiss-google-placement');
-		if (googleSelect) {
-			var googleTitle = document.querySelector('.aiss-google-title-field');
-			var googleItem  = document.querySelector('#ayudawp-sortable-social li[data-button="google_preferred"]');
-			var googleNotes = document.querySelectorAll('.aiss-google-order-note');
-
-			var syncGoogle = function () {
-				var place = googleSelect.value;
-				if (googleTitle) {
-					googleTitle.classList.toggle('is-off', 'section' !== place);
-				}
-				if (googleItem) {
-					googleItem.hidden = 'social' !== place;
-				}
-				for (var g = 0; g < googleNotes.length; g++) {
-					googleNotes[g].hidden = googleNotes[g].getAttribute('data-placement') !== place;
-				}
-			};
-
-			googleSelect.addEventListener('change', syncGoogle);
-			syncGoogle();
 		}
 	}
 

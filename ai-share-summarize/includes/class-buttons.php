@@ -1,6 +1,6 @@
 <?php
 /**
- * Buttons generation class for Share Buttons & AI-powered Summaries plugin
+ * Buttons generation class for AI Summaries & Share Buttons plugin
  *
  * @package AiShareSummarize
  * @since 1.2.0
@@ -61,21 +61,30 @@ class AyudaWP_AISS_Buttons {
 		$button_alignment = isset( $options['button_alignment'] ) ? $options['button_alignment'] : 'left';
 		$title_text      = isset( $options['title_text'] ) ? $options['title_text'] : '';
 		$title_style     = ayudawp_aiss_sanitize_title_style( isset( $options['title_style'] ) ? $options['title_style'] : 'span' );
-		// 'minimal' is what activation writes, and what the settings screen
-		// shows as selected when the key is missing; the renderer used to fall
-		// back to 'brand', so those two disagreed.
-		$color_style     = isset( $options['button_colors'] ) ? $options['button_colors'] : 'minimal';
-		$show_icons      = isset( $options['show_icons'] ) ? $options['show_icons'] : false;
-		$icon_style      = isset( $options['icon_style'] ) ? $options['icon_style'] : 'circular';
 		$seo_button_type = isset( $options['seo_button_type'] ) ? $options['seo_button_type'] : 'link';
-		$button_size     = isset( $options['button_size'] ) ? $options['button_size'] : 'normal';
+
+		/*
+		 * The look (v2.8.0): what the buttons carry, their colours, corners and
+		 * size, with the pre-2.8.0 keys worked out when the new ones are
+		 * missing. The button builder still takes the two values it always did:
+		 * whether there are icons, and 'icons-only' for a button that is only
+		 * an icon.
+		 */
+		$look        = ayudawp_aiss_get_button_look( $options );
+		$show_icons  = 'text' !== $look['content'];
+		$color_style = 'icon' === $look['content'] ? 'icons-only' : $look['colors'];
 
 		// Separator lines (v2.4.0): both on by default, the pre-2.4.0 look.
 		$separator_top    = isset( $options['separator_top'] ) ? $options['separator_top'] : true;
 		$separator_bottom = isset( $options['separator_bottom'] ) ? $options['separator_bottom'] : true;
 
-		// Mobile compact mode (v2.5.0). Off by default: the pre-2.5.0 render.
-		$compact_mode    = isset( $options['mobile_compact'] ) ? $options['mobile_compact'] : 'disabled';
+		/*
+		 * Mobile compact mode (v2.5.0). "A few and More" with three is the
+		 * default since 2.8.0, as on the settings screen; until then a missing
+		 * key rendered every button, and the 2.8.0 migration writes that for
+		 * the sites that never saved it, so none of them changes.
+		 */
+		$compact_mode    = isset( $options['mobile_compact'] ) ? $options['mobile_compact'] : 'partial';
 		$compact_visible = isset( $options['mobile_compact_visible'] ) ? (int) $options['mobile_compact_visible'] : 3;
 		$compact_visible = max( 1, min( 5, $compact_visible ) );
 		if ( ! in_array( $compact_mode, array( 'single', 'partial' ), true ) ) {
@@ -94,9 +103,13 @@ class AyudaWP_AISS_Buttons {
 			$social_section_title = $options['_sc_social_title'];
 		}
 
-		// Custom colors (v1.6.0).
-		$custom_bg   = isset( $options['custom_color_bg'] ) ? $options['custom_color_bg'] : '';
-		$custom_text = isset( $options['custom_color_text'] ) ? $options['custom_color_text'] : '';
+		/*
+		 * Which of them the content shows (v2.8.0): all the available ones, or
+		 * the ones chosen. A shortcode that names its buttons gets those.
+		 */
+		if ( empty( $options['_sc_explicit_buttons'] ) ) {
+			$enabled_buttons = ayudawp_aiss_get_content_buttons( $enabled_buttons, $options );
+		}
 
 		$enabled_buttons = ayudawp_aiss_remove_unavailable_buttons( self::ayudawp_order_buttons( $enabled_buttons, $button_order, $options ) );
 
@@ -149,22 +162,8 @@ class AyudaWP_AISS_Buttons {
 			$container_classes[] = 'no-separator-bottom';
 		}
 
-		// Size class.
-		if ( 'normal' !== $button_size ) {
-			$container_classes[] = 'size-' . $button_size;
-		}
-
-		if ( 'icons-only' === $color_style ) {
-			$container_classes[] = 'icons-only';
-			$container_classes[] = $icon_style;
-			$show_icons = true;
-		} elseif ( 'minimal' !== $color_style ) {
-			$container_classes[] = $color_style;
-		}
-
-		if ( $show_icons && 'icons-only' !== $color_style ) {
-			$container_classes[] = 'with-icons';
-		}
+		// Size, content, colours and corners (v2.8.0), shared with the bar.
+		$container_classes = array_merge( $container_classes, ayudawp_aiss_get_look_classes( $look ) );
 
 		/*
 		 * Mobile compact mode (v2.5.0). Everything is decided here in PHP and
@@ -182,15 +181,8 @@ class AyudaWP_AISS_Buttons {
 		self::$uid++;
 		$block_id = 'ayudawp-aiss-share-' . self::$uid;
 
-		// Custom color inline style.
-		$custom_style = '';
-		if ( 'custom' === $color_style && ! empty( $custom_bg ) ) {
-			$custom_style = sprintf(
-				' style="--ayudawp-custom-bg:%s;--ayudawp-custom-text:%s;"',
-				esc_attr( $custom_bg ),
-				esc_attr( ! empty( $custom_text ) ? $custom_text : '#ffffff' )
-			);
-		}
+		// Custom color inline style, escaped where it is built.
+		$custom_style = ayudawp_aiss_get_custom_colors_attr( $look, $options );
 
 		/*
 		 * data-post-id (v2.5.0) so click tracking knows which post it is

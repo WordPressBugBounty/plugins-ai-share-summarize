@@ -1,9 +1,9 @@
-=== Share Buttons & AI-powered Summaries ===
+=== AI Summaries & Share Buttons ===
 Contributors: fernandot,ayudawp
 Tags: claude, chatgpt, social share, ai, perplexity
 Requires at least: 6.1
 Tested up to: 7.1
-Stable tag: 2.7.1
+Stable tag: 2.8.0
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -12,7 +12,7 @@ Inline AI summary on every post + one-click sharing to social networks and 11 AI
 
 == Description ==
 
-**Share Buttons & AI-powered Summaries** turns every post into an AI-aware destination. It generates an **inline AI summary** readers can expand next to the share buttons, and offers one-click sharing to every major social network and the leading AI assistants.
+**AI Summaries & Share Buttons** turns every post into an AI-aware destination. It generates an **inline AI summary** readers can expand next to the share buttons, and offers one-click sharing to every major social network and the leading AI assistants.
 
 Among the **first plugins to integrate the native WordPress 7.0 AI Connectors API**: configure your AI provider once in **Settings > Connectors** (OpenAI, Anthropic, Google) and the plugin reuses those credentials — no API keys to manage, no extra accounts.
 
@@ -54,9 +54,9 @@ Among the **first plugins to integrate the native WordPress 7.0 AI Connectors AP
 = Automatic installation =
 
 1. Go to Plugins > Add New in your WordPress admin
-2. Search for "Share Buttons & AI-powered Summaries"
+2. Search for "AI Summaries & Share Buttons"
 3. Click "Install Now" and then "Activate"
-4. Go to Settings > Share Buttons & AI-powered Summaries to configure
+4. Go to Settings > AI Summaries & Share Buttons to configure
 
 = Manual installation =
 
@@ -64,12 +64,12 @@ Among the **first plugins to integrate the native WordPress 7.0 AI Connectors AP
 2. Go to Plugins > Add New > Upload Plugin
 3. Select the ZIP file and click "Install Now"
 4. Activate the plugin
-5. Configure in Settings > Share Buttons & AI-powered Summaries
+5. Configure in Settings > AI Summaries & Share Buttons
 
 = Complete setup =
 
-1. **Go to Settings > Share Buttons & AI-powered Summaries**
-2. **Select enabled buttons**: Choose which social networks and AIs to display
+1. **Go to Settings > AI Summaries & Share Buttons**
+2. **Select the available buttons**: Choose which social networks and AIs your site offers
 3. **Configure automatic insertion**:
    - Choose position: Before content, after, both, or disabled (shortcode only)
    - Select content types: Posts, pages, products, or any Custom Post Type
@@ -79,21 +79,19 @@ Among the **first plugins to integrate the native WordPress 7.0 AI Connectors AP
 7. **Set section titles**: Optionally set separate titles for AI and Social groups
 8. **Configure X mentions**: Add your X (Twitter) handle for automatic mentions
 9. **Set Mastodon instance**: Enter your Mastodon server domain if using Mastodon
-10. **Choose visual style**: Minimal, brand colors, outline, dark, custom colors, or icons-only
-11. **Set button size**: Compact, normal, large, or fluid
-12. **Pick custom colors**: Use the color picker when "Custom colors" style is selected
-13. **Configure icons**: Enable icons for text styles or use pure icons-only mode
-14. **Set icon shape**: Choose circular or square corners for icons-only buttons
-15. **Set button order**: Social first, AI first, or mixed — drag & drop to reorder within each group
-16. **Configure SEO settings**: Choose between links with nofollow or button elements
-17. **Configure data retention**: Set retention period and optionally delete all data when plugin is uninstalled
-18. **Configure the AI Summary** in its own tab:
+10. **Choose the appearance**: What each button carries (text, icon and text, or icon only), its color (minimal, brand, outline, for dark backgrounds or custom), its corners (rounded, circular or square), its size and the dark backgrounds setting
+11. **Pick custom colors**: Use the color picker when "Custom colors" is selected
+12. **Set the buttons and their order**: All the available ones or the ones you choose, AI first, social first or mixed, and drag to reorder within each group
+13. **Set the floating bar**: Where it appears, and its buttons, how many in sight and its appearance, taken from the in-content buttons or its own
+14. **Configure SEO settings**: Choose between links with nofollow or button elements
+15. **Configure data retention**: Set retention period and optionally delete all data when plugin is uninstalled
+16. **Configure the AI Summary** in its own tab:
     - Choose the generation mode (AI with extractive fallback, AI only, extractive only, or disabled) and, optionally, the AI model
     - Choose position (before / after the buttons, before the content, or disabled)
     - Pick the post types where summaries should be generated (fully independent from the buttons' list)
     - Optionally enable the visitor-facing "Generate AI summary" button for posts without a stored summary
     - On WordPress 7.0+, configure your AI provider in **Settings > Connectors** (the plugin reuses those credentials — no API keys to manage here)
-19. **Save changes** (the Share Buttons and AI Summary tabs each save their own options)
+17. **Save changes** (the Share Buttons and AI Summary tabs each save their own options)
 
 **Manual insertion with shortcode:**
 - Share buttons: `[ayudawp_share_buttons]`
@@ -118,11 +116,11 @@ Among the **first plugins to integrate the native WordPress 7.0 AI Connectors AP
 
 = Is this plugin completely free? =
 
-Yes, Share Buttons & AI-powered Summaries is 100% free with all features included, including support for all social networks, AI platforms, and the full analytics dashboard with CSV export.
+Yes, AI Summaries & Share Buttons is 100% free with all features included, including support for all social networks, AI platforms, and the full analytics dashboard with CSV export.
 
 = How does the inline AI summary work? =
 
-When you publish or update a post, the plugin generates a short summary asynchronously (in a background WP-Cron event, to avoid blocking the editor save). The summary then appears inline next to the share buttons, inside a collapsible block. Visitors can expand it without leaving the page. You can disable the feature globally in **Settings > Share Buttons & AI-powered Summaries > AI Summary**, choose where the summary is placed (before/after the buttons, or before the content), and override or edit the text per post from the editor sidebar.
+When you publish or update a post, the plugin generates a short summary asynchronously (in a background WP-Cron event, to avoid blocking the editor save). The summary then appears inline next to the share buttons, inside a collapsible block. Visitors can expand it without leaving the page. You can disable the feature globally in **Settings > AI Summaries & Share Buttons > AI Summary**, choose where the summary is placed (before/after the buttons, or before the content), and override or edit the text per post from the editor sidebar.
 
 = Why does a short post have no summary? =
 
@@ -136,7 +134,7 @@ A post needs at least 50 words of text. Images, embeds, captions and tables do n
 
 = Can I add my own content or ads inside the summary box? =
 
-Yes, in **Settings > Share Buttons & AI-powered Summaries > AI Summary**, under Custom content inside the box.
+Yes, in **Settings > AI Summaries & Share Buttons > AI Summary**, under Custom content inside the box.
 
 * Anything fits: text, HTML or scripts, such as an ad, a newsletter form, a map or a notice.
 * It goes below the summary, on the post itself, and only loads when a reader opens the box.
@@ -167,7 +165,7 @@ Only when the WP AI Client integration is active. In that case, the post content
 
 = AI generation worked before, now everything falls back to "Basic summary". What changed? =
 
-If you have the canonical **AI** plugin from wordpress.org installed, go to **Tools > Connector Approvals** and make sure the toggle next to "Share Buttons & AI-powered Summaries" is enabled for your provider. That plugin's approval system intercepts outbound AI requests and silently blocks any plugin it hasn't approved yet. When this is the likely cause, the plugin's settings page surfaces a direct link to the approvals screen alongside the standard error message.
+If you have the canonical **AI** plugin from wordpress.org installed, go to **Tools > Connector Approvals** and make sure the toggle next to "AI Summaries & Share Buttons" is enabled for your provider. That plugin's approval system intercepts outbound AI requests and silently blocks any plugin it hasn't approved yet. When this is the likely cause, the plugin's settings page surfaces a direct link to the approvals screen alongside the standard error message.
 
 = How does the analytics dashboard work? =
 
@@ -179,7 +177,7 @@ In the Analytics tab, use the date filter to select the period you want, then cl
 
 = What is VigIA and how does the integration work? =
 
-[VigIA](https://wordpress.org/plugins/vigia/) is a free WordPress plugin by AyudaWP that monitors AI crawler visits to your site — tracking bots like GPTBot (ChatGPT), ClaudeBot, PerplexityBot and 50+ more. When VigIA is active alongside Share Buttons & AI-powered Summaries, the analytics dashboard shows an additional panel where you can cross-reference your share button clicks with AI crawler activity. This lets you see, for example, whether a spike in Claude clicks correlates with increased ClaudeBot crawling of that content. You can install VigIA directly from the plugin screen.
+[VigIA](https://wordpress.org/plugins/vigia/) is a free WordPress plugin by AyudaWP that monitors AI crawler visits to your site — tracking bots like GPTBot (ChatGPT), ClaudeBot, PerplexityBot and 50+ more. When VigIA is active alongside AI Summaries & Share Buttons, the analytics dashboard shows an additional panel where you can cross-reference your share button clicks with AI crawler activity. This lets you see, for example, whether a spike in Claude clicks correlates with increased ClaudeBot crawling of that content. You can install VigIA directly from the plugin screen.
 
 = Will it slow down my website? =
 
@@ -187,7 +185,7 @@ No. The plugin is ultra-optimized with a modular structure and lightweight SVG i
 
 = How do I hide buttons on specific pages? =
 
-Edit the post or page where you want to hide buttons, find the "Share Buttons & AI-powered Summaries" meta box in the sidebar, and check "Hide share buttons on this content". The AI summary has its own independent checkbox ("Hide AI summary on this content"), so you can hide either feature — or both — on any post. This works with both the classic editor and the block editor.
+Edit the post or page where you want to hide buttons, find the "AI Summaries & Share Buttons" meta box in the sidebar, and check "Hide share buttons on this content". The AI summary has its own independent checkbox ("Hide AI summary on this content"), so you can hide either feature — or both — on any post. This works with both the classic editor and the block editor.
 
 = Can I automatically hide buttons on noindex content? =
 
@@ -215,13 +213,12 @@ Since Mastodon is a federated network, the share link needs to point to your spe
 
 = Can I customize the visual appearance? =
 
-Yes, you can choose from 6 predefined styles:
-- **Minimal (default)**: Clean transparent design with borders
-- **Brand**: Each platform's characteristic colors
-- **Outline**: Brand-colored borders with transparent background, fills on hover
-- **Dark**: Optimized for dark backgrounds
-- **Custom colors**: Pick your own background and text colors with a color picker
-- **Icons-only**: Modern style showing only platform icons
+Yes. The appearance has one row per setting, the same for the in-content buttons and the floating bar:
+- **Button**: text only (default), icon and text, or icon only
+- **Color**: minimal (default), brand colors, outline, for dark backgrounds, or custom colors with a color picker
+- **Corners**: rounded (default), circular or square, for every button
+- **Size**: normal (default), compact, large or fluid
+- **Dark backgrounds**: off, or automatic
 
 = Can I change the button size? =
 
@@ -234,8 +231,8 @@ Yes, four sizes are available:
 = How do the icons work? =
 
 The icon system uses official brand SVG paths from Simple Icons where available, ensuring accurate and recognizable platform logos. Options include:
-- **Icons with text**: Add icons to the left of button text in any style
-- **Icons-only**: Show only icons in circular or square buttons
+- **Icon and text**: The icon to the left of the button text, in any color
+- **Icon only**: Square buttons with only the icon, in any color and with any corners
 - **Smart tooltips**: Platform names appear when hovering over any button
 - **Responsive**: Icons automatically adapt to screen size
 
@@ -266,7 +263,7 @@ Absolutely. You can select from all post types registered in your WordPress:
 
 = How do I customize the AI prompt? =
 
-In Settings > Share Buttons & AI-powered Summaries you'll find:
+In Settings > AI Summaries & Share Buttons you'll find:
 - **Default prompt**: Pre-optimized for best results with citation
 - **Custom text field**: Add personalized text to all AI prompts
 - **X handle**: Configure automatic mentions in social shares
@@ -300,7 +297,7 @@ LINE is extremely popular in Asian markets (Japan, Taiwan, Thailand). The plugin
 
 Google AI Mode has a default behavior of responding in English regardless of browser or site language. To get responses in your preferred language, add a custom instruction in the plugin settings.
 
-Go to Settings > Share Buttons & AI-powered Summaries > "Custom text in prompts" and add:
+Go to Settings > AI Summaries & Share Buttons > "Custom text in prompts" and add:
 `Deliver the response in Spanish` (or your preferred language)
 
 This instruction will be added to all AI prompts, ensuring responses match your language preference.
@@ -324,15 +321,28 @@ This approach is used because these platforms don't support URL parameters for p
 
 = What is the floating bar and how is it different from the inline buttons? =
 
-The inline block is inserted before or after the post content and scrolls away with it. The floating bar stays pinned to the viewport while the reader scrolls: on the left edge, the right edge or along the bottom, always as icons. It shows the same buttons you enabled, in the same order.
+The inline block is inserted before or after the post content and scrolls away with it. The floating bar stays pinned to the screen while the reader scrolls: on the left edge, the right edge or along the bottom, always as icons.
 
-You can use both at once, or only the bar: untick every destination under "Where the buttons appear" and turn the bar on with its own destinations. Three options control how intrusive it is: showing it only while the reader scrolls down, hiding it on phones (the default), and standing aside on pages where the inline block is already showing. On phones the side positions turn into a bottom strip, because a vertical column would eat the reading area.
+It is set up like the in-content buttons, with the same rows:
 
-Its CSS and JavaScript live in separate files that are only loaded on pages where the bar is shown, so a site with the bar off downloads nothing extra.
+* **Buttons and order**: as in the content (default), or its own buttons in its own order.
+* **In sight**: a few and a + button (four by default), a single Share button that opens them all, or all of them. The rest open in a panel beside the bar.
+* **Appearance**: as in the content (default), or its own color, corners, size and dark backgrounds setting.
+* **Preview**: a sample of the bar that follows every change before you save.
+
+You can use both at once, or only the bar. Three options control how intrusive it is: show it only while scrolling down, hide it on phones (the default), and stand aside where the inline block already shows. On phones the side positions turn into a bottom strip.
+
+Its CSS and JavaScript only load on pages where the bar is shown.
 
 = How does compact mode on phones work? =
 
-It reduces how much room the buttons take on a phone screen, and only there: the desktop layout is untouched. There are two shapes. "A single Share button" hides the whole block behind one button that opens it. "A few buttons plus a More button" keeps the first two to five visible (you choose how many) and puts the rest behind More. The visible ones are the first in the order you set by dragging the platforms in the settings, so put the ones that matter at the top of their group.
+It reduces how much room the buttons take on a phone screen, and only there: the desktop layout is untouched. It is the "In sight" row of the in-content buttons:
+
+* **A few and More** (default, with three): the first one to five stay in sight and the rest go behind More.
+* **A single Share button**: the whole block hides behind one button that opens it.
+* **All**: every button in sight.
+
+The ones in sight are the first in the order you set by dragging the platforms, so put the ones that matter at the top of their group.
 
 Everything is rendered by the server and only shown or hidden with CSS, so it works with page caching and the buttons are in the page for search engines either way.
 
@@ -444,27 +454,31 @@ The social and AI sharing buttons render as `<a>` / `<button>` elements that ope
 
 == Changelog ==
 
-= 2.7.1 =
-Fixes AI summaries that now and then came out in English on posts written in another language: the language is now named in the request itself. Analytics uses the full width, with the banner at the bottom.
+= 2.8.0 =
+New name: AI Summaries & Share Buttons. The Share Buttons tab is redone: available buttons, then in-content buttons and floating bar set up the same way, with previews. The bar can have its own buttons, order and look. Your site looks the same until you change it.
 
-* Improved: Analytics now uses the full width of the screen, with the AyudaWP services banner as a strip at the bottom instead of a side column, as in VigIA. The charts and the two tables have room again, and on a laptop screen the tables sit side by side. The Share Buttons and AI Summary tabs keep the banner in the side column.
-* Fix: Now and then an AI summary came out in English for a post written in another language. The only language rule was a single line in English asking the AI to match the post, in a request that is otherwise in English too. The language is now named in the instructions and again in the request: the language of the post when Polylang or WPML is active, and otherwise the language the post is written in, with the site language named as the usual one unless it is English (many sites that write in another language never change the default English setting). Quotes, names and technical terms in another language no longer count. Existing summaries are not regenerated: use Regenerate on any that came out in the wrong language. Developers can set the language per post with the `ayudawp_aiss_summary_locale` filter.
-
-= 2.7.0 =
-New space for your own content inside the summary box (an ad, a form, any script), loaded only when a reader opens it. Qwen now opens with the prompt already written, the editor warns when a post is too short for a summary, and button labels show as written.
-
-* New: Custom content inside the summary box, below the summary. Anything fits: text, HTML or scripts, such as an ad (AdSense, Google Ad Manager or any other), a newsletter form, a map or a notice. It can also be left empty for an ad server or Google Tag Manager to fill the space, the element with id `ayudawp-aiss-custom`. It only loads the first time a reader opens the box, so nothing is requested into a folded box, and opening it fires the `ayudawp_aiss_custom_visible` event, also pushed to the dataLayer, so a tag can wait for it. Scripts that queue their work, like AdSense, Google Ad Manager or Tag Manager, work this way; scripts that rely on document.write do not. It shows only on the post's own page, never in listings or feeds, and stays out of Google snippets with the rest of the box. Optional label above it, Advertisement unless you write your own, and optional minimum and maximum heights. Only users who can publish unfiltered HTML can change the content: on a network, the super admin, not the administrator of each site, who sees it read-only. Developers can remove or change it per post with the `ayudawp_aiss_summary_custom_html` filter.
-* Improved: Qwen now opens with the prompt already written, instead of copying it to the clipboard for you to paste. Checked platform by platform in October 2026: Gemini, DeepSeek and Copilot still offer no way to pre-fill the prompt from the address, so those three keep copying it.
-* Improved: The block editor panel and the classic box now say when a post is too short for an automatic summary. Since 2.6.0 such a post shows no automatic summary on the site, but the editor kept showing the stored one, and you only found out when Regenerate failed. The notice also says that a summary you write by hand is shown.
-* Fix: Button labels showed every word capitalized, such as Copiar Enlace or Fuente Preferida De Google, on the site and in the settings preview. They now show as written.
-* Fix: On a laptop screen, Analytics put its two tables side by side in too little room, so post titles broke into several lines and column headers were cut off. They now sit side by side only when the content column has room for both, and the click columns take just the width they need.
+* New: The plugin is now called AI Summaries & Share Buttons. The settings menu, the settings page, the editor panel and box, the dashboard widget and the analytics CSV files use the new name. The slug, the settings and the data do not change. In other languages the new name shows in English until its translation is updated.
+* New: The Share Buttons tab is organized in three parts. Available buttons is the catalog of the site, as narrow chips. In-content buttons and Floating bar have the same six rows in the same order (where, buttons and order, in sight, appearance, what only that place has, and a preview), with the same controls and the same words. What you tick in the catalog shows up at once in the order lists of both sections, before saving.
+* New: Live preview of the buttons block, as the last row of In-content buttons. The server draws the real block from the settings as they are before you save, in a desktop or a phone frame, where the compact mode works as on the site, with an optional dark background. Nothing runs inside the frame, and when the session has expired it says so instead of failing.
+* New: The in-content buttons can show all the available buttons, as until now, or only the ones you choose. Either way they are ordered by dragging within each group.
+* New: The appearance has one row per setting, shared by both places: Button (text only, icon and text, or icon only), Color (minimal, brand colors, outline, for dark backgrounds or custom colors), Corners (rounded, circular or square), Size and Dark backgrounds. Icons only is now a choice of Button, so icon buttons can take any color, and the corners apply to every button.
+* New: The floating bar takes its buttons, their order and its appearance from the in-content buttons by default, or has its own: tick and order its buttons, and pick its color, corners, size and dark backgrounds setting. It is always icons.
+* New: The floating bar keeps a few buttons in sight (four by default) with the rest behind a + button that opens them in a panel beside the bar, can show a single Share button that opens them all, or can show all of them. When only one would be left over, it is shown. The native share button only counts as in sight where the browser can show it. On phones the panel opens above the strip. It closes with Escape or a click outside, and works without JavaScript.
+* New: Sites that update see the same buttons as before. Icons only becomes Icon only in brand colors with the corners it had, a floating bar that was already on keeps every button in sight in brand colors, and a site that never saved the compact mode keeps every button in sight on phones. Going back to 2.7.1 right after updating, before saving the settings, shows them the same too. Checked by comparing what 2.7.1 and 2.8.0 draw, button by button.
+* New: For developers, the `ayudawp_aiss_floating_bar_buttons` filter now receives the bar's buttons (the in-content list, or the bar's own) instead of every enabled one, and what it returns is split between the ones in sight and the panel.
+* Improved: CSS classes change for themes and custom CSS. The brand colors of icon buttons now come from `.brand`, as for any other button, and `.icons-only` only gives them their shape and size. The corners are `.corners-circle` and `.corners-square`, for every button, instead of `.circular` and `.square` next to `.icons-only`. CSS that targets those classes may need updating. The shortcode still accepts `style="icons-only"`, `show_icons` and `icon_style`.
+* Improved: The compact mode on phones of new installs is now a few buttons and More, with three in sight. Until now it was a single Share button. Sites that saved it keep theirs.
+* Fix: On phones, a centered block in the Icons only style with the compact mode set to a single Share button showed every button and the Share button at once. It now shows only the Share button until it is opened.
+* Fix: Updating the plugin while it was deactivated and then activating it skipped the settings migrations, because activation wrote the new version over the old one. Now activation only writes the version on a new install, and a site that already has settings is migrated on the next page load.
+* Fix: With the compact mode set to a few buttons and More, the native share button counted among the ones in sight even where the browser hides it, so one fewer showed on phones. The next one now takes its place, and More goes away when nothing is left behind it.
+* Fix: Saving the settings from code, or from a form without some of its sections, emptied where the buttons appear, turned the floating bar options off and reset the button style. What does not arrive in a save is now kept.
 
 For older changelog entries, please check the [changelog.txt](https://plugins.svn.wordpress.org/ai-share-summarize/trunk/changelog.txt) file
 
 == Upgrade Notice ==
 
-= 2.7.1 =
-Fixes AI summaries that now and then came out in English on posts written in another language: the language is now named in the request itself. Analytics uses the full width, with the banner at the bottom.
+= 2.8.0 =
+New name: AI Summaries & Share Buttons. The Share Buttons tab is redone: available buttons, then in-content buttons and floating bar set up the same way, with previews. The bar can have its own buttons, order and look. Your site looks the same until you change it.
 
 == Advanced Usage ==
 

@@ -1,6 +1,6 @@
 <?php
 /**
- * Admin functionality for Share Buttons & AI-powered Summaries plugin
+ * Admin functionality for AI Summaries & Share Buttons plugin
  *
  * @package AiShareSummarize
  * @since 1.2.0
@@ -28,6 +28,7 @@ class AyudaWP_AISS_Admin {
 		add_filter( 'plugin_action_links_' . AYUDAWP_AISS_PLUGIN_BASENAME, array( $this, 'ayudawp_add_settings_link' ) );
 		add_action( 'wp_ajax_ayudawp_aiss_delete_all_data', array( $this, 'ayudawp_ajax_delete_all_data' ) );
 		add_action( 'wp_ajax_ayudawp_aiss_dismiss_ai_error', array( $this, 'ayudawp_ajax_dismiss_ai_error' ) );
+		add_action( 'wp_ajax_ayudawp_aiss_block_preview', array( $this, 'ayudawp_ajax_block_preview' ) );
 	}
 
 	/**
@@ -68,11 +69,21 @@ class AyudaWP_AISS_Admin {
 			AYUDAWP_AISS_VERSION
 		);
 
+		// The bar's own look and its "More" panel (v2.8.0), for the preview in
+		// its section. Its placement rules need .ayudawp-aiss-floating, which
+		// the preview does not carry, so nothing here gets pinned to the screen.
+		wp_enqueue_style(
+			'ayudawp-aiss-floating-bar',
+			AYUDAWP_AISS_PLUGIN_URL . 'assets/css/floating-bar.css',
+			array( 'ayudawp-aiss-styles' ),
+			AYUDAWP_AISS_VERSION
+		);
+
 		// Admin CSS.
 		wp_enqueue_style(
 			'aiss-admin-styles',
 			AYUDAWP_AISS_PLUGIN_URL . 'assets/css/admin-styles.css',
-			array( 'ayudawp-aiss-styles' ),
+			array( 'ayudawp-aiss-styles', 'ayudawp-aiss-floating-bar' ),
 			AYUDAWP_AISS_VERSION
 		);
 
@@ -220,7 +231,32 @@ class AyudaWP_AISS_Admin {
 				'postsForButton'   => __( 'Posts it was clicked from', 'ai-share-summarize' ),
 				'topPostsOnly'     => __( 'Only the 20 posts with the most clicks are listed. The CSV export has all of them.', 'ai-share-summarize' ),
 				'loadError'        => __( 'Could not load the data. Please try again.', 'ai-share-summarize' ),
+				/* Floating bar preview (v2.8.0) */
+				/* translators: %1$s = buttons in sight, %2$s = buttons in the bar */
+				'barVisible'       => __( 'In sight: %1$s of %2$s', 'ai-share-summarize' ),
+				/* translators: %s = buttons inside the panel that the bar opens */
+				'barMore'          => __( 'in the panel: %s', 'ai-share-summarize' ),
+				/* translators: %s = height of the bar in pixels */
+				'barTall'          => __( '%s px tall', 'ai-share-summarize' ),
+				/* translators: %s = width of the bar in pixels */
+				'barWide'          => __( '%s px wide', 'ai-share-summarize' ),
+				'barNone'          => __( 'No buttons: the bar will not show.', 'ai-share-summarize' ),
+				/* translators: %d = number of buttons inside the panel */
+				'barMoreLabel'     => __( 'More (%d)', 'ai-share-summarize' ),
+				/* translators: %d = number of buttons inside the panel */
+				'barShareLabel'    => __( 'Share (%d)', 'ai-share-summarize' ),
+				/* Block preview (v2.8.0). Same strings as the front-end toggle. */
+				'compactLess'      => __( 'Less', 'ai-share-summarize' ),
+				'compactClose'     => __( 'Close', 'ai-share-summarize' ),
+				'blockUpdating'    => __( 'Updating…', 'ai-share-summarize' ),
+				'blockError'       => __( 'Could not update the preview.', 'ai-share-summarize' ),
+				'blockExpired'     => __( 'The session has expired. Reload the page to update the preview.', 'ai-share-summarize' ),
+				'blockEmpty'       => __( 'No buttons to show: the block will not appear.', 'ai-share-summarize' ),
 			),
+			// Block preview (v2.8.0): the request that draws it, and the
+			// front-end stylesheet its frame loads.
+			'blockPreviewNonce' => wp_create_nonce( 'aiss_block_preview' ),
+			'frontCss'          => esc_url_raw( add_query_arg( 'ver', AYUDAWP_AISS_VERSION, AYUDAWP_AISS_PLUGIN_URL . 'assets/css/ai-share-summarize.css' ) ),
 		) );
 
 		// Inline script for activation notice dismissal.
@@ -279,7 +315,7 @@ class AyudaWP_AISS_Admin {
 			?>
 			<div class="notice notice-success is-dismissible" data-notice="ayudawp-aiss-activation">
 				<p>
-					<strong><?php esc_html_e( 'Share Buttons & AI-powered Summaries is active!', 'ai-share-summarize' ); ?></strong>
+					<strong><?php esc_html_e( 'AI Summaries & Share Buttons is active!', 'ai-share-summarize' ); ?></strong>
 					<?php esc_html_e( 'You can now start getting traffic from the main social networks and artificial intelligences!', 'ai-share-summarize' ); ?>
 					<a href="<?php echo esc_url( admin_url( 'options-general.php?page=ai-share-summarize' ) ); ?>" class="button button-primary" style="margin-left: 10px;">
 						<?php esc_html_e( 'Go to settings page', 'ai-share-summarize' ); ?>
@@ -319,8 +355,8 @@ class AyudaWP_AISS_Admin {
 	 */
 	public function ayudawp_add_admin_menu() {
 		add_options_page(
-			esc_html__( 'Share Buttons & AI-powered Summaries', 'ai-share-summarize' ),
-			esc_html__( 'Share Buttons & AI-powered Summaries', 'ai-share-summarize' ),
+			esc_html__( 'AI Summaries & Share Buttons', 'ai-share-summarize' ),
+			esc_html__( 'AI Summaries & Share Buttons', 'ai-share-summarize' ),
 			'manage_options',
 			'ai-share-summarize',
 			array( $this, 'ayudawp_admin_page' )
@@ -339,39 +375,39 @@ class AyudaWP_AISS_Admin {
 		register_setting( 'ayudawp_aiss_summary_settings', 'ayudawp_aiss_summary_options', 'ayudawp_aiss_validate_summary_options' );
 
 		/*
-		 * Six sections on one page instead of one flat list of 25 rows
-		 * (v2.5.0). do_settings_sections() paints them in registration order
-		 * with a heading each, and they all post to the same option, so there
-		 * is still a single Save button. The grouping puts related settings
-		 * next to each other: until now "Enabled buttons" was row 2 and
-		 * "Buttons order" row 14, with twelve unrelated rows between two halves
-		 * of the same decision.
+		 * The buttons tab since 2.8.0: the catalog, then the two places where
+		 * buttons appear, set up the same way. "In-content buttons" and
+		 * "Floating bar" have the same six rows in the same order (where, which
+		 * buttons and their order, how many in sight, appearance, what only that
+		 * place has, and a preview), with the same controls and the same words.
+		 * Until 2.7.x the bar was added on with its own words and controls, and
+		 * the screen read like two plugins mixed together. They all post to the
+		 * same option, so there is still a single Save button.
 		 */
 		add_settings_section(
+			'ayudawp_aiss_main',
+			esc_html__( 'Available buttons', 'ai-share-summarize' ),
+			array( $this, 'ayudawp_catalog_section_callback' ),
+			'ayudawp_aiss_settings'
+		);
+
+		add_settings_section(
 			'ayudawp_aiss_placement',
-			esc_html__( 'Where they appear', 'ai-share-summarize' ),
+			esc_html__( 'In-content buttons', 'ai-share-summarize' ),
 			array( $this, 'ayudawp_section_callback' ),
 			'ayudawp_aiss_settings'
 		);
 
-		/*
-		 * Buttons after placement, and with the look settings inside it: the
-		 * picker is a live preview of the style, so the style controls have to
-		 * be within sight of it. Split into two sections the preview scrolled
-		 * off screen exactly when it was useful.
-		 */
 		add_settings_section(
-			'ayudawp_aiss_main',
-			esc_html__( 'The buttons', 'ai-share-summarize' ),
-			'__return_false',
-			'ayudawp_aiss_settings'
-		);
-
-		add_settings_section(
-			'ayudawp_aiss_texts',
-			esc_html__( 'Wording', 'ai-share-summarize' ),
-			'__return_false',
-			'ayudawp_aiss_settings'
+			'ayudawp_aiss_floating',
+			esc_html__( 'Floating bar', 'ai-share-summarize' ),
+			array( $this, 'ayudawp_floating_section_callback' ),
+			'ayudawp_aiss_settings',
+			array(
+				'before_section' => '<div class="%s">',
+				'after_section'  => '</div>',
+				'section_class'  => 'aiss-bar-section',
+			)
 		);
 
 		add_settings_section(
@@ -436,20 +472,34 @@ class AyudaWP_AISS_Admin {
 	 * Register settings fields
 	 */
 	private function ayudawp_register_settings_fields() {
-		// field id => [ label, section ].
+		// field id => [ label, section, optional row class ].
+		/*
+		 * The two places where buttons appear get the same six rows, in the
+		 * same order (v2.8.0). The label of "In sight" carries where it applies,
+		 * which is what tells the two apart: phones only in the content,
+		 * always in the bar.
+		 */
+		$on_phones = esc_html__( 'In sight', 'ai-share-summarize' ) . ' <span class="aiss-scope">' . esc_html__( 'On phones', 'ai-share-summarize' ) . '</span>';
+		$always    = esc_html__( 'In sight', 'ai-share-summarize' ) . ' <span class="aiss-scope">' . esc_html__( 'Always', 'ai-share-summarize' ) . '</span>';
+
 		$fields = array(
-			'placements'      => array( esc_html__( 'Where the buttons appear', 'ai-share-summarize' ), 'ayudawp_aiss_placement' ),
-			'floating_bar'    => array( esc_html__( 'Floating bar', 'ai-share-summarize' ), 'ayudawp_aiss_placement' ),
-			'mobile_compact'  => array( esc_html__( 'Compact mode on phones', 'ai-share-summarize' ), 'ayudawp_aiss_placement' ),
+			'enabled_buttons' => array( esc_html__( 'Available buttons', 'ai-share-summarize' ), 'ayudawp_aiss_main' ),
 
-			'enabled_buttons' => array( esc_html__( 'Enabled buttons', 'ai-share-summarize' ), 'ayudawp_aiss_main' ),
-			'button_colors'   => array( esc_html__( 'Style and icons', 'ai-share-summarize' ), 'ayudawp_aiss_main' ),
-			'button_size'     => array( esc_html__( 'Size and dark mode', 'ai-share-summarize' ), 'ayudawp_aiss_main' ),
-			'layout'          => array( esc_html__( 'Alignment and separators', 'ai-share-summarize' ), 'ayudawp_aiss_main' ),
-			'button_order'    => array( esc_html__( 'Order within each group', 'ai-share-summarize' ), 'ayudawp_aiss_main' ),
+			'placements'      => array( esc_html__( 'Where they appear', 'ai-share-summarize' ), 'ayudawp_aiss_placement' ),
+			'content_buttons' => array( esc_html__( 'Buttons and order', 'ai-share-summarize' ), 'ayudawp_aiss_placement' ),
+			'mobile_compact'  => array( $on_phones, 'ayudawp_aiss_placement' ),
+			'content_look'    => array( esc_html__( 'Appearance', 'ai-share-summarize' ), 'ayudawp_aiss_placement' ),
+			'layout'          => array( esc_html__( 'Layout', 'ai-share-summarize' ), 'ayudawp_aiss_placement' ),
+			'content_preview' => array( esc_html__( 'Preview', 'ai-share-summarize' ), 'ayudawp_aiss_placement', 'aiss-preview-row' ),
 
-			'title'           => array( esc_html__( 'Title above the buttons', 'ai-share-summarize' ), 'ayudawp_aiss_texts' ),
-			'section_titles'  => array( esc_html__( 'Section titles', 'ai-share-summarize' ), 'ayudawp_aiss_texts' ),
+			// Every row but the first folds away while the bar is off, so a
+			// site without it sees one table.
+			'floating_bar'          => array( esc_html__( 'Where it appears', 'ai-share-summarize' ), 'ayudawp_aiss_floating' ),
+			'floating_bar_buttons'  => array( esc_html__( 'Buttons and order', 'ai-share-summarize' ), 'ayudawp_aiss_floating', 'aiss-bar-extra' ),
+			'floating_bar_compact'  => array( $always, 'ayudawp_aiss_floating', 'aiss-bar-extra' ),
+			'floating_bar_look'     => array( esc_html__( 'Appearance', 'ai-share-summarize' ), 'ayudawp_aiss_floating', 'aiss-bar-extra' ),
+			'floating_bar_behavior' => array( esc_html__( 'Behavior', 'ai-share-summarize' ), 'ayudawp_aiss_floating', 'aiss-bar-extra' ),
+			'floating_bar_preview'  => array( esc_html__( 'Preview', 'ai-share-summarize' ), 'ayudawp_aiss_floating', 'aiss-bar-extra aiss-preview-row' ),
 
 			'prompt'          => array( esc_html__( 'Prompt sent with every AI button', 'ai-share-summarize' ), 'ayudawp_aiss_prompt' ),
 
@@ -465,7 +515,8 @@ class AyudaWP_AISS_Admin {
 				$field[0],
 				array( $this, 'ayudawp_' . $field_id . '_callback' ),
 				'ayudawp_aiss_settings',
-				$field[1]
+				$field[1],
+				isset( $field[2] ) ? array( 'class' => $field[2] ) : array()
 			);
 		}
 
@@ -505,7 +556,7 @@ class AyudaWP_AISS_Admin {
 		// Dynamic page title based on active tab. The buttons tab keeps the
 		// legacy 'settings' slug so bookmarked/external links don't break;
 		// only its visible label says "Share Buttons".
-		$page_title = 'Share Buttons & AI-powered Summaries';
+		$page_title = 'AI Summaries & Share Buttons';
 		if ( 'analytics' === $active_tab ) {
 			$page_title .= ' — ' . esc_html__( 'Analytics', 'ai-share-summarize' );
 		} elseif ( 'ai-summary' === $active_tab ) {
@@ -609,142 +660,125 @@ class AyudaWP_AISS_Admin {
 		<?php
 	}
 
+	// ==========================================
+	// Buttons tab (redefined in v2.8.0)
+	// ==========================================
+
 	/**
-	 * Main section callback
+	 * "Available buttons" section: what it is for (v2.8.0)
+	 */
+	public function ayudawp_catalog_section_callback() {
+		echo '<p>' . esc_html__( 'The ones your site offers. The two sections below pick from here.', 'ai-share-summarize' ) . '</p>';
+	}
+
+	/**
+	 * "In-content buttons" section: where they go, the shortcode included (v2.8.0)
 	 */
 	public function ayudawp_section_callback() {
 		/* translators: Plugin page URL. Change wordpress.org to your locale if needed (e.g., es.wordpress.org) */
 		$plugin_url = __( 'https://wordpress.org/plugins/ai-share-summarize/', 'ai-share-summarize' );
 
-		echo '<p>' . esc_html__( 'Configure how and where to display the share buttons. The inline AI summary has its own tab: AI Summary.', 'ai-share-summarize' );
+		echo '<p>' . sprintf(
+			/* translators: %s is the shortcode. */
+			esc_html__( 'Before or after the text of each post, and wherever you place the %s shortcode.', 'ai-share-summarize' ),
+			'<code>[ayudawp_share_buttons]</code>'
+		);
 		echo ' <span class="ayudawp-info-link">(' . esc_html__( 'You can also customize display using shortcodes as described in the', 'ai-share-summarize' ) . ' <a href="' . esc_url( $plugin_url ) . '" target="_blank" rel="noopener">' . esc_html__( 'plugin page', 'ai-share-summarize' ) . '</a>)</span>';
 		echo '</p>';
 	}
 
-	// ==========================================
-	// Settings field callbacks
-	// ==========================================
+	/**
+	 * A button as a small chip: its colour dot with the icon, and its name (v2.8.0)
+	 *
+	 * No style of its own: the catalog and the order lists are lists of
+	 * buttons, not samples, and the preview at the end of each section is where
+	 * the look shows. Until 2.7.x each one drew the real button in the block's
+	 * style, so the catalog changed size and colour with every style choice.
+	 *
+	 * @param string $key   Button key.
+	 * @param string $label Button name.
+	 * @param int    $size  Icon size in pixels.
+	 */
+	private function ayudawp_render_chip_face( $key, $label, $size = 12 ) {
+		$colors = ayudawp_aiss_get_platform_colors();
+		$color  = isset( $colors[ $key ] ) ? $colors[ $key ] : '#50575e';
 
+		echo '<span class="aiss-chip-dot" style="--aiss-chip:' . esc_attr( $color ) . '" aria-hidden="true">'
+			. wp_kses( AyudaWP_AISS_Icons::ayudawp_get_button_icon( $key, $size ), ayudawp_aiss_kses_svg() ) . '</span>';
+		echo '<span class="aiss-chip-name">' . esc_html( $label ) . '</span>';
+	}
 
 	/**
-	 * Enabled buttons field
+	 * Available buttons: the site's catalog (v2.8.0)
+	 *
+	 * Narrow chips grouped by kind, with two short notes below for the buttons
+	 * that behave unlike the rest. What is ticked here shows up at once in the
+	 * order lists of both sections, before saving.
 	 */
 	public function ayudawp_enabled_buttons_callback() {
 		$options = get_option( 'ayudawp_aiss_options' );
-		$enabled = isset( $options['enabled_buttons'] ) ? $options['enabled_buttons'] : array();
-
-		if ( ! is_array( $enabled ) ) {
-			$enabled = array();
-		}
-
-		$buttons     = ayudawp_aiss_get_available_buttons();
-		$social_keys = ayudawp_aiss_get_social_buttons();
-		$ai_keys     = ayudawp_aiss_get_ai_buttons();
-		$actions     = ayudawp_aiss_get_action_buttons();
-
-		/*
-		 * The picker renders each option as the real button (v2.5.0): same
-		 * markup, same classes, same stylesheet, so what the admin ticks is
-		 * what the visitor sees. It replaces the row of bare SVG glyphs, which
-		 * showed the icon but nothing about size, colour or shape.
-		 */
-		$style       = isset( $options['button_colors'] ) ? $options['button_colors'] : 'minimal';
-		$icon_style  = isset( $options['icon_style'] ) ? $options['icon_style'] : 'circular';
-		$custom_bg   = isset( $options['custom_color_bg'] ) ? $options['custom_color_bg'] : '';
-		$custom_text = isset( $options['custom_color_text'] ) ? $options['custom_color_text'] : '';
-
-		$wrapper_classes = array( 'ayudawp-share-buttons', 'aiss-picker-preview' );
-		if ( 'icons-only' === $style ) {
-			$wrapper_classes[] = 'icons-only';
-			$wrapper_classes[] = $icon_style;
-		} elseif ( 'minimal' !== $style ) {
-			$wrapper_classes[] = $style;
-		}
-		$wrapper_classes[] = 'with-icons';
-
+		$enabled = isset( $options['enabled_buttons'] ) && is_array( $options['enabled_buttons'] ) ? $options['enabled_buttons'] : array();
+		$buttons = ayudawp_aiss_get_available_buttons();
+		$actions = ayudawp_aiss_get_action_buttons();
+		$google  = array( 'google_preferred' );
 
 		$groups = array(
-			'social'  => array(
-				'label' => esc_html__( 'Social networks', 'ai-share-summarize' ),
-				'keys'  => $social_keys,
+			array(
+				'label' => __( 'Social networks', 'ai-share-summarize' ),
+				'keys'  => array_values( array_diff( ayudawp_aiss_get_social_buttons(), $actions, $google ) ),
 			),
-			'ai'      => array(
-				'label' => esc_html__( 'AI assistants', 'ai-share-summarize' ),
-				'keys'  => $ai_keys,
+			array(
+				'label' => __( 'AI assistants', 'ai-share-summarize' ),
+				'keys'  => ayudawp_aiss_get_ai_buttons(),
+			),
+			array(
+				'label' => __( 'Browser actions', 'ai-share-summarize' ),
+				'keys'  => $actions,
+			),
+			array(
+				'label' => __( 'Google', 'ai-share-summarize' ),
+				'keys'  => $google,
 			),
 		);
 
-		// Browser actions are listed apart: they do not open a destination. So
-		// is the Google preferred source button (v2.6.0), which is not a share.
-		$google                   = array( 'google_preferred' );
-		$groups['social']['keys'] = array_values( array_diff( $groups['social']['keys'], $actions, $google ) );
-
-		echo '<div class="' . esc_attr( implode( ' ', $wrapper_classes ) ) . '"';
-
-		// Escaped at the point of output rather than built into a variable and
-		// echoed: a pre-composed attribute string reads as unescaped output to
-		// the security sniff, and it is right to insist.
-		if ( 'custom' === $style && ! empty( $custom_bg ) ) {
-			printf(
-				' style="--ayudawp-custom-bg:%s;--ayudawp-custom-text:%s;"',
-				esc_attr( $custom_bg ),
-				esc_attr( ! empty( $custom_text ) ? $custom_text : '#ffffff' )
-			);
-		}
-
-		echo '>';
-
+		echo '<div class="aiss-catalog">';
 		foreach ( $groups as $group ) {
-			echo '<p class="aiss-picker-group-title">' . esc_html( $group['label'] ) . '</p>';
-			echo '<div class="aiss-picker-grid">';
+			echo '<div class="aiss-catalog-group"><p class="aiss-catalog-title">' . esc_html( $group['label'] ) . '</p><div class="aiss-chips">';
 			foreach ( $group['keys'] as $key ) {
 				if ( ! isset( $buttons[ $key ] ) ) {
 					continue;
 				}
-				$this->ayudawp_render_button_choice( $key, $buttons[ $key ], $enabled, $style );
+				echo '<label class="aiss-chip" data-key="' . esc_attr( $key ) . '">';
+				echo '<input type="checkbox" name="ayudawp_aiss_options[enabled_buttons][]" value="' . esc_attr( $key ) . '" '
+					. checked( in_array( $key, $enabled, true ), true, false ) . '>';
+				$this->ayudawp_render_chip_face( $key, $buttons[ $key ] );
+				echo '</label>';
 			}
-			echo '</div>';
-		}
-
-		echo '<p class="aiss-picker-group-title">' . esc_html__( 'Browser actions', 'ai-share-summarize' ) . '</p>';
-		echo '<div class="aiss-picker-grid">';
-		foreach ( $actions as $key ) {
-			if ( ! isset( $buttons[ $key ] ) ) {
-				continue;
-			}
-			$this->ayudawp_render_button_choice( $key, $buttons[ $key ], $enabled, $style );
+			echo '</div></div>';
 		}
 		echo '</div>';
 
-		echo '<p class="aiss-picker-group-title">' . esc_html__( 'Google', 'ai-share-summarize' ) . '</p>';
-		echo '<div class="aiss-picker-grid">';
-		foreach ( $google as $key ) {
-			if ( ! isset( $buttons[ $key ] ) ) {
-				continue;
-			}
-			$this->ayudawp_render_button_choice( $key, $buttons[ $key ], $enabled, $style );
-		}
-		echo '</div>';
+		/*
+		 * The two buttons that behave unlike the rest get one line each, side
+		 * by side, as plain descriptions. Until 2.7.x they were blue notice
+		 * boxes of a paragraph each.
+		 */
+		echo '<div class="aiss-catalog-notes">';
 
-		echo '</div>';
+		echo '<p class="description aiss-note">';
+		$this->ayudawp_render_note_dot( 'web_share' );
+		echo '<span><strong>' . esc_html__( 'Native share', 'ai-share-summarize' ) . '</strong> '
+			. esc_html__( 'opens the share menu of the device. It only shows over HTTPS and in browsers that support it; where it cannot, it copies the link.', 'ai-share-summarize' )
+			. '</span></p>';
 
-		echo '<p class="description">' . esc_html__( 'Select which buttons to display on the frontend. Each one is shown here with the style you have chosen below.', 'ai-share-summarize' ) . '</p>';
-
-		// The native share button behaves unlike every other one, so it gets
-		// its own note right where it is ticked (v2.5.0).
-		echo '<p class="description aiss-picker-note"><span class="dashicons dashicons-info-outline"></span> '
-			. '<strong>' . esc_html__( 'Native share', 'ai-share-summarize' ) . '</strong>: '
-			. esc_html__( 'this one has no destination of its own. It opens the share sheet of the visitor device, the same one a mobile app uses, which reaches WhatsApp, Signal, Instagram, Messages, AirDrop or whatever they have installed, without a button for each. It only appears where the browser supports it and the site is served over HTTPS, so it stays hidden on a local http install and on desktop Firefox. Where it cannot run, clicking it copies the link instead.', 'ai-share-summarize' )
-			. '</p>';
-
-		// What the Google button does, and why it would not show (v2.6.0).
-		echo '<p class="description aiss-picker-note"><span class="dashicons dashicons-info-outline"></span> '
-			. '<strong>' . esc_html__( 'Google preferred source', 'ai-share-summarize' ) . '</strong>: '
-			. esc_html__( 'opens the Google tool where readers mark your site as a preferred source, so it shows up more in their Top Stories. It is a plain link: nothing loads from Google until someone clicks it. Clicks are counted in Analytics like any other button.', 'ai-share-summarize' );
+		echo '<p class="description aiss-note">';
+		$this->ayudawp_render_note_dot( 'google_preferred' );
+		echo '<span><strong>' . esc_html__( 'Google preferred source', 'ai-share-summarize' ) . '</strong> '
+			. esc_html__( 'takes readers to the Google tool that marks your site as a preferred source.', 'ai-share-summarize' ) . ' ';
 
 		$google_domain = ayudawp_aiss_get_google_preferred_domain();
 		if ( '' === $google_domain ) {
-			echo ' <strong>' . esc_html__( 'This site cannot use it, so it will not be shown:', 'ai-share-summarize' ) . '</strong> ';
+			echo '<strong>' . esc_html__( 'This site cannot use it, so it will not be shown:', 'ai-share-summarize' ) . '</strong> ';
 			$home_path = wp_parse_url( home_url(), PHP_URL_PATH );
 			if ( (int) get_option( 'blog_public', 1 ) < 1 ) {
 				echo esc_html__( 'the site asks search engines not to index it (Settings > Reading).', 'ai-share-summarize' );
@@ -755,72 +789,677 @@ class AyudaWP_AISS_Admin {
 			}
 		} else {
 			/* translators: %s is the domain sent to Google, e.g. example.com */
-			echo ' ' . esc_html( sprintf( __( 'Domain sent to Google: %s', 'ai-share-summarize' ), $google_domain ) );
+			echo esc_html( sprintf( __( 'Domain: %s', 'ai-share-summarize' ), $google_domain ) );
 		}
-		echo '</p>';
+		echo '</span></p>';
 
-		// Where it goes (v2.6.0): with the social networks, in a section of
-		// its own at the end of the block, or only where a shortcode asks.
-		$google_place = ayudawp_aiss_get_google_preferred_placement( $options );
-		$google_title = isset( $options['google_section_title'] ) ? (string) $options['google_section_title'] : '';
-		$google_opts  = array(
+		echo '</div>';
+	}
+
+	/**
+	 * The small icon of a button in front of its note (v2.8.0)
+	 *
+	 * @param string $key Button key.
+	 */
+	private function ayudawp_render_note_dot( $key ) {
+		$colors = ayudawp_aiss_get_platform_colors();
+		$color  = isset( $colors[ $key ] ) ? $colors[ $key ] : '#50575e';
+
+		echo '<span class="aiss-chip-dot is-small" style="--aiss-chip:' . esc_attr( $color ) . '" aria-hidden="true">'
+			. wp_kses( AyudaWP_AISS_Icons::ayudawp_get_button_icon( $key, 10 ), ayudawp_aiss_kses_svg() ) . '</span>';
+	}
+
+	/**
+	 * A group of native radios, stacked with <br> or in a row (v2.8.0)
+	 *
+	 * Core makes labels inside a fieldset of .form-table inline-block
+	 * (wp-admin/css/forms.css:966) and stacks them with a <br>, as on Settings >
+	 * Reading; the stacked lists here do the same, and the rows of the
+	 * appearance leave them side by side. The fieldset carries the name of the
+	 * group for screen readers: a legend, or the id of a visible label.
+	 *
+	 * @param string $field   Option key.
+	 * @param array  $choices Value => label, the default first.
+	 * @param string $current Current value.
+	 * @param string $legend  Name of the group, for screen readers.
+	 * @param bool   $inline  Side by side instead of one per line.
+	 * @param string $labelledby Id of a visible label, instead of the legend.
+	 */
+	private function ayudawp_render_radios( $field, $choices, $current, $legend, $inline = false, $labelledby = '' ) {
+		echo '<fieldset class="aiss-radios' . ( $inline ? ' is-inline' : '' ) . '" data-field="' . esc_attr( $field ) . '"'
+			. ( '' !== $labelledby ? ' aria-labelledby="' . esc_attr( $labelledby ) . '"' : '' ) . '>';
+		if ( '' === $labelledby ) {
+			echo '<legend class="screen-reader-text">' . esc_html( $legend ) . '</legend>';
+		}
+		$first = true;
+		foreach ( $choices as $value => $label ) {
+			if ( ! $inline && ! $first ) {
+				echo '<br>';
+			}
+			$first = false;
+			echo '<label><input type="radio" name="ayudawp_aiss_options[' . esc_attr( $field ) . ']" value="' . esc_attr( (string) $value ) . '" '
+				. checked( (string) $current, (string) $value, false ) . '> ' . esc_html( $label ) . '</label>';
+		}
+		echo '</fieldset>';
+	}
+
+	/**
+	 * The order of the groups, one line (v2.8.0)
+	 *
+	 * @param string $field   Option key.
+	 * @param array  $choices Value => label.
+	 * @param string $current Current value.
+	 */
+	private function ayudawp_render_groups( $field, $choices, $current ) {
+		$id = 'aiss-groups-' . str_replace( '_', '-', $field );
+		echo '<div class="aiss-groups"><span class="aiss-sub" id="' . esc_attr( $id ) . '">' . esc_html__( 'Groups:', 'ai-share-summarize' ) . '</span>';
+		$this->ayudawp_render_radios( $field, $choices, $current, __( 'Order of the groups', 'ai-share-summarize' ), true, $id );
+		echo '</div>';
+	}
+
+	/**
+	 * Two columns of buttons to tick and drag within their group (v2.8.0)
+	 *
+	 * One chip per button of the group, available or not, so ticking one in
+	 * the catalog makes it appear here before saving; the ones not available
+	 * are hidden. Every chip posts its place in the order, ticked or not, so
+	 * unticking one does not lose it, and a box that says whether it is chosen;
+	 * the box only shows while the section is set to choose.
+	 *
+	 * @param string     $section 'content' or 'bar'.
+	 * @param array      $enabled Available buttons.
+	 * @param array      $orders  Group => saved custom order of that group.
+	 * @param array      $picked  Buttons ticked.
+	 * @param bool       $picking Whether the section is set to choose.
+	 * @param string     $google_place Where the Google button goes.
+	 */
+	private function ayudawp_render_order_board( $section, $enabled, $orders, $picked, $picking, $google_place ) {
+		$all     = ayudawp_aiss_get_available_buttons();
+		$is_bar  = 'bar' === $section;
+		$names   = array(
+			'picked' => $is_bar ? 'floating_bar_picked' : 'content_buttons_picked',
+			'ai'     => $is_bar ? 'floating_bar_order_ai' : 'button_custom_order_ai',
+			'social' => $is_bar ? 'floating_bar_order_social' : 'button_custom_order_social',
+		);
+		$columns = array(
+			'ai'     => array(
+				'label' => __( 'AI assistants', 'ai-share-summarize' ),
+				'keys'  => ayudawp_aiss_get_ai_buttons(),
+			),
+			'social' => array(
+				'label' => __( 'Social networks, actions and Google', 'ai-share-summarize' ),
+				'keys'  => ayudawp_aiss_get_social_buttons(),
+			),
+		);
+
+		echo '<div class="aiss-order-board' . ( $picking ? ' is-picking' : '' ) . '" data-section="' . esc_attr( $section ) . '">';
+
+		foreach ( $columns as $group => $column ) {
+			// The saved order, then the available ones as the front end adds
+			// them, then the rest of the group.
+			$order = self::ayudawp_build_sorted_list( isset( $orders[ $group ] ) ? (array) $orders[ $group ] : array(), $enabled, $column['keys'], $all );
+			$order = array_merge( $order, array_diff( $column['keys'], $order ) );
+
+			echo '<div class="aiss-order-col"><p class="aiss-order-title">' . esc_html( $column['label'] ) . '</p>';
+			echo '<ul class="ayudawp-sortable-list aiss-order-chips" data-group="' . esc_attr( $group ) . '">';
+
+			foreach ( $order as $key ) {
+				if ( ! isset( $all[ $key ] ) ) {
+					continue;
+				}
+				$available = in_array( $key, $enabled, true );
+				echo '<li class="aiss-order-chip" data-key="' . esc_attr( $key ) . '"' . ( $available ? '' : ' hidden' ) . '>';
+				echo '<span class="dashicons dashicons-menu aiss-chip-grip" aria-hidden="true"></span>';
+				echo '<input type="checkbox" class="aiss-order-pick" name="ayudawp_aiss_options[' . esc_attr( $names['picked'] ) . '][]" value="' . esc_attr( $key ) . '" '
+					. checked( in_array( $key, $picked, true ), true, false ) . ' aria-label="' . esc_attr( $all[ $key ] ) . '">';
+				$this->ayudawp_render_chip_face( $key, $all[ $key ] );
+				echo '<input type="hidden" name="ayudawp_aiss_options[' . esc_attr( $names[ $group ] ) . '][]" value="' . esc_attr( $key ) . '">';
+				echo '</li>';
+			}
+
+			echo '</ul>';
+
+			if ( 'social' === $group ) {
+				$google_notes = array(
+					'section' => __( 'Google preferred source goes in a section of its own, at the end of the block, whatever its place here.', 'ai-share-summarize' ),
+					'outside' => __( 'Google preferred source goes outside the block, only where you place its shortcode.', 'ai-share-summarize' ),
+				);
+				foreach ( $google_notes as $place => $note ) {
+					echo '<p class="description aiss-google-order-note" data-placement="' . esc_attr( $place ) . '"'
+						. ( $place === $google_place && in_array( 'google_preferred', $enabled, true ) ? '' : ' hidden' ) . '>' . esc_html( $note ) . '</p>';
+				}
+			}
+
+			echo '</div>';
+		}
+
+		echo '</div>';
+	}
+
+	/**
+	 * The order of the groups, by the words of each section (v2.8.0)
+	 *
+	 * @return array Value => label for the content's `button_order`.
+	 */
+	private static function ayudawp_group_choices() {
+		return array(
+			'ai'     => __( 'AI first (default)', 'ai-share-summarize' ),
+			'social' => __( 'Social networks first', 'ai-share-summarize' ),
+			'mixed'  => __( 'Mixed, one from each', 'ai-share-summarize' ),
+		);
+	}
+
+	/**
+	 * In-content buttons: which ones and their order (v2.8.0)
+	 *
+	 * One control for both, live: what is ticked in the catalog shows up here
+	 * at once to be ordered, which until 2.7.x needed a save first.
+	 */
+	public function ayudawp_content_buttons_callback() {
+		$options = get_option( 'ayudawp_aiss_options' );
+		$enabled = isset( $options['enabled_buttons'] ) && is_array( $options['enabled_buttons'] ) ? $options['enabled_buttons'] : array();
+		$mode    = isset( $options['content_buttons_mode'] ) && 'pick' === $options['content_buttons_mode'] ? 'pick' : 'all';
+		$picked  = isset( $options['content_buttons_picked'] ) && is_array( $options['content_buttons_picked'] ) ? $options['content_buttons_picked'] : $enabled;
+		$order   = isset( $options['button_order'] ) ? (string) $options['button_order'] : 'ayudawp_ai_first';
+
+		$this->ayudawp_render_radios(
+			'content_buttons_mode',
+			array(
+				'all'  => __( 'All the available ones (default)', 'ai-share-summarize' ),
+				'pick' => __( 'Choose', 'ai-share-summarize' ),
+			),
+			$mode,
+			__( 'Buttons and order', 'ai-share-summarize' )
+		);
+
+		// The content keeps the values `button_order` always had.
+		$groups = array();
+		foreach ( self::ayudawp_group_choices() as $value => $label ) {
+			$groups[ 'ayudawp_' . $value . ( 'mixed' === $value ? '' : '_first' ) ] = $label;
+		}
+		$this->ayudawp_render_groups( 'button_order', $groups, $order );
+
+		$this->ayudawp_render_order_board(
+			'content',
+			$enabled,
+			array(
+				'ai'     => isset( $options['button_custom_order_ai'] ) ? $options['button_custom_order_ai'] : array(),
+				'social' => isset( $options['button_custom_order_social'] ) ? $options['button_custom_order_social'] : array(),
+			),
+			$picked,
+			'pick' === $mode,
+			ayudawp_aiss_get_google_preferred_placement( $options )
+		);
+
+		echo '<p class="description">' . esc_html__( 'Drag to order within each group. What you tick under "Available buttons" shows up here at once, before saving.', 'ai-share-summarize' ) . '</p>';
+	}
+
+	/**
+	 * How many in sight: the three choices of both sections (v2.8.0)
+	 *
+	 * @param string $field   Mode key.
+	 * @param string $count   Key of the number of buttons in sight.
+	 * @param string $mode    Current mode.
+	 * @param int    $visible Current number.
+	 * @param string $legend  Name of the group for screen readers.
+	 */
+	private function ayudawp_render_compact( $field, $count, $mode, $visible, $legend ) {
+		echo '<fieldset class="aiss-radios" data-field="' . esc_attr( $field ) . '"><legend class="screen-reader-text">' . esc_html( $legend ) . '</legend>';
+		echo '<label><input type="radio" name="ayudawp_aiss_options[' . esc_attr( $field ) . ']" value="partial" ' . checked( $mode, 'partial', false ) . '> '
+			. esc_html__( 'A few and More:', 'ai-share-summarize' ) . '</label> ';
+		echo '<input type="number" class="small-text aiss-compact-count" min="1" max="5" step="1" name="ayudawp_aiss_options[' . esc_attr( $count ) . ']" value="' . esc_attr( (string) $visible ) . '" aria-label="' . esc_attr__( 'Buttons in sight before More', 'ai-share-summarize' ) . '"> '
+			. esc_html__( '(default)', 'ai-share-summarize' ) . '<br>';
+		echo '<label><input type="radio" name="ayudawp_aiss_options[' . esc_attr( $field ) . ']" value="single" ' . checked( $mode, 'single', false ) . '> '
+			. esc_html__( 'A single Share button that opens the rest', 'ai-share-summarize' ) . '</label><br>';
+		echo '<label><input type="radio" name="ayudawp_aiss_options[' . esc_attr( $field ) . ']" value="disabled" ' . checked( $mode, 'disabled', false ) . '> '
+			. esc_html__( 'All', 'ai-share-summarize' ) . '</label>';
+		echo '</fieldset>';
+	}
+
+	/**
+	 * In-content buttons: how many in sight on phones (v2.5.0, v2.8.0)
+	 */
+	public function ayudawp_mobile_compact_callback() {
+		$options = get_option( 'ayudawp_aiss_options' );
+		$mode    = isset( $options['mobile_compact'] ) && in_array( $options['mobile_compact'], ayudawp_aiss_get_floating_bar_choices( 'compact' ), true ) ? $options['mobile_compact'] : 'partial';
+		$visible = isset( $options['mobile_compact_visible'] ) ? max( 1, min( 5, (int) $options['mobile_compact_visible'] ) ) : 3;
+
+		$this->ayudawp_render_compact( 'mobile_compact', 'mobile_compact_visible', $mode, $visible, __( 'In sight on phones', 'ai-share-summarize' ) );
+
+		echo '<p class="description">' . esc_html__( 'On desktop all of them show. The ones in sight are the first in the order above.', 'ai-share-summarize' ) . '</p>';
+	}
+
+	/**
+	 * The rows of an appearance: one line per setting (v2.8.0)
+	 *
+	 * @param array  $rows   Field => [ label, choices, current ].
+	 * @param string $prefix Prefix of the label ids.
+	 */
+	private function ayudawp_render_look_rows( $rows, $prefix ) {
+		foreach ( $rows as $field => $row ) {
+			$id = $prefix . '-' . str_replace( '_', '-', $field );
+			echo '<div class="aiss-look-row"><span class="aiss-look-label" id="' . esc_attr( $id ) . '">' . esc_html( $row[0] ) . '</span>';
+			$this->ayudawp_render_radios( $field, $row[1], $row[2], $row[0], true, $id );
+			echo '</div>';
+		}
+	}
+
+	/**
+	 * The choices of each setting of the look, the default first (v2.8.0)
+	 *
+	 * @param string $setting 'colors', 'corners', 'size' or 'dark'.
+	 * @param bool   $bar     Whether the list is for the floating bar.
+	 * @return array Value => label.
+	 */
+	private static function ayudawp_look_labels( $setting, $bar = false ) {
+		$labels = array(
+			'colors'  => array(
+				'minimal' => __( 'Minimal (default)', 'ai-share-summarize' ),
+				'brand'   => __( 'Brand colors', 'ai-share-summarize' ),
+				'outline' => __( 'Outline', 'ai-share-summarize' ),
+				'dark'    => __( 'For dark backgrounds', 'ai-share-summarize' ),
+				'custom'  => __( 'Custom colors', 'ai-share-summarize' ),
+			),
+			'corners' => array(
+				'rounded' => __( 'Rounded (default)', 'ai-share-summarize' ),
+				'circle'  => __( 'Circular', 'ai-share-summarize' ),
+				'square'  => __( 'Square', 'ai-share-summarize' ),
+			),
+			'size'    => array(
+				'normal'  => __( 'Normal (default)', 'ai-share-summarize' ),
+				'compact' => __( 'Compact', 'ai-share-summarize' ),
+				'large'   => __( 'Large', 'ai-share-summarize' ),
+				'fluid'   => __( 'Fluid: fill the available width', 'ai-share-summarize' ),
+			),
+			'dark'    => array(
+				'disabled' => __( 'Disabled (default)', 'ai-share-summarize' ),
+				'auto'     => __( 'Automatic', 'ai-share-summarize' ),
+			),
+		);
+
+		$list = isset( $labels[ $setting ] ) ? $labels[ $setting ] : array();
+		if ( $bar && 'size' === $setting ) {
+			unset( $list['fluid'] );
+		}
+
+		return $list;
+	}
+
+	/**
+	 * In-content buttons: appearance (v2.8.0)
+	 *
+	 * One line per setting, label on the left and the radios in a row. "Icons
+	 * only" is now what a button carries, not a colour, and the corners apply
+	 * to every button.
+	 */
+	public function ayudawp_content_look_callback() {
+		$options = get_option( 'ayudawp_aiss_options' );
+		$look    = ayudawp_aiss_get_button_look( $options );
+
+		echo '<div class="aiss-look">';
+		$this->ayudawp_render_look_rows(
+			array(
+				'button_content' => array(
+					__( 'Button', 'ai-share-summarize' ),
+					array(
+						'text' => __( 'Text only (default)', 'ai-share-summarize' ),
+						'both' => __( 'Icon and text', 'ai-share-summarize' ),
+						'icon' => __( 'Icon only', 'ai-share-summarize' ),
+					),
+					$look['content'],
+				),
+				'button_colors'  => array( __( 'Color', 'ai-share-summarize' ), self::ayudawp_look_labels( 'colors' ), $look['colors'] ),
+			),
+			'aiss-look'
+		);
+
+		// Custom colour pickers: shown while the content or the bar uses them.
+		$custom_bg   = isset( $options['custom_color_bg'] ) ? $options['custom_color_bg'] : '#333333';
+		$custom_text = isset( $options['custom_color_text'] ) ? $options['custom_color_text'] : '#ffffff';
+		$bar_look    = ayudawp_aiss_get_floating_bar_look( $options );
+		$show_custom = 'custom' === $look['colors'] || 'custom' === $bar_look['colors'];
+		?>
+		<div class="ayudawp-color-picker-row" id="ayudawp-custom-colors"<?php echo $show_custom ? '' : ' hidden'; ?>>
+			<div>
+				<label for="ayudawp_custom_bg"><?php esc_html_e( 'Background color:', 'ai-share-summarize' ); ?></label>
+				<input type="text" id="ayudawp_custom_bg" name="ayudawp_aiss_options[custom_color_bg]" value="<?php echo esc_attr( $custom_bg ); ?>" class="ayudawp-color-field" data-default-color="#333333">
+			</div>
+			<div>
+				<label for="ayudawp_custom_text"><?php esc_html_e( 'Text color:', 'ai-share-summarize' ); ?></label>
+				<input type="text" id="ayudawp_custom_text" name="ayudawp_aiss_options[custom_color_text]" value="<?php echo esc_attr( $custom_text ); ?>" class="ayudawp-color-field" data-default-color="#ffffff">
+			</div>
+		</div>
+		<?php
+		$this->ayudawp_render_look_rows(
+			array(
+				'button_corners'       => array( __( 'Corners', 'ai-share-summarize' ), self::ayudawp_look_labels( 'corners' ), $look['corners'] ),
+				'button_size'          => array( __( 'Size', 'ai-share-summarize' ), self::ayudawp_look_labels( 'size' ), $look['size'] ),
+				'dark_mode_adaptation' => array( __( 'Dark backgrounds', 'ai-share-summarize' ), self::ayudawp_look_labels( 'dark' ), $look['dark'] ),
+			),
+			'aiss-look'
+		);
+		echo '</div>';
+
+		echo '<p class="description">' . esc_html__( 'Automatic measures the real background behind the buttons and adapts the ones that would disappear on it. It costs a small script on the page.', 'ai-share-summarize' ) . '</p>';
+	}
+
+	/**
+	 * In-content buttons: what only the content has (v2.8.0)
+	 *
+	 * Alignment, separator lines, the titles and where the Google button goes,
+	 * which until 2.7.x were spread over three rows of two sections.
+	 */
+	public function ayudawp_layout_callback() {
+		$options          = get_option( 'ayudawp_aiss_options' );
+		$alignment        = isset( $options['button_alignment'] ) ? $options['button_alignment'] : 'left';
+		$separator_top    = isset( $options['separator_top'] ) ? $options['separator_top'] : true;
+		$separator_bottom = isset( $options['separator_bottom'] ) ? $options['separator_bottom'] : true;
+		$text             = isset( $options['title_text'] ) ? $options['title_text'] : '';
+		$style            = isset( $options['title_style'] ) ? $options['title_style'] : 'span';
+		$ai_title         = isset( $options['ai_section_title'] ) ? $options['ai_section_title'] : '';
+		$social_title     = isset( $options['social_section_title'] ) ? $options['social_section_title'] : '';
+		$google_place     = ayudawp_aiss_get_google_preferred_placement( $options );
+		$google_title     = isset( $options['google_section_title'] ) ? (string) $options['google_section_title'] : '';
+
+		$styles = array(
+			'span' => __( 'Span, plain text (default)', 'ai-share-summarize' ),
+			'h3'   => __( 'Heading 3 (h3)', 'ai-share-summarize' ),
+			'h4'   => __( 'Heading 4 (h4)', 'ai-share-summarize' ),
+			'h5'   => __( 'Heading 5 (h5)', 'ai-share-summarize' ),
+			'h6'   => __( 'Heading 6 (h6)', 'ai-share-summarize' ),
+		);
+		$google_opts = array(
 			'social'  => __( 'With the social networks', 'ai-share-summarize' ),
 			'section' => __( 'In a section of its own, at the end of the block', 'ai-share-summarize' ),
 			'outside' => __( 'Outside the block, only where you place the shortcode', 'ai-share-summarize' ),
 		);
-
-		// Side by side; the title is dimmed while it would not be used.
-		echo '<div class="aiss-google-placement">';
-		echo '<div class="aiss-google-field"><label for="aiss-google-placement"><strong>' . esc_html__( 'Where the Google button goes', 'ai-share-summarize' ) . '</strong></label>';
-		echo '<select id="aiss-google-placement" name="ayudawp_aiss_options[google_preferred_placement]">';
-		foreach ( $google_opts as $value => $label ) {
-			echo '<option value="' . esc_attr( $value ) . '"' . selected( $google_place, $value, false ) . '>' . esc_html( $label ) . '</option>';
-		}
-		echo '</select></div>';
-
-		echo '<div class="aiss-google-field aiss-google-title-field' . ( 'section' === $google_place ? '' : ' is-off' ) . '"><label for="aiss-google-section-title">' . esc_html__( 'Title of its section (optional)', 'ai-share-summarize' ) . '</label>';
-		echo '<input type="text" id="aiss-google-section-title" class="regular-text" name="ayudawp_aiss_options[google_section_title]" value="' . esc_attr( $google_title ) . '" placeholder="' . esc_attr__( 'Follow us on Google', 'ai-share-summarize' ) . '"></div>';
-		echo '</div>';
-
-		echo '<p class="description">'
-			. esc_html__( 'The title is only used when the button has a section of its own; without one, a thin line sets it apart. Outside the block, place it with this shortcode wherever you want it:', 'ai-share-summarize' )
-			. ' <code>[ayudawp_share_buttons buttons="google_preferred"]</code></p>';
+		?>
+		<div class="aiss-two-col">
+			<div>
+				<span class="aiss-sub" id="aiss-layout-align"><?php esc_html_e( 'Alignment', 'ai-share-summarize' ); ?></span>
+				<?php
+				$this->ayudawp_render_radios(
+					'button_alignment',
+					array(
+						'left'   => __( 'Left (default)', 'ai-share-summarize' ),
+						'center' => __( 'Centered', 'ai-share-summarize' ),
+					),
+					$alignment,
+					__( 'Alignment', 'ai-share-summarize' ),
+					false,
+					'aiss-layout-align'
+				);
+				?>
+				<p class="description"><?php esc_html_e( 'Alignment does not apply to phones, where the buttons adapt on their own.', 'ai-share-summarize' ); ?></p>
+			</div>
+			<div>
+				<span class="aiss-sub"><?php esc_html_e( 'Separator lines', 'ai-share-summarize' ); ?></span>
+				<label class="aiss-stacked">
+					<input type="checkbox" name="ayudawp_aiss_options[separator_top]" value="1" <?php checked( $separator_top, true ); ?>>
+					<?php esc_html_e( 'Line above the block', 'ai-share-summarize' ); ?>
+				</label>
+				<label class="aiss-stacked">
+					<input type="checkbox" name="ayudawp_aiss_options[separator_bottom]" value="1" <?php checked( $separator_bottom, true ); ?>>
+					<?php esc_html_e( 'Line below the block', 'ai-share-summarize' ); ?>
+				</label>
+			</div>
+			<div>
+				<label class="aiss-sub" for="aiss-title-text"><?php esc_html_e( 'Title above the buttons', 'ai-share-summarize' ); ?></label>
+				<input type="text" id="aiss-title-text" class="regular-text aiss-full"
+					name="ayudawp_aiss_options[title_text]" value="<?php echo esc_attr( $text ); ?>"
+					placeholder="<?php esc_attr_e( 'e.g. Share this', 'ai-share-summarize' ); ?>">
+				<label class="aiss-sub aiss-sub-next" for="aiss-title-style"><?php esc_html_e( 'HTML element', 'ai-share-summarize' ); ?></label>
+				<select id="aiss-title-style" class="aiss-full" name="ayudawp_aiss_options[title_style]">
+					<?php foreach ( $styles as $key => $label ) : ?>
+						<option value="<?php echo esc_attr( $key ); ?>" <?php selected( $style, $key ); ?>><?php echo esc_html( $label ); ?></option>
+					<?php endforeach; ?>
+				</select>
+				<p class="description"><?php esc_html_e( 'Leave it empty for no title. Ignored when section titles are in use. The element applies to the section titles too.', 'ai-share-summarize' ); ?></p>
+			</div>
+			<div>
+				<label class="aiss-sub" for="ayudawp_ai_section_title"><?php esc_html_e( 'AI section title', 'ai-share-summarize' ); ?></label>
+				<input type="text" id="ayudawp_ai_section_title" class="regular-text aiss-full" name="ayudawp_aiss_options[ai_section_title]" value="<?php echo esc_attr( $ai_title ); ?>" placeholder="<?php esc_attr_e( 'e.g. Summarize with AI', 'ai-share-summarize' ); ?>">
+				<label class="aiss-sub aiss-sub-next" for="ayudawp_social_section_title"><?php esc_html_e( 'Social section title', 'ai-share-summarize' ); ?></label>
+				<input type="text" id="ayudawp_social_section_title" class="regular-text aiss-full" name="ayudawp_aiss_options[social_section_title]" value="<?php echo esc_attr( $social_title ); ?>" placeholder="<?php esc_attr_e( 'e.g. Share on social media', 'ai-share-summarize' ); ?>">
+				<p class="description"><?php esc_html_e( 'Optional. When set, each group gets its own heading and the general title above is hidden. Leave both empty to use only the general title. Does not apply to Mixed order.', 'ai-share-summarize' ); ?></p>
+			</div>
+			<div>
+				<label class="aiss-sub" for="aiss-google-placement"><?php esc_html_e( 'Where the Google button goes', 'ai-share-summarize' ); ?></label>
+				<select id="aiss-google-placement" class="aiss-full" name="ayudawp_aiss_options[google_preferred_placement]">
+					<?php foreach ( $google_opts as $value => $label ) : ?>
+						<option value="<?php echo esc_attr( $value ); ?>" <?php selected( $google_place, $value ); ?>><?php echo esc_html( $label ); ?></option>
+					<?php endforeach; ?>
+				</select>
+				<div class="aiss-google-title-field"<?php echo 'section' === $google_place ? '' : ' hidden'; ?>>
+					<label class="aiss-sub aiss-sub-next" for="aiss-google-section-title"><?php esc_html_e( 'Title of its section (optional)', 'ai-share-summarize' ); ?></label>
+					<input type="text" id="aiss-google-section-title" class="regular-text aiss-full" name="ayudawp_aiss_options[google_section_title]" value="<?php echo esc_attr( $google_title ); ?>" placeholder="<?php esc_attr_e( 'Follow us on Google', 'ai-share-summarize' ); ?>">
+				</div>
+				<p class="description"><?php esc_html_e( 'Without a title, a thin line sets its section apart. Outside the block, place it with this shortcode wherever you want it:', 'ai-share-summarize' ); ?> <code>[ayudawp_share_buttons buttons="google_preferred"]</code></p>
+			</div>
+		</div>
+		<?php
 	}
 
 	/**
-	 * Render one checkbox of the button picker as the button it enables (v2.5.0)
+	 * In-content buttons: the preview, last row of the section (v2.8.0)
 	 *
-	 * @param string $key     Button key.
-	 * @param string $label   Button label.
-	 * @param array  $enabled Enabled buttons.
-	 * @param string $style   Current visual style.
+	 * The block is drawn by the server from the unsaved form, inside an iframe
+	 * of a real content width, scaled to fit, so a phone is a phone and the
+	 * compact mode works as it does on the site. Hidden until the script fills
+	 * it: without JS there is nothing to show, and the row folds away.
 	 */
-	private function ayudawp_render_button_choice( $key, $label, $enabled, $style ) {
-		$classes = array( 'ayudawp-share-btn', str_replace( '_', '-', $key ) );
-		if ( in_array( $key, ayudawp_aiss_get_ai_buttons(), true ) ) {
-			$classes[] = 'ai';
+	public function ayudawp_content_preview_callback() {
+		echo '<div class="aiss-block-dock" hidden>';
+		echo '<div class="aiss-block-dock-head">';
+
+		// Not settings: they only pick which sample to draw, and options.php
+		// ignores fields outside the plugin's option.
+		echo '<span class="aiss-preview-views" role="radiogroup" aria-label="' . esc_attr__( 'Preview', 'ai-share-summarize' ) . '">';
+		echo '<label><input type="radio" name="aiss_block_view" value="desktop" checked> ' . esc_html__( 'Desktop', 'ai-share-summarize' ) . '</label>';
+		echo '<label><input type="radio" name="aiss_block_view" value="phone"> ' . esc_html__( 'Phone', 'ai-share-summarize' ) . '</label>';
+		echo '</span>';
+		echo '<label class="aiss-block-dark"><input type="checkbox" name="aiss_block_dark" value="1"> ' . esc_html__( 'Dark background', 'ai-share-summarize' ) . '</label>';
+		echo '<span class="aiss-block-status" aria-live="polite"></span>';
+		echo '</div>';
+		/*
+		 * Sandboxed with same origin and no scripts (v2.8.0): nothing inside the
+		 * sample runs, and this page can still reach into it to open the compact
+		 * mode, add the dark background class and reveal the native share.
+		 */
+		echo '<div class="aiss-block-frame" aria-hidden="true"><iframe class="aiss-block-iframe" sandbox="allow-same-origin" title="' . esc_attr__( 'Preview of the share buttons', 'ai-share-summarize' ) . '" tabindex="-1"></iframe></div>';
+		echo '<p class="description">' . esc_html__( 'The block as these settings draw it, before you save. Your theme may change the fonts and the spacing.', 'ai-share-summarize' ) . '</p>';
+		echo '</div>';
+	}
+
+	/**
+	 * Floating bar section: what it is (v2.8.0)
+	 */
+	public function ayudawp_floating_section_callback() {
+		echo '<p class="aiss-bar-intro">' . esc_html__( 'Pinned to an edge of the screen while reading. It can appear where the content buttons do not, and the other way round.', 'ai-share-summarize' ) . '</p>';
+	}
+
+	/**
+	 * Floating bar: where it appears (v2.5.0, own section v2.8.0)
+	 *
+	 * Same table as the buttons, with the positions the bar actually has: an
+	 * edge of the viewport, not a place in the content. That is also how it is
+	 * switched on — a row ticked is a page where the bar shows — so there is no
+	 * separate on/off radio.
+	 */
+	public function ayudawp_floating_bar_callback() {
+		$this->ayudawp_placements_callback( array( 'key' => 'floating_bar_placements' ) );
+
+		echo '<p class="description">' . esc_html__( 'With nothing ticked the bar is off and the rest of this section folds away.', 'ai-share-summarize' ) . '</p>';
+	}
+
+	/**
+	 * Floating bar: which buttons and their order (v2.8.0)
+	 *
+	 * As in the content, or its own: then the groups and the chips show up,
+	 * starting from the content's list the first time.
+	 */
+	public function ayudawp_floating_bar_buttons_callback() {
+		$options  = get_option( 'ayudawp_aiss_options' );
+		$settings = ayudawp_aiss_get_floating_bar_settings( $options );
+		$enabled  = isset( $options['enabled_buttons'] ) && is_array( $options['enabled_buttons'] ) ? $options['enabled_buttons'] : array();
+		$fresh    = null === $settings['picked'];
+
+		$this->ayudawp_render_radios(
+			'floating_bar_buttons',
+			array(
+				'inherit' => __( 'As in the content (default)', 'ai-share-summarize' ),
+				'pick'    => __( 'Choose and order its own', 'ai-share-summarize' ),
+			),
+			$settings['buttons'],
+			__( 'Buttons and order', 'ai-share-summarize' )
+		);
+
+		/*
+		 * Never saved: the bar's own list starts as the content's, with its
+		 * groups and its order. The script copies them again from the form as
+		 * it is when "Choose" is first picked, so that is what is seen.
+		 */
+		if ( $fresh ) {
+			$content_groups = array(
+				'ayudawp_social_first' => 'social',
+				'ayudawp_mixed'        => 'mixed',
+			);
+			$button_order = isset( $options['button_order'] ) ? (string) $options['button_order'] : '';
+			$groups       = isset( $content_groups[ $button_order ] ) ? $content_groups[ $button_order ] : 'ai';
+			$picked       = ayudawp_aiss_get_content_ordered_buttons( (array) $options );
+		} else {
+			$groups = $settings['groups'];
+			$picked = $settings['picked'];
 		}
 
-		$icon = AyudaWP_AISS_Icons::ayudawp_get_button_icon( $key, 16 );
+		echo '<div class="aiss-bar-own"' . ( 'pick' === $settings['buttons'] ? '' : ' hidden' ) . ( $fresh ? ' data-fresh="1"' : '' ) . '>';
+		$this->ayudawp_render_groups( 'floating_bar_groups', self::ayudawp_group_choices(), $groups );
+		$this->ayudawp_render_order_board(
+			'bar',
+			$enabled,
+			array(
+				'ai'     => null !== $settings['order_ai'] ? $settings['order_ai'] : ( isset( $options['button_custom_order_ai'] ) ? $options['button_custom_order_ai'] : array() ),
+				'social' => null !== $settings['order_social'] ? $settings['order_social'] : ( isset( $options['button_custom_order_social'] ) ? $options['button_custom_order_social'] : array() ),
+			),
+			$picked,
+			true,
+			ayudawp_aiss_get_google_preferred_placement( $options )
+		);
+		echo '<p class="description">' . esc_html__( 'Tick the ones the bar shows and drag them to order them. They start from the content\'s list.', 'ai-share-summarize' ) . '</p>';
+		echo '</div>';
+	}
 
-		echo '<label class="aiss-pick' . ( in_array( $key, $enabled, true ) ? ' is-on' : '' ) . '">';
-		echo '<input type="checkbox" name="ayudawp_aiss_options[enabled_buttons][]" value="' . esc_attr( $key ) . '" '
-			. checked( in_array( $key, $enabled, true ), true, false ) . '>';
-		/*
-		 * Both labels are always in the markup and CSS shows one or the other,
-		 * so switching the style live is a class change on the wrapper and
-		 * never a re-render: inside the button for the styles that carry text,
-		 * next to it for "Icons only".
-		 */
-		echo '<span class="' . esc_attr( implode( ' ', $classes ) ) . '" aria-hidden="true">';
-		echo wp_kses( $icon, ayudawp_aiss_kses_svg() );
-		echo '<span class="ayudawp-button-text">' . esc_html( $label ) . '</span>';
+	/**
+	 * Floating bar: how many in sight, always (v2.8.0)
+	 */
+	public function ayudawp_floating_bar_compact_callback() {
+		$settings = ayudawp_aiss_get_floating_bar_settings();
+
+		$this->ayudawp_render_compact( 'floating_bar_compact', 'floating_bar_compact_visible', $settings['compact'], $settings['compact_visible'], __( 'In sight in the bar', 'ai-share-summarize' ) );
+
+		echo '<p class="description">' . esc_html__( 'The rest open in a panel beside the bar, which does not grow. When only one would be left over, it is shown.', 'ai-share-summarize' ) . '</p>';
+	}
+
+	/**
+	 * Floating bar: appearance, the content's or its own (v2.8.0)
+	 *
+	 * The same rows and words as the content, without "Button" (the bar is
+	 * always icons) and without "Fluid".
+	 */
+	public function ayudawp_floating_bar_look_callback() {
+		$options  = get_option( 'ayudawp_aiss_options' );
+		$settings = ayudawp_aiss_get_floating_bar_settings( $options );
+		$content  = ayudawp_aiss_get_button_look( $options );
+		$fresh    = ! isset( $options['floating_bar_color'] );
+
+		$this->ayudawp_render_radios(
+			'floating_bar_look',
+			array(
+				'inherit' => __( 'As in the content (default)', 'ai-share-summarize' ),
+				'own'     => __( 'Its own', 'ai-share-summarize' ),
+			),
+			$settings['look'],
+			__( 'Appearance', 'ai-share-summarize' )
+		);
+
+		// Never saved: its own look starts as the content's.
+		$own = array(
+			'color'   => $fresh ? $content['colors'] : $settings['color'],
+			'corners' => $fresh ? $content['corners'] : $settings['corners'],
+			'size'    => $fresh ? ( 'fluid' === $content['size'] ? 'normal' : $content['size'] ) : $settings['size'],
+			'dark'    => $fresh ? $content['dark'] : $settings['dark'],
+		);
+
+		echo '<div class="aiss-look aiss-bar-own-look"' . ( 'own' === $settings['look'] ? '' : ' hidden' ) . ( $fresh ? ' data-fresh="1"' : '' ) . '>';
+		$this->ayudawp_render_look_rows(
+			array(
+				'floating_bar_color'   => array( __( 'Color', 'ai-share-summarize' ), self::ayudawp_look_labels( 'colors', true ), $own['color'] ),
+				'floating_bar_corners' => array( __( 'Corners', 'ai-share-summarize' ), self::ayudawp_look_labels( 'corners', true ), $own['corners'] ),
+				'floating_bar_size'    => array( __( 'Size', 'ai-share-summarize' ), self::ayudawp_look_labels( 'size', true ), $own['size'] ),
+				'floating_bar_dark'    => array( __( 'Dark backgrounds', 'ai-share-summarize' ), self::ayudawp_look_labels( 'dark', true ), $own['dark'] ),
+			),
+			'aiss-bar-look'
+		);
+		echo '</div>';
+
+		echo '<p class="description">' . esc_html__( 'The bar is always icons. As in the content, it takes the color, the corners, the size and the dark backgrounds setting from there. Custom colors are the two set in the content\'s appearance.', 'ai-share-summarize' ) . '</p>';
+	}
+
+	/**
+	 * Floating bar: the preview, last row of the section (v2.8.0)
+	 *
+	 * A sample bar on a page of grey blocks, drawn by the script from the
+	 * form as it is now. Hidden until the script fills it.
+	 */
+	public function ayudawp_floating_bar_preview_callback() {
+		$views = array(
+			'right'  => __( 'Right edge', 'ai-share-summarize' ),
+			'left'   => __( 'Left edge', 'ai-share-summarize' ),
+			'bottom' => __( 'Bottom', 'ai-share-summarize' ),
+			'phone'  => __( 'Phone', 'ai-share-summarize' ),
+		);
+
+		echo '<div class="aiss-bar-dock" hidden'
+			. ' data-ai="' . esc_attr( implode( ',', ayudawp_aiss_get_ai_buttons() ) ) . '"'
+			. ' data-google-off="' . ( '' === ayudawp_aiss_get_google_preferred_domain() ? '1' : '0' ) . '">';
+
+		echo '<div class="aiss-block-dock-head">';
+		// Not settings: they only pick which sample to draw.
+		echo '<span class="aiss-preview-views" role="radiogroup" aria-label="' . esc_attr__( 'Preview', 'ai-share-summarize' ) . '">';
+		foreach ( $views as $value => $label ) {
+			echo '<label><input type="radio" name="aiss_bar_view" value="' . esc_attr( $value ) . '"> ' . esc_html( $label ) . '</label>';
+		}
 		echo '</span>';
-		echo '<span class="aiss-pick-name">' . esc_html( $label ) . '</span>';
-		echo '</label>';
+		echo '<label class="aiss-block-dark"><input type="checkbox" name="aiss_bar_dark" value="1"> ' . esc_html__( 'Dark background', 'ai-share-summarize' ) . '</label>';
+		echo '</div>';
+
+		echo '<div class="aiss-bar-stage" aria-hidden="true"></div>';
+		echo '<p class="aiss-bar-readout" aria-live="polite"></p>';
+		echo '<p class="description">' . esc_html__( 'A sample, not your theme. It follows these rows and the content section as you change them, before you save.', 'ai-share-summarize' ) . '</p>';
+
+		// One sample of every button, for the script to copy into the preview.
+		echo '<template class="aiss-bar-tpl">';
+		foreach ( array_keys( ayudawp_aiss_get_available_buttons() ) as $key ) {
+			$classes = array( 'ayudawp-share-btn', str_replace( '_', '-', $key ) );
+			if ( in_array( $key, ayudawp_aiss_get_ai_buttons(), true ) ) {
+				$classes[] = 'ai';
+			}
+			echo '<span class="' . esc_attr( implode( ' ', $classes ) ) . '" data-key="' . esc_attr( $key ) . '">'
+				. wp_kses( AyudaWP_AISS_Icons::ayudawp_get_button_icon( $key, 20 ), ayudawp_aiss_kses_svg() )
+				. '</span>';
+		}
+		echo '<span class="ayudawp-share-btn" data-key="__share">'
+			. wp_kses( AyudaWP_AISS_Icons::ayudawp_get_button_icon( 'web_share', 20 ), ayudawp_aiss_kses_svg() )
+			. '</span>';
+		echo '</template>';
+
+		echo '</div>';
 	}
 
 
+	// ==========================================
+	// Settings field callbacks
+	// ==========================================
 
 
 	/**
@@ -872,124 +1511,6 @@ class AyudaWP_AISS_Admin {
 	}
 
 
-
-
-
-	/**
-	 * Button order field
-	 */
-	public function ayudawp_button_order_callback() {
-		$options = get_option( 'ayudawp_aiss_options' );
-		$order   = isset( $options['button_order'] ) ? $options['button_order'] : 'ayudawp_ai_first';
-
-		// Every list of choices on this screen leads with its default (v2.5.0).
-		$orders = array(
-			'ayudawp_ai_first'     => esc_html__( 'AI assistants first (default)', 'ai-share-summarize' ),
-			'ayudawp_social_first' => esc_html__( 'Social networks first', 'ai-share-summarize' ),
-			'ayudawp_mixed'        => esc_html__( 'Mixed, one from each in turn', 'ai-share-summarize' ),
-		);
-
-		foreach ( $orders as $key => $label ) {
-			$checked = ( $order === $key ) ? 'checked="checked"' : '';
-			echo '<label style="display: block; margin-bottom: 5px;">
-					<input type="radio" name="ayudawp_aiss_options[button_order]" value="' . esc_attr( $key ) . '" ' . esc_attr( $checked ) . '>
-					' . esc_html( $label ) . '
-				  </label>';
-		}
-
-		// Two-column sortable for custom internal order within each group (v1.6.0).
-		$custom_order_ai     = isset( $options['button_custom_order_ai'] ) ? $options['button_custom_order_ai'] : array();
-		$custom_order_social = isset( $options['button_custom_order_social'] ) ? $options['button_custom_order_social'] : array();
-		$enabled             = isset( $options['enabled_buttons'] ) ? $options['enabled_buttons'] : array();
-		$all_buttons         = ayudawp_aiss_get_available_buttons();
-		$social_keys         = ayudawp_aiss_get_social_buttons();
-		$ai_keys             = ayudawp_aiss_get_ai_buttons();
-
-		// Build sorted lists per group.
-		$sorted_ai     = self::ayudawp_build_sorted_list( $custom_order_ai, $enabled, $ai_keys, $all_buttons );
-		$sorted_social = self::ayudawp_build_sorted_list( $custom_order_social, $enabled, $social_keys, $all_buttons );
-
-		/*
-		 * Each row shows the real button, same as the picker above (v2.5.0):
-		 * the list used to draw a bare SVG next to the platform name, which was
-		 * the last place in the screen where a button did not look like itself.
-		 */
-		$style      = isset( $options['button_colors'] ) ? $options['button_colors'] : 'minimal';
-		$icon_style = isset( $options['icon_style'] ) ? $options['icon_style'] : 'circular';
-
-		$wrapper_classes = array( 'ayudawp-share-buttons', 'aiss-order-preview', 'with-icons' );
-		if ( 'icons-only' === $style ) {
-			$wrapper_classes[] = 'icons-only';
-			$wrapper_classes[] = $icon_style;
-		} elseif ( 'minimal' !== $style ) {
-			$wrapper_classes[] = $style;
-		}
-
-		/*
-		 * The Google preferred source button only has a place in this order
-		 * while it goes with the social networks (v2.6.0). In a section of its
-		 * own it is always last, and outside the block it is not in it. It is
-		 * still rendered, hidden, so changing the setting shows it again
-		 * without saving first.
-		 */
-		$google_place = ayudawp_aiss_get_google_preferred_placement( $options );
-
-		$columns = array(
-			'ai'     => array(
-				'label'   => esc_html__( 'AI platforms', 'ai-share-summarize' ),
-				'buttons' => $sorted_ai,
-			),
-			'social' => array(
-				'label'   => esc_html__( 'Social platforms', 'ai-share-summarize' ),
-				'buttons' => $sorted_social,
-			),
-		);
-
-		echo '<div id="ayudawp-sortable-wrapper" class="' . esc_attr( implode( ' ', $wrapper_classes ) ) . '">';
-		echo '<p class="description">' . esc_html__( 'Drag and drop to reorder within each group. Only the buttons you enabled above are listed.', 'ai-share-summarize' ) . '</p>';
-		echo '<div class="aiss-two-col">';
-
-		foreach ( $columns as $group => $column ) {
-			echo '<div>';
-			echo '<strong>' . esc_html( $column['label'] ) . '</strong>';
-			echo '<ul class="ayudawp-sortable-list aiss-order-list" id="ayudawp-sortable-' . esc_attr( $group ) . '">';
-
-			foreach ( $column['buttons'] as $btn ) {
-				$classes = array( 'ayudawp-share-btn', str_replace( '_', '-', $btn ) );
-				if ( 'ai' === $group ) {
-					$classes[] = 'ai';
-				}
-				?>
-				<li data-button="<?php echo esc_attr( $btn ); ?>"<?php echo ( 'google_preferred' === $btn && 'social' !== $google_place ) ? ' hidden' : ''; ?>>
-					<span class="dashicons dashicons-menu aiss-order-grip" aria-hidden="true"></span>
-					<span class="<?php echo esc_attr( implode( ' ', $classes ) ); ?>" aria-hidden="true">
-						<?php echo wp_kses( AyudaWP_AISS_Icons::ayudawp_get_button_icon( $btn, 16 ), ayudawp_aiss_kses_svg() ); ?>
-						<span class="ayudawp-button-text"><?php echo esc_html( $all_buttons[ $btn ] ); ?></span>
-					</span>
-					<span class="aiss-pick-name"><?php echo esc_html( $all_buttons[ $btn ] ); ?></span>
-					<input type="hidden" name="ayudawp_aiss_options[button_custom_order_<?php echo esc_attr( $group ); ?>][]" value="<?php echo esc_attr( $btn ); ?>">
-				</li>
-				<?php
-			}
-
-			echo '</ul>';
-
-			if ( 'social' === $group && in_array( 'google_preferred', $column['buttons'], true ) ) {
-				$google_notes = array(
-					'section' => __( 'Google preferred source is not in this list: it goes in a section of its own, at the end of the block.', 'ai-share-summarize' ),
-					'outside' => __( 'Google preferred source is not in this list: it goes outside the block, only where you place its shortcode.', 'ai-share-summarize' ),
-				);
-				foreach ( $google_notes as $place => $note ) {
-					echo '<p class="description aiss-google-order-note" data-placement="' . esc_attr( $place ) . '"' . ( $place === $google_place ? '' : ' hidden' ) . '>' . esc_html( $note ) . '</p>';
-				}
-			}
-
-			echo '</div>';
-		}
-
-		echo '</div></div>';
-	}
-
 	/**
 	 * Build a sorted button list from custom order + enabled buttons
 	 *
@@ -1014,41 +1535,6 @@ class AyudaWP_AISS_Admin {
 			}
 		}
 		return $sorted;
-	}
-
-
-
-
-	/**
-	 * Mobile compact mode (v2.5.0)
-	 */
-	public function ayudawp_mobile_compact_callback() {
-		$options = get_option( 'ayudawp_aiss_options' );
-		$mode    = isset( $options['mobile_compact'] ) ? $options['mobile_compact'] : 'single';
-		$visible = isset( $options['mobile_compact_visible'] ) ? (int) $options['mobile_compact_visible'] : 3;
-		$visible = max( 1, min( 5, $visible ) );
-
-		$modes = array(
-			'single'   => esc_html__( 'A single Share button that opens the rest (default)', 'ai-share-summarize' ),
-			'partial'  => esc_html__( 'A few buttons plus a More button', 'ai-share-summarize' ),
-			'disabled' => esc_html__( 'Disabled: show every button', 'ai-share-summarize' ),
-		);
-
-		echo '<p class="description">' . esc_html__( 'How much room the buttons take on a phone. The desktop layout is not affected.', 'ai-share-summarize' ) . '</p>';
-
-		foreach ( $modes as $key => $label ) {
-			echo '<label class="aiss-stacked">
-					<input type="radio" name="ayudawp_aiss_options[mobile_compact]" value="' . esc_attr( $key ) . '" '
-					. checked( $mode, $key, false ) . '> ' . esc_html( $label ) . '
-				  </label>';
-		}
-		?>
-		<label class="aiss-stacked" style="margin-top:10px">
-			<?php esc_html_e( 'Buttons visible before the More button:', 'ai-share-summarize' ); ?>
-			<input type="number" min="1" max="5" step="1" style="width: 70px;" name="ayudawp_aiss_options[mobile_compact_visible]" value="<?php echo esc_attr( (string) $visible ); ?>">
-		</label>
-		<p class="description"><?php esc_html_e( 'The visible ones are the first in the order you set below, so drag the platforms you care about to the top of their group.', 'ai-share-summarize' ); ?></p>
-		<?php
 	}
 
 
@@ -1092,6 +1578,15 @@ class AyudaWP_AISS_Admin {
 		 * makes for a tall single column, and this screen paints the table
 		 * twice (buttons and floating bar).
 		 */
+		/*
+		 * Marker for the sanitizer (v2.8.0): this table came, so a destination
+		 * that is not ticked is off. Without it, a save that does not carry the
+		 * table keeps the stored one. The summary's table posts elsewhere.
+		 */
+		if ( 'ai_summary_placements' !== $key ) {
+			echo '<input type="hidden" name="ayudawp_aiss_options[_sections][]" value="' . esc_attr( $key ) . '">';
+		}
+
 		echo '<div class="aiss-placements' . ( count( $groups ) > 1 ? ' has-groups' : '' ) . '">';
 
 		foreach ( $groups as $group ) {
@@ -1158,28 +1653,19 @@ class AyudaWP_AISS_Admin {
 			: 'ayudawp_aiss_options';
 	}
 
+
 	/**
-	 * Floating bar (v2.5.0)
-	 *
-	 * Same table as the buttons, with the positions the bar actually has: an
-	 * edge of the viewport, not a place in the content. That is also how it is
-	 * switched on — a row ticked is a page where the bar shows — so there is no
-	 * separate on/off radio and no "use its own destinations" checkbox to fold
-	 * a second table away.
+	 * Floating bar: behaviour, the three checkboxes it had since 2.5.0
 	 */
-	public function ayudawp_floating_bar_callback() {
+	public function ayudawp_floating_bar_behavior_callback() {
 		$options     = get_option( 'ayudawp_aiss_options' );
 		$autohide    = ! empty( $options['floating_bar_autohide'] );
 		$hide_mobile = ! isset( $options['floating_bar_hide_mobile'] ) || ! empty( $options['floating_bar_hide_mobile'] );
 		$hide_inline = ! empty( $options['floating_bar_hide_with_inline'] );
-
-		echo '<p class="description">' . esc_html__( 'A sticky bar with the same enabled buttons, in icon form, pinned to the edge of the screen. It does not have to appear where the block above appears: the block on posts and the bar on archives works.', 'ai-share-summarize' ) . '</p>';
-
-		$this->ayudawp_placements_callback( array( 'key' => 'floating_bar_placements' ) );
-
-		echo '<p class="description">' . esc_html__( 'With nothing ticked the bar is off, which is how it comes.', 'ai-share-summarize' ) . '</p>';
 		?>
-		<label class="aiss-stacked" style="margin-top:12px">
+		<?php // Marker for the sanitizer (v2.8.0): these boxes came, so an unticked one is off. ?>
+		<input type="hidden" name="ayudawp_aiss_options[_sections][]" value="floating_bar_behavior">
+		<label class="aiss-stacked">
 			<input type="checkbox" name="ayudawp_aiss_options[floating_bar_hide_mobile]" value="1" <?php checked( $hide_mobile, true ); ?>>
 			<?php esc_html_e( 'Hide it on phones (default)', 'ai-share-summarize' ); ?>
 		</label>
@@ -1195,79 +1681,6 @@ class AyudaWP_AISS_Admin {
 		<?php
 	}
 
-	/**
-	 * Alignment and separator lines (v2.5.0, two settings in one row)
-	 */
-	public function ayudawp_layout_callback() {
-		$options          = get_option( 'ayudawp_aiss_options' );
-		$alignment        = isset( $options['button_alignment'] ) ? $options['button_alignment'] : 'left';
-		$separator_top    = isset( $options['separator_top'] ) ? $options['separator_top'] : true;
-		$separator_bottom = isset( $options['separator_bottom'] ) ? $options['separator_bottom'] : true;
-		?>
-		<div class="aiss-two-col">
-			<div>
-				<strong><?php esc_html_e( 'Alignment', 'ai-share-summarize' ); ?></strong>
-				<label class="aiss-stacked">
-					<input type="radio" name="ayudawp_aiss_options[button_alignment]" value="left" <?php checked( $alignment, 'left' ); ?>>
-					<?php esc_html_e( 'Left (default)', 'ai-share-summarize' ); ?>
-				</label>
-				<label class="aiss-stacked">
-					<input type="radio" name="ayudawp_aiss_options[button_alignment]" value="center" <?php checked( $alignment, 'center' ); ?>>
-					<?php esc_html_e( 'Centered', 'ai-share-summarize' ); ?>
-				</label>
-			</div>
-			<div>
-				<strong><?php esc_html_e( 'Separator lines', 'ai-share-summarize' ); ?></strong>
-				<label class="aiss-stacked">
-					<input type="checkbox" name="ayudawp_aiss_options[separator_top]" value="1" <?php checked( $separator_top, true ); ?>>
-					<?php esc_html_e( 'Line above the block', 'ai-share-summarize' ); ?>
-				</label>
-				<label class="aiss-stacked">
-					<input type="checkbox" name="ayudawp_aiss_options[separator_bottom]" value="1" <?php checked( $separator_bottom, true ); ?>>
-					<?php esc_html_e( 'Line below the block', 'ai-share-summarize' ); ?>
-				</label>
-			</div>
-		</div>
-		<p class="description"><?php esc_html_e( 'Alignment does not apply to phones, where the buttons adapt on their own.', 'ai-share-summarize' ); ?></p>
-		<?php
-	}
-
-	/**
-	 * Title text and its HTML element (v2.5.0, two settings in one row)
-	 */
-	public function ayudawp_title_callback() {
-		$options = get_option( 'ayudawp_aiss_options' );
-		$text    = isset( $options['title_text'] ) ? $options['title_text'] : '';
-		$style   = isset( $options['title_style'] ) ? $options['title_style'] : 'span';
-
-		$styles = array(
-			'span' => esc_html__( 'Span, plain text (default)', 'ai-share-summarize' ),
-			'h3'   => esc_html__( 'Heading 3 (h3)', 'ai-share-summarize' ),
-			'h4'   => esc_html__( 'Heading 4 (h4)', 'ai-share-summarize' ),
-			'h5'   => esc_html__( 'Heading 5 (h5)', 'ai-share-summarize' ),
-			'h6'   => esc_html__( 'Heading 6 (h6)', 'ai-share-summarize' ),
-		);
-		?>
-		<div class="aiss-two-col">
-			<div>
-				<label for="aiss-title-text"><strong><?php esc_html_e( 'Text', 'ai-share-summarize' ); ?></strong></label>
-				<input type="text" id="aiss-title-text" class="regular-text aiss-full"
-					name="ayudawp_aiss_options[title_text]" value="<?php echo esc_attr( $text ); ?>"
-					placeholder="<?php esc_attr_e( 'e.g. Share this', 'ai-share-summarize' ); ?>">
-				<p class="description"><?php esc_html_e( 'Leave it empty for no title. Ignored when section titles are in use.', 'ai-share-summarize' ); ?></p>
-			</div>
-			<div>
-				<label for="aiss-title-style"><strong><?php esc_html_e( 'HTML element', 'ai-share-summarize' ); ?></strong></label>
-				<select id="aiss-title-style" class="aiss-full" name="ayudawp_aiss_options[title_style]">
-					<?php foreach ( $styles as $key => $label ) : ?>
-						<option value="<?php echo esc_attr( $key ); ?>" <?php selected( $style, $key ); ?>><?php echo esc_html( $label ); ?></option>
-					<?php endforeach; ?>
-				</select>
-				<p class="description"><?php esc_html_e( 'Applies to the section titles too.', 'ai-share-summarize' ); ?></p>
-			</div>
-		</div>
-		<?php
-	}
 
 	/**
 	 * Platform accounts (v2.5.0, two settings in one row)
@@ -1334,69 +1747,6 @@ class AyudaWP_AISS_Admin {
 		<?php
 	}
 
-	/**
-	 * Button colors field
-	 */
-	public function ayudawp_button_colors_callback() {
-		$options = get_option( 'ayudawp_aiss_options' );
-		$style   = isset( $options['button_colors'] ) ? $options['button_colors'] : 'minimal';
-
-		$styles = array(
-			'minimal'    => esc_html__( 'Minimal (default)', 'ai-share-summarize' ),
-			'brand'      => esc_html__( 'Brand colours', 'ai-share-summarize' ),
-			'outline'    => esc_html__( 'Outline (brand borders)', 'ai-share-summarize' ),
-			'dark'       => esc_html__( 'For dark backgrounds', 'ai-share-summarize' ),
-			'custom'     => esc_html__( 'Custom colors', 'ai-share-summarize' ),
-			'icons-only' => esc_html__( 'Icons only', 'ai-share-summarize' ),
-		);
-
-		$show_icons = isset( $options['show_icons'] ) ? $options['show_icons'] : false;
-		$icon_style = isset( $options['icon_style'] ) ? $options['icon_style'] : 'circular';
-
-		echo '<div class="aiss-two-col"><div>';
-		foreach ( $styles as $key => $label ) {
-			echo '<label class="aiss-stacked">
-					<input type="radio" class="aiss-style-input" name="ayudawp_aiss_options[button_colors]" value="' . esc_attr( $key ) . '" '
-					. checked( $style, $key, false ) . '> ' . esc_html( $label ) . '
-				  </label>';
-		}
-		echo '</div><div>';
-		?>
-			<label class="aiss-stacked">
-				<input type="checkbox" class="aiss-icons-input" name="ayudawp_aiss_options[show_icons]" value="1" <?php checked( $show_icons, true ); ?>>
-				<?php esc_html_e( 'Add icons next to the text', 'ai-share-summarize' ); ?>
-			</label>
-			<p class="description"><?php esc_html_e( 'Not used by the "Icons only" style, which is all icon.', 'ai-share-summarize' ); ?></p>
-			<label for="aiss-icon-style" class="aiss-stacked"><strong><?php esc_html_e( 'Icon corners', 'ai-share-summarize' ); ?></strong></label>
-			<select id="aiss-icon-style" class="aiss-icon-style-input" name="ayudawp_aiss_options[icon_style]">
-				<option value="circular" <?php selected( $icon_style, 'circular' ); ?>><?php esc_html_e( 'Circular', 'ai-share-summarize' ); ?></option>
-				<option value="square" <?php selected( $icon_style, 'square' ); ?>><?php esc_html_e( 'Square corners', 'ai-share-summarize' ); ?></option>
-			</select>
-			<p class="description"><?php esc_html_e( 'Only affects the "Icons only" style.', 'ai-share-summarize' ); ?></p>
-		<?php
-		echo '</div></div>';
-
-		// Custom color picker fields.
-		$custom_bg   = isset( $options['custom_color_bg'] ) ? $options['custom_color_bg'] : '#333333';
-		$custom_text = isset( $options['custom_color_text'] ) ? $options['custom_color_text'] : '#ffffff';
-		?>
-		<div class="ayudawp-color-picker-row" id="ayudawp-custom-colors" style="<?php echo 'custom' !== $style ? 'display:none;' : ''; ?>">
-			<div>
-				<label for="ayudawp_custom_bg"><?php esc_html_e( 'Background color:', 'ai-share-summarize' ); ?></label>
-				<input type="text" id="ayudawp_custom_bg" name="ayudawp_aiss_options[custom_color_bg]" value="<?php echo esc_attr( $custom_bg ); ?>" class="ayudawp-color-field" data-default-color="#333333">
-			</div>
-			<div>
-				<label for="ayudawp_custom_text"><?php esc_html_e( 'Text color:', 'ai-share-summarize' ); ?></label>
-				<input type="text" id="ayudawp_custom_text" name="ayudawp_aiss_options[custom_color_text]" value="<?php echo esc_attr( $custom_text ); ?>" class="ayudawp-color-field" data-default-color="#ffffff">
-			</div>
-		</div>
-		<?php
-		echo '<p class="description">' . esc_html__( 'The preview in "Enabled buttons" above updates as you change these, before saving.', 'ai-share-summarize' ) . '</p>';
-	}
-
-
-
-
 
 	/**
 	 * Analytics data: retention, one-off deletion and uninstall behaviour
@@ -1448,81 +1798,6 @@ class AyudaWP_AISS_Admin {
 		<?php
 	}
 
-
-	/**
-	 * Section titles (v1.6.0)
-	 *
-	 * On a grid since 2.5.0: the flex row it used before paired `flex: 1` with
-	 * the fixed width of `regular-text`, so on a wide screen the inputs kept
-	 * their size and the second column drifted to the far right instead of
-	 * lining up with the first.
-	 */
-	public function ayudawp_section_titles_callback() {
-		$options      = get_option( 'ayudawp_aiss_options' );
-		$ai_title     = isset( $options['ai_section_title'] ) ? $options['ai_section_title'] : '';
-		$social_title = isset( $options['social_section_title'] ) ? $options['social_section_title'] : '';
-		?>
-		<div class="aiss-two-col">
-			<div>
-				<label for="ayudawp_ai_section_title"><strong><?php esc_html_e( 'AI section title', 'ai-share-summarize' ); ?></strong></label>
-				<input type="text" id="ayudawp_ai_section_title" class="regular-text aiss-full" name="ayudawp_aiss_options[ai_section_title]" value="<?php echo esc_attr( $ai_title ); ?>" placeholder="<?php esc_attr_e( 'e.g. Summarize with AI', 'ai-share-summarize' ); ?>">
-			</div>
-			<div>
-				<label for="ayudawp_social_section_title"><strong><?php esc_html_e( 'Social section title', 'ai-share-summarize' ); ?></strong></label>
-				<input type="text" id="ayudawp_social_section_title" class="regular-text aiss-full" name="ayudawp_aiss_options[social_section_title]" value="<?php echo esc_attr( $social_title ); ?>" placeholder="<?php esc_attr_e( 'e.g. Share on social media', 'ai-share-summarize' ); ?>">
-			</div>
-		</div>
-		<p class="description"><?php esc_html_e( 'Optional. When set, each group gets its own heading and the general title above is hidden. Leave both empty to use only the general title. Does not apply to Mixed order.', 'ai-share-summarize' ); ?></p>
-		<?php
-	}
-
-	/**
-	 * Button size and dark mode adaptation (v2.5.0, two settings in one row)
-	 *
-	 * Both lists lead with their default, which the size one did not: "Compact"
-	 * sat first and "Normal" third, so the option in force looked like a change
-	 * from what was above it.
-	 */
-	public function ayudawp_button_size_callback() {
-		$options = get_option( 'ayudawp_aiss_options' );
-		$size    = isset( $options['button_size'] ) ? $options['button_size'] : 'normal';
-		$dark    = isset( $options['dark_mode_adaptation'] ) ? $options['dark_mode_adaptation'] : 'disabled';
-
-		$sizes = array(
-			'normal'  => esc_html__( 'Normal (default)', 'ai-share-summarize' ),
-			'compact' => esc_html__( 'Compact', 'ai-share-summarize' ),
-			'large'   => esc_html__( 'Large', 'ai-share-summarize' ),
-			'fluid'   => esc_html__( 'Fluid: fill the available width', 'ai-share-summarize' ),
-		);
-
-		$dark_modes = array(
-			'disabled' => esc_html__( 'Disabled (default)', 'ai-share-summarize' ),
-			'auto'     => esc_html__( 'Automatic', 'ai-share-summarize' ),
-		);
-		?>
-		<div class="aiss-two-col">
-			<div>
-				<strong><?php esc_html_e( 'Size', 'ai-share-summarize' ); ?></strong>
-				<?php foreach ( $sizes as $key => $label ) : ?>
-					<label class="aiss-stacked">
-						<input type="radio" name="ayudawp_aiss_options[button_size]" value="<?php echo esc_attr( $key ); ?>" <?php checked( $size, $key ); ?>>
-						<?php echo esc_html( $label ); ?>
-					</label>
-				<?php endforeach; ?>
-			</div>
-			<div>
-				<strong><?php esc_html_e( 'Dark backgrounds', 'ai-share-summarize' ); ?></strong>
-				<?php foreach ( $dark_modes as $key => $label ) : ?>
-					<label class="aiss-stacked">
-						<input type="radio" name="ayudawp_aiss_options[dark_mode_adaptation]" value="<?php echo esc_attr( $key ); ?>" <?php checked( $dark, $key ); ?>>
-						<?php echo esc_html( $label ); ?>
-					</label>
-				<?php endforeach; ?>
-				<p class="description"><?php esc_html_e( 'Automatic measures the real background behind the block and adapts the buttons that would disappear on it. It costs a small script on the page.', 'ai-share-summarize' ); ?></p>
-			</div>
-		</div>
-		<?php
-	}
 
 	/**
 	 * Where the summary appears (v2.5.0)
@@ -1846,6 +2121,70 @@ class AyudaWP_AISS_Admin {
 	}
 
 	/**
+	 * AJAX handler: the buttons block as a visitor would see it, from the unsaved form (v2.8.0)
+	 *
+	 * Read-only: it saves nothing and touches nothing. The values go through
+	 * the same sanitizer as the Save button and the same renderer as the front
+	 * end, so the preview is the block itself and not a copy of its logic that
+	 * could drift from it. Only the keys that shape the block are read; the
+	 * rest of the form (prompt, accounts, analytics) is ignored, and so are the
+	 * shortcode-only keys, which the sanitizer never returns.
+	 */
+	public function ayudawp_ajax_block_preview() {
+		check_ajax_referer( 'aiss_block_preview', 'nonce' );
+
+		// The capability of the settings page that sends it.
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( array( 'message' => 'Permission denied.' ), 403 );
+		}
+
+		$raw = ( isset( $_POST['options'] ) && is_array( $_POST['options'] ) )
+			? map_deep( wp_unslash( $_POST['options'] ), 'sanitize_text_field' )
+			: array();
+
+		$keys = array(
+			'enabled_buttons',
+			// Which of them and the look, since 2.8.0.
+			'content_buttons_mode',
+			'content_buttons_picked',
+			'button_content',
+			'button_colors',
+			'button_corners',
+			'button_size',
+			'button_alignment',
+			'separator_top',
+			'separator_bottom',
+			'button_order',
+			'button_custom_order_ai',
+			'button_custom_order_social',
+			'title_text',
+			'title_style',
+			'ai_section_title',
+			'social_section_title',
+			'google_preferred_placement',
+			'google_section_title',
+			'mobile_compact',
+			'mobile_compact_visible',
+			'custom_color_bg',
+			'custom_color_text',
+			'seo_button_type',
+		);
+
+		$options = ayudawp_aiss_validate_options( array_intersect_key( $raw, array_flip( $keys ) ) );
+
+		$html = AyudaWP_AISS_Buttons::ayudawp_generate_buttons_html(
+			isset( $options['enabled_buttons'] ) ? $options['enabled_buttons'] : array(),
+			$options,
+			home_url( '/' ),
+			__( 'Sample post', 'ai-share-summarize' ),
+			0
+		);
+
+		// Same allowlist as the block printed on the front end.
+		wp_send_json_success( array( 'html' => wp_kses( $html, ayudawp_aiss_kses_content_blocks() ) ) );
+	}
+
+	/**
 	 * AJAX handler: Dismiss the "Last AI generation error" notice on Settings (v2.0.0)
 	 */
 	public function ayudawp_ajax_dismiss_ai_error() {
@@ -1939,7 +2278,7 @@ class AyudaWP_AISS_Admin {
 							. '<strong>' . esc_html__( 'Possible cause:', 'ai-share-summarize' ) . '</strong> '
 							. sprintf(
 								/* translators: %1$s/%2$s wrap a link to Tools > Connector Approvals. */
-								esc_html__( 'The canonical AI plugin is active. Its Connector Approval system can silently block calls from plugins it has not approved yet. Open %1$sTools > Connector Approvals%2$s and enable the toggle next to "Share Buttons & AI-powered Summaries".', 'ai-share-summarize' ),
+								esc_html__( 'The canonical AI plugin is active. Its Connector Approval system can silently block calls from plugins it has not approved yet. Open %1$sTools > Connector Approvals%2$s and enable the toggle next to "AI Summaries & Share Buttons".', 'ai-share-summarize' ),
 								'<a href="' . esc_url( $approvals_url ) . '" target="_blank" rel="noopener">',
 								'</a>'
 							)
@@ -2044,15 +2383,6 @@ class AyudaWP_AISS_Admin {
 		<p class="description"><?php esc_html_e( 'Model used when AI generation is active. "Automatic" picks the cheapest model of each provider and falls back to another one if it is momentarily unavailable.', 'ai-share-summarize' ); ?></p>
 		<?php
 	}
-
-
-
-
-
-
-
-
-
 
 
 }

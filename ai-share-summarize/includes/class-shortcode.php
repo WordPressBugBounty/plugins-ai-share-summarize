@@ -1,6 +1,6 @@
 <?php
 /**
- * Shortcode functionality for Share Buttons & AI-powered Summaries plugin
+ * Shortcode functionality for AI Summaries & Share Buttons plugin
  *
  * @package AiShareSummarize
  * @since 1.2.0
@@ -76,9 +76,36 @@ class AyudaWP_AISS_Shortcode {
 			return '';
 		}
 
-		// Handle style parameter.
+		/*
+		 * Handle style parameter. Since 2.8.0 "icons-only" is not a colour but
+		 * what the buttons carry; it still means icons in brand colours, with
+		 * the corners of the old icon_style when there is one.
+		 */
 		if ( ! empty( $atts['style'] ) ) {
-			$shortcode_options['button_colors'] = sanitize_text_field( $atts['style'] );
+			$style = sanitize_key( $atts['style'] );
+			if ( 'icons-only' === $style ) {
+				// A site whose buttons already are icons keeps its corners;
+				// one with text buttons gets the icon corners it had.
+				$stored_look = ayudawp_aiss_get_button_look( $shortcode_options );
+				if ( 'icon' !== $stored_look['content'] ) {
+					unset( $shortcode_options['button_corners'] );
+				}
+				$shortcode_options['button_content'] = 'icon';
+				$shortcode_options['button_colors']  = 'brand';
+			} else {
+				/*
+				 * Until 2.7.x "Icons only" was a style too, so naming any other
+				 * style on a site with icon buttons gave buttons with text: with
+				 * the icon if show_icons said so, and the corners of text
+				 * buttons. Found by the cross review of 14 Nov 2026 (H1).
+				 */
+				$stored_look = ayudawp_aiss_get_button_look( $shortcode_options );
+				if ( 'icon' === $stored_look['content'] ) {
+					$shortcode_options['button_content'] = ! empty( $shortcode_options['show_icons'] ) ? 'both' : 'text';
+					$shortcode_options['button_corners'] = 'rounded';
+				}
+				$shortcode_options['button_colors'] = $style;
+			}
 		}
 
 		// Handle size parameter (v1.6.0).
@@ -100,13 +127,20 @@ class AyudaWP_AISS_Shortcode {
 			$shortcode_options['title_text'] = '';
 		}
 
-		// Handle icons parameters.
-		if ( ! empty( $atts['show_icons'] ) ) {
-			$shortcode_options['show_icons'] = ( 'true' === $atts['show_icons'] );
+		/*
+		 * Handle icons parameters, kept from before 2.8.0. show_icons adds or
+		 * takes away the icon next to the text, never the text of a button that
+		 * is only an icon. icon_style keeps its meaning too: the corners of
+		 * buttons that are only an icon, leaving text buttons as they are.
+		 */
+		$sc_look = ayudawp_aiss_get_button_look( $shortcode_options );
+
+		if ( ! empty( $atts['show_icons'] ) && 'icon' !== $sc_look['content'] ) {
+			$shortcode_options['button_content'] = ( 'true' === $atts['show_icons'] ) ? 'both' : 'text';
 		}
 
-		if ( ! empty( $atts['icon_style'] ) ) {
-			$shortcode_options['icon_style'] = $atts['icon_style'];
+		if ( ! empty( $atts['icon_style'] ) && 'icon' === $sc_look['content'] ) {
+			$shortcode_options['button_corners'] = ayudawp_aiss_corners_from_icon_style( sanitize_key( $atts['icon_style'] ) );
 		}
 
 		// Handle section titles (v1.6.0).

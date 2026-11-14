@@ -1,6 +1,6 @@
 <?php
 /**
- * SEO Integration class for Share Buttons & AI-powered Summaries plugin
+ * SEO Integration class for AI Summaries & Share Buttons plugin
  *
  * Handles detection of SEO plugins and noindex status checking.
  *

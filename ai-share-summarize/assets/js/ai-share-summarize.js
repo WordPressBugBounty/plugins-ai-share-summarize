@@ -1,5 +1,5 @@
 /**
- * Share Buttons & AI-powered Summaries Plugin - JavaScript
+ * AI Summaries & Share Buttons Plugin - JavaScript
  * Advanced functionality for tooltips, hover effects, responsive behavior, click tracking
  * and the visitor-facing AI summary generation button (v2.0.0).
  * Version: 2.5.0
@@ -18,14 +18,29 @@
  * negligible.
  */
 (function() {
-    if ( ! window.ayudawpAissL10n || 'auto' !== window.ayudawpAissL10n.darkAdaptMode ) {
+    var l10n = window.ayudawpAissL10n;
+    if ( ! l10n ) {
+        return;
+    }
+
+    /*
+     * The content (with the summary) and the floating bar each have their own
+     * setting since 2.8.0; the bar follows the content's unless it has its
+     * own look, so both are usually the same.
+     */
+    var selectors = [];
+    if ( 'auto' === l10n.darkAdaptMode ) {
+        selectors.push( '.ayudawp-share-buttons:not(.ayudawp-aiss-floating):not(.dark):not(.custom)', '.ayudawp-aiss-summary' );
+    }
+    if ( 'auto' === l10n.darkAdaptBar ) {
+        selectors.push( '.ayudawp-aiss-floating:not(.dark):not(.custom)' );
+    }
+    if ( ! selectors.length ) {
         return;
     }
 
     function detect() {
-        var nodes = document.querySelectorAll(
-            '.ayudawp-share-buttons:not(.dark):not(.custom), .ayudawp-aiss-summary'
-        );
+        var nodes = document.querySelectorAll( selectors.join( ', ' ) );
         for ( var i = 0; i < nodes.length; i++ ) {
             var node = nodes[ i ].parentElement;
             var bg   = '';
@@ -511,8 +526,127 @@
      * Rendered hidden by PHP so the markup is the same for every visitor (and
      * therefore cacheable), and only shown here when navigator.share exists.
      */
+    /*
+     * Without the API the native share button stays hidden, but PHP counted it
+     * among the ones in sight, so "a few and More" showed one fewer (v2.8.0).
+     * These two put the next one in its place, with the same rules PHP uses,
+     * and only run where a hidden button was in the way.
+     */
+    function isShareButton(el) {
+        return el.classList && el.classList.contains('ayudawp-share-btn') && !el.classList.contains('ayudawp-aiss-more-btn');
+    }
+
+    // The block on phones: walk it in order, as AyudaWP_AISS_Buttons does.
+    function rebalanceBlock(block) {
+        if (!block.classList.contains('compact-partial') || block.hasAttribute('data-aiss-balanced')) {
+            return;
+        }
+        block.setAttribute('data-aiss-balanced', '1');
+
+        var buttons = block.querySelectorAll('.ayudawp-buttons-container .ayudawp-share-btn');
+        var inSight = 0;
+        var hidden = 0;
+        for (var i = 0; i < buttons.length; i++) {
+            if (!buttons[i].classList.contains('aiss-overflow')) {
+                inSight++;
+            }
+            if (buttons[i].hidden) {
+                hidden++;
+            }
+        }
+        if (!hidden) {
+            return;
+        }
+
+        var count = 0;
+        var children = block.children;
+        for (var c = 0; c < children.length; c++) {
+            var child = children[c];
+            if (child.classList.contains('ayudawp-buttons-container')) {
+                var own = child.querySelectorAll('.ayudawp-share-btn');
+                for (var b = 0; b < own.length; b++) {
+                    if (own[b].hidden) {
+                        continue;
+                    }
+                    own[b].classList.toggle('aiss-overflow', count >= inSight);
+                    count++;
+                }
+            } else if (child.classList.contains('ayudawp-section-title') || child.classList.contains('ayudawp-section-separator')) {
+                // A section heading hides with its section, as in PHP.
+                child.classList.toggle('aiss-overflow', count >= inSight);
+            }
+        }
+
+        // Nothing left behind "More": no toggle.
+        var toggle = block.querySelector('.ayudawp-aiss-compact-toggle');
+        if (toggle && count <= inSight) {
+            toggle.parentNode.removeChild(toggle);
+        }
+    }
+
+    // The floating bar: split again, as ayudawp_aiss_split_floating_bar_buttons().
+    function rebalanceBar(bar) {
+        var box = bar.querySelector('.ayudawp-buttons-container');
+        var more = box ? box.querySelector('.ayudawp-aiss-bar-more') : null;
+        if (!more || bar.hasAttribute('data-aiss-balanced')) {
+            return;
+        }
+        bar.setAttribute('data-aiss-balanced', '1');
+
+        var panel = more.querySelector('.ayudawp-aiss-bar-panel');
+        var single = more.classList.contains('is-single');
+        var inSight = Array.prototype.filter.call(box.children, isShareButton);
+        var all = inSight.concat(Array.prototype.filter.call(panel ? panel.children : [], isShareButton));
+        var visible = all.filter(function (el) { return !el.hidden; });
+        if (!panel || visible.length === all.length) {
+            return;
+        }
+
+        var n = inSight.length;
+        var shown = visible;
+        var rest = [];
+        if (single && visible.length > 1) {
+            shown = [];
+            rest = visible;
+        } else if (!single && visible.length > n + 1) {
+            shown = visible.slice(0, n);
+            rest = visible.slice(n);
+        }
+
+        shown.forEach(function (el) { box.insertBefore(el, more); });
+        rest.forEach(function (el) { panel.appendChild(el); });
+
+        if (!rest.length) {
+            box.removeChild(more);
+            bar.classList.remove('has-more', 'is-single');
+            return;
+        }
+
+        var summary = more.querySelector('summary');
+        if (summary) {
+            summary.setAttribute('aria-label', String(summary.getAttribute('aria-label') || '').replace(/\d+/, String(rest.length)));
+        }
+        var columns = bar.classList.contains('ayudawp-aiss-floating--bottom')
+            ? Math.min(rest.length, 6)
+            : (rest.length <= 4 ? 1 : (rest.length <= 10 ? 2 : 3));
+        panel.style.setProperty('--aiss-cols', String(columns));
+        panel.style.setProperty('--aiss-cols-phone', String(Math.min(rest.length, 5)));
+    }
+
+    function rebalanceWithoutShare() {
+        var blocks = document.querySelectorAll('.ayudawp-share-buttons.compact-partial');
+        for (var i = 0; i < blocks.length; i++) {
+            rebalanceBlock(blocks[i]);
+        }
+        var bars = document.querySelectorAll('.ayudawp-aiss-floating');
+        for (var j = 0; j < bars.length; j++) {
+            rebalanceBar(bars[j]);
+        }
+    }
+
     function revealNativeShare() {
         if (!navigator.share) {
+            rebalanceWithoutShare();
             return;
         }
         var buttons = document.querySelectorAll('.ayudawp-aiss-needs-share-api[hidden]');

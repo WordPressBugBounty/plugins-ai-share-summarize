@@ -1,5 +1,5 @@
 /**
- * Share Buttons & AI-powered Summaries - Admin Styles
+ * AI Summaries & Share Buttons - Admin Styles
  *
  * Analytics dashboard, dashboard widget, and promo banner styles.
  * Design adapted from VigIA plugin patterns.
@@ -824,104 +824,6 @@
 	}
 }
 /* =============================================
-   Button picker (v2.5.0)
-   The "Enabled buttons" field renders each option as the real button, with
-   the front-end stylesheet loaded alongside this one. These rules neutralise
-   the block's own spacing inside the settings form and lay the options out.
-   ============================================= */
-.aiss-picker-preview {
-	margin: 0 0 10px;
-	padding: 0;
-	border: 0;
-}
-
-.aiss-picker-group-title {
-	margin: 16px 0 6px;
-	font-weight: 600;
-	color: #1d2327;
-}
-
-.aiss-picker-group-title:first-child {
-	margin-top: 0;
-}
-
-.aiss-picker-grid {
-	display: grid;
-	grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-	gap: 8px;
-	max-width: 900px;
-}
-
-.aiss-pick {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	padding: 6px 8px;
-	border: 1px solid #dcdcde;
-	border-radius: 6px;
-	background: #fff;
-	cursor: pointer;
-	transition: border-color 0.15s ease, box-shadow 0.15s ease;
-}
-
-.aiss-pick:hover {
-	border-color: #8c8f94;
-}
-
-/*
- * No selected ring: the button preview inside the label already shows, in its
- * own colours, what is on, and a blue frame around it only competed with it.
- */
-.aiss-pick.is-on,
-.aiss-pick:has(input:checked) {
-	border-color: #c3c4c7;
-	background: #fbfbfc;
-}
-
-.aiss-pick input[type="checkbox"] {
-	margin: 0;
-	flex: none;
-}
-
-/* The preview is a sample, not a control: it must not swallow the click. */
-.aiss-pick .ayudawp-share-btn {
-	pointer-events: none;
-	flex: 1 1 auto;
-	width: auto;
-	min-width: 0;
-	min-height: 30px;
-	padding: 5px 10px;
-	font-size: 12px;
-	transform: none;
-}
-
-.aiss-picker-preview.icons-only .aiss-pick .ayudawp-share-btn {
-	flex: none;
-	width: 32px;
-	min-width: 32px;
-	height: 32px;
-	padding: 0;
-}
-
-.aiss-pick-name {
-	font-size: 12px;
-	color: #50575e;
-}
-
-.aiss-picker-note {
-	max-width: 900px;
-	margin-top: 10px;
-	padding: 10px 12px;
-	border-left: 4px solid #2271b1;
-	background: #f0f6fc;
-}
-
-.aiss-picker-note .dashicons {
-	color: #2271b1;
-	vertical-align: text-bottom;
-}
-
-/* =============================================
    Settings layout (v2.5.0)
    ============================================= */
 
@@ -1032,15 +934,6 @@
 	background: #fcf0f1;
 }
 
-/* --- Live preview of the picker ----------------------------------------- */
-/* The label lives in two places at once; the style in force decides which. */
-.aiss-picker-preview .aiss-pick-name { display: none; }
-.aiss-picker-preview.icons-only .aiss-pick .ayudawp-button-text { display: none; }
-.aiss-picker-preview.icons-only .aiss-pick-name { display: inline; }
-
-/* Live preview: the icons come and go with the "add icons" checkbox. */
-.aiss-picker-preview.aiss-hide-icons .aiss-pick .ayudawp-icon-wrapper { display: none; }
-
 /* --- Summary block preview (v2.5.0) ------------------------------------- */
 .aiss-preview-caption {
 	margin: 18px 0 6px;
@@ -1071,68 +964,6 @@
 	background: #fff;
 	padding: 10px 12px;
 }
-
-/* --- Order lists (v2.5.0) ----------------------------------------------- */
-/* The wrapper carries the front-end classes so each row can show the real
-   button; these rules undo the block's own spacing inside the form. */
-.aiss-order-preview {
-	margin: 12px 0 0;
-	padding: 0;
-	border: 0;
-}
-
-.aiss-order-list {
-	margin: 6px 0 0;
-	padding: 0;
-	list-style: none;
-	min-height: 40px;
-}
-
-.aiss-order-list li {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	margin-bottom: 4px;
-	padding: 5px 8px;
-	border: 1px solid #dcdcde;
-	border-radius: 4px;
-	background: #fff;
-	cursor: grab;
-}
-
-.aiss-order-list li:active { cursor: grabbing; }
-
-.aiss-order-grip {
-	color: #b4b9be;
-	font-size: 16px;
-	width: 16px;
-	height: 16px;
-	line-height: 16px;
-	flex: none;
-}
-
-.aiss-order-list .ayudawp-share-btn {
-	pointer-events: none;
-	flex: 1 1 auto;
-	width: auto;
-	min-width: 0;
-	min-height: 28px;
-	padding: 4px 10px;
-	font-size: 12px;
-	transform: none;
-}
-
-.aiss-order-preview.icons-only .aiss-order-list .ayudawp-share-btn {
-	flex: none;
-	width: 30px;
-	min-width: 30px;
-	height: 30px;
-	padding: 0;
-}
-
-.aiss-order-list .aiss-pick-name { display: none; }
-.aiss-order-preview.icons-only .aiss-order-list .aiss-pick-name { display: inline; }
-.aiss-order-preview.icons-only .aiss-order-list .ayudawp-button-text { display: none; }
 
 /* =============================================
    One width for the whole settings form (v2.5.0)
@@ -1195,8 +1026,10 @@
 .aiss-wrap .form-table td > .description,
 .aiss-wrap .aiss-two-col,
 .aiss-wrap .aiss-placements,
-.aiss-wrap .aiss-picker-grid,
-.aiss-wrap .aiss-picker-note,
+.aiss-wrap .aiss-catalog,
+.aiss-wrap .aiss-catalog-notes,
+.aiss-wrap .aiss-order-board,
+.aiss-wrap .aiss-look,
 .aiss-wrap .aiss-summary-preview,
 .aiss-wrap .form-table td > .aiss-inline-choices {
 	max-width: var(--aiss-settings-width);
@@ -1249,9 +1082,6 @@
 	text-align: center;
 }
 
-/* The order lists follow the live style too, icons included. */
-.aiss-order-preview.aiss-hide-icons .aiss-order-list .ayudawp-icon-wrapper { display: none; }
-
 /* =============================================
    Google preferred source button (v2.6.0)
    ============================================= */
@@ -1276,13 +1106,8 @@
 	max-width: 100%;
 }
 
-/* The title only applies to a section of its own. */
-.aiss-google-title-field.is-off {
-	opacity: .45;
-}
-
-/* `hidden` loses against the flex the list rows get from their class. */
-.aiss-order-list li[hidden],
+/* `hidden` loses against a display set by a class. */
+.aiss-google-title-field[hidden],
 .aiss-google-order-note[hidden] {
 	display: none;
 }
@@ -1382,4 +1207,635 @@
 
 .aiss-table-container #aiss-content-table td:first-child {
 	overflow-wrap: anywhere;
+}
+
+/* =============================================
+   Floating bar section (v2.8.0)
+   ============================================= */
+.aiss-bar-intro {
+	max-width: 900px;
+}
+
+/* `hidden` loses to any display set by a class, so each one gets its rule. */
+.aiss-bar-section tr[hidden],
+.aiss-bar-dock[hidden],
+.aiss-bar-own[hidden],
+.aiss-bar-own-look[hidden] {
+	display: none;
+}
+
+/* --- Radios and preview switches (v2.8.0) ------------------------------ */
+/* Native radios like every other group on the screen: the fieldset only
+   carries the legend for screen readers. */
+.aiss-radios {
+	min-width: 0;
+	margin: 0;
+	padding: 0;
+	border: 0;
+}
+
+.aiss-radios .aiss-inline-choices {
+	margin: 0 0 6px;
+}
+
+/* Which sample a preview draws: not settings, so small and inline. */
+.aiss-preview-views {
+	display: inline-flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 4px 14px;
+	font-size: 13px;
+}
+
+.aiss-preview-views label {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+}
+
+/* --- The preview ------------------------------------------------------- */
+.aiss-bar-dock {
+	display: grid;
+	gap: 8px;
+	max-width: 420px;
+	margin: 0 0 12px;
+}
+
+.aiss-bar-readout {
+	margin: 0;
+	font-size: 13px;
+	color: #1d2327;
+	font-variant-numeric: tabular-nums;
+}
+
+.aiss-bar-dock .description {
+	margin: 0;
+}
+
+/*
+ * The frame is a page at real size, scaled down with zoom: drawn at 360px
+ * wide, a bottom bar of six buttons wrapped into two rows that a real screen
+ * never shows. A phone is 375px wide here, as on a real one.
+ */
+.aiss-bar-stage {
+	position: relative;
+	width: 480px;
+	height: 540px;
+	overflow: hidden;
+	border: 1px solid #c3c4c7;
+	border-radius: 8px;
+	background: #fff;
+	box-sizing: border-box;
+	zoom: 0.75;
+}
+
+.aiss-bar-stage.is-phone {
+	justify-self: center;
+	width: 375px;
+	height: 667px;
+	border: 12px solid #1d2327;
+	border-radius: 40px;
+	zoom: 0.62;
+}
+
+/* A page of grey blocks. */
+.aiss-bar-page {
+	position: absolute;
+	inset: 0;
+	display: grid;
+	grid-template-rows: auto 1fr;
+	gap: 14px;
+	padding: 14px 16px;
+}
+
+.aiss-bar-page-top {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+}
+
+.aiss-bar-page-top span:first-child {
+	width: 74px;
+	height: 12px;
+	border-radius: 3px;
+	background: #50575e;
+	opacity: 0.7;
+}
+
+.aiss-bar-page-top span:last-child {
+	width: 120px;
+	height: 8px;
+	border-radius: 3px;
+	background: #dcdcde;
+}
+
+.aiss-bar-page-body {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) 30%;
+	gap: 16px;
+	min-height: 0;
+}
+
+.aiss-bar-page-main {
+	display: grid;
+	align-content: start;
+	gap: 8px;
+}
+
+.aiss-bar-page-main i {
+	display: block;
+	height: 8px;
+	border-radius: 3px;
+	background: #eef0f3;
+}
+
+.aiss-bar-page-main i:nth-child(3n) {
+	width: 90%;
+}
+
+.aiss-bar-page-main i.is-title {
+	width: 80%;
+	height: 16px;
+	margin-bottom: 6px;
+	background: #e3e5ea;
+}
+
+.aiss-bar-page-main i.is-img {
+	height: 70px;
+	margin: 4px 0;
+}
+
+.aiss-bar-page-side {
+	display: grid;
+	align-content: start;
+	gap: 10px;
+}
+
+.aiss-bar-page-side b {
+	display: block;
+	height: 70px;
+	border: 1px solid #e3e5ea;
+	border-radius: 6px;
+	background: #eef0f3;
+}
+
+.is-phone .aiss-bar-page-body {
+	grid-template-columns: minmax(0, 1fr);
+}
+
+.is-phone .aiss-bar-page-side {
+	display: none;
+}
+
+/* The sample bar: same geometry as floating-bar.css, inside the frame. */
+.aiss-bar-mock.ayudawp-share-buttons {
+	position: absolute;
+	z-index: 2;
+	margin: 0;
+	padding: 8px;
+	border: 0;
+	border-radius: 10px;
+	background: rgba(255, 255, 255, 0.94);
+	box-shadow: 0 2px 14px rgba(0, 0, 0, 0.16);
+	box-sizing: border-box;
+}
+
+.aiss-bar-mock.ayudawp-share-buttons .ayudawp-buttons-container {
+	display: flex;
+	gap: 8px;
+	margin: 0;
+	max-width: none;
+	grid-template-columns: none;
+}
+
+.aiss-bar-mock--left,
+.aiss-bar-mock--right {
+	top: 50%;
+	transform: translateY(-50%);
+}
+
+.aiss-bar-mock--left {
+	left: 12px;
+}
+
+.aiss-bar-mock--right {
+	right: 12px;
+}
+
+.aiss-bar-mock.aiss-bar-mock--left .ayudawp-buttons-container,
+.aiss-bar-mock.aiss-bar-mock--right .ayudawp-buttons-container {
+	flex-direction: column;
+	flex-wrap: nowrap;
+}
+
+.aiss-bar-mock--left:not(.has-more),
+.aiss-bar-mock--right:not(.has-more) {
+	max-height: 92%;
+	overflow-y: auto;
+}
+
+/* One row, as on a desktop screen; wider than the frame, it is cut at
+   both ends and the readout gives its width. */
+.aiss-bar-mock--bottom {
+	bottom: 12px;
+	left: 50%;
+	transform: translateX(-50%);
+	width: max-content;
+}
+
+.aiss-bar-mock--phone {
+	left: 10px;
+	right: 10px;
+	bottom: 10px;
+}
+
+.aiss-bar-mock.aiss-bar-mock--bottom .ayudawp-buttons-container,
+.aiss-bar-mock.aiss-bar-mock--phone .ayudawp-buttons-container {
+	flex-direction: row;
+	flex-wrap: wrap;
+	justify-content: center;
+}
+
+.aiss-bar-mock.aiss-bar-mock--bottom .ayudawp-buttons-container {
+	flex-wrap: nowrap;
+}
+
+/* Phones draw icon buttons at 40px unless the size says otherwise. */
+.aiss-bar-mock--phone:not(.size-compact):not(.size-large) .ayudawp-share-btn {
+	width: 40px;
+	min-width: 40px;
+	height: 40px;
+}
+
+.aiss-bar-mock .ayudawp-aiss-bar-more.is-open:not(.is-single) > .ayudawp-aiss-bar-more-btn svg {
+	transform: rotate(45deg);
+}
+
+.aiss-bar-mock .ayudawp-aiss-bar-panel {
+	max-height: 420px;
+}
+
+.aiss-bar-mock--right .ayudawp-aiss-bar-panel {
+	right: calc(100% + 8px);
+	top: 50%;
+	transform: translateY(-50%);
+}
+
+.aiss-bar-mock--left .ayudawp-aiss-bar-panel {
+	left: calc(100% + 8px);
+	top: 50%;
+	transform: translateY(-50%);
+}
+
+.aiss-bar-mock--bottom .ayudawp-aiss-bar-panel,
+.aiss-bar-mock--phone .ayudawp-aiss-bar-panel {
+	bottom: calc(100% + 8px);
+	left: 50%;
+	transform: translateX(-50%);
+}
+
+/* =============================================
+   Buttons block preview (v2.8.0)
+   One more row of the table at the end of "The buttons", with the label in
+   the label column and the sample under the controls, so it lines up with
+   everything around it. Measures copied from .form-table: a 200px th with
+   10px of right padding, and 10px of left padding in the td. The block is
+   laid out in an iframe at a real width (a content column, or a phone) and
+   scaled down to fit, so the site stylesheet applies its own phone rules.
+   ============================================= */
+.aiss-block-dock {
+	display: grid;
+	justify-items: start;
+	gap: 8px;
+	min-width: 0;
+}
+
+.aiss-block-dock[hidden] {
+	display: none;
+}
+
+/* Without the script the preview stays hidden, and so does its row. */
+.aiss-wrap tr.aiss-preview-row:has(.aiss-block-dock[hidden]),
+.aiss-wrap tr.aiss-preview-row:has(.aiss-bar-dock[hidden]) {
+	display: none;
+}
+
+.aiss-block-dock-head {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 6px 14px;
+}
+
+.aiss-block-dark {
+	font-size: 13px;
+}
+
+.aiss-block-status {
+	font-size: 12px;
+	color: #646970;
+}
+
+.aiss-block-dock .description {
+	margin: 0;
+	max-width: 600px;
+}
+
+.aiss-block-frame {
+	position: relative;
+	overflow: hidden;
+	border: 1px solid #c3c4c7;
+	border-radius: 8px;
+	background: #fff;
+}
+
+/* Same thin frame as the desktop one, rounder: the sample is only the block,
+   not a whole phone, so a phone bezel around it was all frame. The 375px
+   width is what says phone. */
+.aiss-block-frame.is-phone {
+	border-radius: 18px;
+}
+
+.aiss-block-iframe {
+	display: block;
+	border: 0;
+	background: #fff;
+	transform-origin: 0 0;
+}
+
+/* =============================================
+   Buttons tab (v2.8.0)
+   The catalog, then "In-content buttons" and "Floating bar" with the same six
+   rows. Buttons are listed as narrow chips with no style of their own: the
+   preview at the end of each section is where the look shows.
+   ============================================= */
+
+/* Where a row applies ("On phones", "Always"), under its label. */
+.aiss-scope {
+	display: block;
+	margin-top: 4px;
+	font-size: 12px;
+	font-weight: 400;
+	color: #646970;
+}
+
+/* A small heading inside a row. */
+.aiss-sub {
+	display: block;
+	margin: 0 0 6px;
+	font-weight: 600;
+}
+
+.aiss-sub-next {
+	margin-top: 12px;
+}
+
+/* --- Chips: the catalog and the order lists ------------------------------ */
+.aiss-catalog {
+	display: grid;
+	gap: 12px;
+}
+
+.aiss-catalog-title,
+.aiss-order-title {
+	margin: 0 0 6px;
+	font-size: 12px;
+	font-weight: 600;
+	color: #50575e;
+}
+
+.aiss-chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+}
+
+.aiss-chip,
+.aiss-order-chip {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+	padding: 3px 9px 3px 6px;
+	border: 1px solid #c3c4c7;
+	border-radius: 6px;
+	background: #fff;
+	font-size: 12px;
+	line-height: 1.4;
+	color: #1d2327;
+}
+
+.aiss-chip {
+	cursor: pointer;
+}
+
+.aiss-chip input[type="checkbox"],
+.aiss-order-chip input[type="checkbox"] {
+	margin: 0;
+}
+
+.aiss-chip-dot {
+	display: inline-grid;
+	flex: none;
+	place-items: center;
+	width: 20px;
+	height: 20px;
+	border-radius: 50%;
+	background: var(--aiss-chip, #50575e);
+	color: #fff;
+}
+
+.aiss-chip-dot.is-small {
+	width: 18px;
+	height: 18px;
+	margin-top: 1px;
+}
+
+.aiss-chip-dot .ayudawp-icon-wrapper {
+	display: inline-flex;
+}
+
+.aiss-chip-dot svg {
+	width: 11px;
+	height: 11px;
+	fill: currentColor;
+}
+
+.aiss-chip-dot.is-small svg {
+	width: 10px;
+	height: 10px;
+}
+
+/* Unticked: the name and the dot go grey, as the button goes away. */
+.aiss-chip:has(input:not(:checked)),
+.aiss-order-board.is-picking .aiss-order-chip:has(.aiss-order-pick:not(:checked)) {
+	color: #646970;
+}
+
+.aiss-chip:has(input:not(:checked)) .aiss-chip-dot,
+.aiss-order-board.is-picking .aiss-order-chip:has(.aiss-order-pick:not(:checked)) .aiss-chip-dot {
+	background: #dcdcde;
+	color: #646970;
+}
+
+/* Two notes side by side, plain descriptions with the icon of their button. */
+.aiss-catalog-notes {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 6px 28px;
+	margin-top: 12px;
+}
+
+.aiss-catalog-notes .aiss-note {
+	display: grid;
+	grid-template-columns: auto minmax(0, 1fr);
+	gap: 8px;
+	align-items: start;
+	margin: 0;
+}
+
+@media (max-width: 782px) {
+	.aiss-catalog-notes {
+		grid-template-columns: minmax(0, 1fr);
+	}
+}
+
+/* --- Buttons and order ---------------------------------------------------- */
+.aiss-groups {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: 4px 12px;
+	margin: 10px 0;
+}
+
+.aiss-groups .aiss-sub {
+	margin: 0;
+}
+
+.aiss-order-board {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 12px 24px;
+	margin-bottom: 8px;
+}
+
+@media (max-width: 782px) {
+	.aiss-order-board {
+		grid-template-columns: minmax(0, 1fr);
+	}
+}
+
+.aiss-order-chips {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	min-height: 28px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.aiss-order-chip {
+	margin: 0;
+	cursor: grab;
+}
+
+.aiss-order-chip:active {
+	cursor: grabbing;
+}
+
+.aiss-order-chip[hidden],
+.ayudawp-color-picker-row[hidden] {
+	display: none;
+}
+
+.aiss-chip-grip {
+	width: 14px;
+	height: 14px;
+	font-size: 14px;
+	line-height: 14px;
+	color: #a7aaad;
+}
+
+/* The box that says "chosen" only shows while the section is choosing. */
+.aiss-order-board:not(.is-picking) .aiss-order-pick {
+	display: none;
+}
+
+.aiss-order-chips .ayudawp-sortable-placeholder {
+	display: inline-block;
+	width: 96px;
+	height: 26px;
+	margin: 0;
+}
+
+/* --- Appearance: one line per setting -------------------------------------- */
+.aiss-look {
+	display: grid;
+	gap: 6px;
+	margin-bottom: 6px;
+}
+
+.aiss-look-row {
+	display: grid;
+	grid-template-columns: 130px minmax(0, 1fr);
+	gap: 4px 12px;
+	align-items: baseline;
+}
+
+.aiss-look-label {
+	font-weight: 600;
+}
+
+.aiss-look .ayudawp-color-picker-row {
+	margin: 0 0 6px 142px;
+}
+
+@media (max-width: 782px) {
+	.aiss-look-row {
+		grid-template-columns: minmax(0, 1fr);
+	}
+
+	.aiss-look .ayudawp-color-picker-row {
+		margin-left: 0;
+	}
+}
+
+/* Radios in a row: core makes the labels inline-block inside a fieldset of
+   .form-table and sets their margins with !important (forms.css), so the gap
+   between them comes from the fieldset. */
+.aiss-radios.is-inline {
+	display: flex;
+	flex-wrap: wrap;
+	column-gap: 16px;
+}
+
+.aiss-compact-count {
+	width: 56px;
+}
+
+.aiss-bar-own-look {
+	margin-top: 10px;
+}
+
+.aiss-bar-own .aiss-groups {
+	margin-top: 10px;
+}
+
+/* The bar preview on a dark page, and the bar itself when it turns dark. */
+.aiss-bar-stage.is-dark,
+.aiss-bar-stage.is-dark .aiss-bar-page {
+	background: #1e1e1e;
+}
+
+.aiss-bar-stage.is-dark .aiss-bar-page-main i,
+.aiss-bar-stage.is-dark .aiss-bar-page-side b {
+	background: #3a3a3a;
+	border-color: #3a3a3a;
+}
+
+.aiss-bar-mock.ayudawp-share-buttons.is-on-dark,
+.aiss-bar-mock.ayudawp-share-buttons.dark {
+	background: rgba(24, 24, 24, 0.92);
+	box-shadow: 0 2px 14px rgba(0, 0, 0, 0.5);
 }

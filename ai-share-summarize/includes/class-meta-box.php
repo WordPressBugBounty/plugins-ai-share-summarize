@@ -1,6 +1,6 @@
 <?php
 /**
- * Meta Box class for Share Buttons & AI-powered Summaries plugin
+ * Meta Box class for AI Summaries & Share Buttons plugin
  *
  * Handles the meta box for excluding individual posts/pages.
  * Since v1.7.3: block editor uses a sidebar panel (PluginDocumentSettingPanel)
@@ -197,7 +197,7 @@ class AyudaWP_AISS_Meta_Box {
 		foreach ( $post_types as $post_type ) {
 			add_meta_box(
 				'ayudawp_aiss_exclude_metabox',
-				__( 'Share Buttons & AI-powered Summaries', 'ai-share-summarize' ),
+				__( 'AI Summaries & Share Buttons', 'ai-share-summarize' ),
 				array( $this, 'ayudawp_render_meta_box' ),
 				$post_type,
 				'side',
@@ -431,7 +431,7 @@ class AyudaWP_AISS_Meta_Box {
 
 		// Pass translated strings from PHP to JS.
 		wp_localize_script( 'ayudawp-aiss-editor-sidebar', 'aissI18n', array(
-			'panelTitle'         => __( 'Share Buttons & AI-powered Summaries', 'ai-share-summarize' ),
+			'panelTitle'         => __( 'AI Summaries & Share Buttons', 'ai-share-summarize' ),
 			'label'              => __( 'Hide share buttons on this content', 'ai-share-summarize' ),
 			'help'               => __( 'Check this box to prevent the share and AI buttons from appearing on this specific content.', 'ai-share-summarize' ),
 			'excludeSummaryLabel' => __( 'Hide AI summary on this content', 'ai-share-summarize' ),

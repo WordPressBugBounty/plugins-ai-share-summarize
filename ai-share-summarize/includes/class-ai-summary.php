@@ -1,6 +1,6 @@
 <?php
 /**
- * AI Summary class for Share Buttons & AI-powered Summaries plugin
+ * AI Summary class for AI Summaries & Share Buttons plugin
  *
  * Generates an inline summary of post content using the WordPress 7.0
  * AI Client (wp_ai_client_prompt()) when available, with a PHP extractive

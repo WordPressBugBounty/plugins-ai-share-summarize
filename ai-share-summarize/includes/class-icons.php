@@ -1,6 +1,6 @@
 <?php
 /**
- * Icons management class for Share Buttons & AI-powered Summaries plugin
+ * Icons management class for AI Summaries & Share Buttons plugin
  *
  * Uses official brand SVG paths from Simple Icons (simpleicons.org) where available.
  * All icons use fill-based rendering with viewBox 0 0 24 24 for consistency.

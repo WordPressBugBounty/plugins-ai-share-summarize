@@ -1,6 +1,6 @@
 <?php
 /**
- * Helper functions for Share Buttons & AI-powered Summaries plugin
+ * Helper functions for AI Summaries & Share Buttons plugin
  *
  * @package AiShareSummarize
  * @since 1.2.0
@@ -159,6 +159,22 @@ function ayudawp_aiss_close_tag( $style ) {
 function ayudawp_aiss_validate_options( $input ) {
 	$validated = array();
 
+	/*
+	 * What is stored now, and which parts of the form came in this request
+	 * (v2.8.0). Each section that holds checkboxes prints a marker, because an
+	 * unticked box does not travel in the POST: with the marker, a missing box
+	 * means "unticked"; without it, the section did not come, and what was
+	 * stored is kept. Until 2.7.x a save without the destinations table (code
+	 * that saves the option, an old copy of the form) emptied it, and the
+	 * bar's boxes went back to off. Found by the cross review of 14 Nov 2026
+	 * (H4). The markers themselves are never stored.
+	 */
+	$stored_all = get_option( 'ayudawp_aiss_options', array() );
+	$stored_all = is_array( $stored_all ) ? $stored_all : array();
+	$sections   = ( isset( $input['_sections'] ) && is_array( $input['_sections'] ) )
+		? array_map( 'sanitize_key', array_filter( $input['_sections'], 'is_string' ) )
+		: array();
+
 	// Text fields.
 	$text_fields = array(
 		'twitter_handle',
@@ -167,7 +183,6 @@ function ayudawp_aiss_validate_options( $input ) {
 		'button_order',
 		'button_alignment',
 		'button_colors',
-		'icon_style',
 		'seo_button_type',
 		'data_retention',
 		'button_size',
@@ -186,8 +201,12 @@ function ayudawp_aiss_validate_options( $input ) {
 	);
 	$textarea_fields = array( 'default_prompt', 'custom_text' );
 	$array_fields    = array( 'enabled_buttons', 'button_custom_order_ai', 'button_custom_order_social' );
+	/*
+	 * `show_icons` and `icon_style` are gone since 2.8.0: what a button carries
+	 * is `button_content` and its corners are `button_corners`, both checked
+	 * below. The form no longer posts them, so the first save drops them.
+	 */
 	$boolean_fields  = array(
-		'show_icons',
 		'delete_data_on_uninstall',
 		'exclude_noindex',
 		'separator_top',
@@ -223,7 +242,16 @@ function ayudawp_aiss_validate_options( $input ) {
 		}
 	}
 
+	// The bar's boxes only count as unticked when their section came (v2.8.0).
+	$bar_boxes = array( 'floating_bar_autohide', 'floating_bar_hide_mobile', 'floating_bar_hide_with_inline' );
+
 	foreach ( $boolean_fields as $field ) {
+		if ( in_array( $field, $bar_boxes, true ) && ! isset( $input[ $field ] ) && ! in_array( 'floating_bar_behavior', $sections, true ) ) {
+			if ( isset( $stored_all[ $field ] ) ) {
+				$validated[ $field ] = (bool) $stored_all[ $field ];
+			}
+			continue;
+		}
 		$validated[ $field ] = isset( $input[ $field ] ) ? (bool) $input[ $field ] : false;
 	}
 
@@ -249,10 +277,48 @@ function ayudawp_aiss_validate_options( $input ) {
 		$validated['button_size'] = 'normal';
 	}
 
-	// Validate button_colors.
-	$valid_styles = array( 'minimal', 'brand', 'outline', 'dark', 'icons-only', 'custom' );
-	if ( isset( $validated['button_colors'] ) && ! in_array( $validated['button_colors'], $valid_styles, true ) ) {
+	/*
+	 * The look (v2.8.0): what a button carries, its colours and its corners,
+	 * each against its closed list. "Icons only" stopped being a colour; a
+	 * caller that still sends it (a snippet, an old form) gets what it meant,
+	 * icons in brand colours, unless it also says what the buttons carry.
+	 */
+	if ( isset( $validated['button_colors'] ) && 'icons-only' === $validated['button_colors'] ) {
+		$validated['button_colors'] = 'brand';
+		if ( ! isset( $input['button_content'] ) ) {
+			$input['button_content'] = 'icon';
+		}
+	}
+	if ( isset( $validated['button_colors'] ) && ! in_array( $validated['button_colors'], ayudawp_aiss_get_look_choices( 'colors' ), true ) ) {
 		$validated['button_colors'] = 'minimal';
+	}
+
+	foreach ( array( 'button_content' => 'content', 'button_corners' => 'corners' ) as $look_key => $look_list ) {
+		if ( isset( $input[ $look_key ] ) ) {
+			$look_value              = is_string( $input[ $look_key ] ) ? sanitize_key( $input[ $look_key ] ) : '';
+			$look_choices            = ayudawp_aiss_get_look_choices( $look_list );
+			$validated[ $look_key ] = in_array( $look_value, $look_choices, true ) ? $look_value : $look_choices[0];
+		}
+	}
+
+	/*
+	 * Which buttons the content shows (v2.8.0): all the available ones, or
+	 * the ones ticked, crossed with the buttons that exist and with the ones
+	 * available in this same save, so a button switched off in the catalog
+	 * leaves the content too. "Choose" with nothing left is "all": a block
+	 * with no buttons is the block turned off, and that is what the
+	 * destinations table is for.
+	 */
+	if ( isset( $input['content_buttons_mode'] ) ) {
+		$content_mode = is_string( $input['content_buttons_mode'] ) ? sanitize_key( $input['content_buttons_mode'] ) : '';
+		$validated['content_buttons_mode']   = 'pick' === $content_mode ? 'pick' : 'all';
+		$validated['content_buttons_picked'] = ayudawp_aiss_sanitize_button_list(
+			isset( $input['content_buttons_picked'] ) ? $input['content_buttons_picked'] : array(),
+			$validated['enabled_buttons']
+		);
+		if ( 'pick' === $validated['content_buttons_mode'] && empty( $validated['content_buttons_picked'] ) ) {
+			$validated['content_buttons_mode'] = 'all';
+		}
 	}
 
 	/*
@@ -266,6 +332,17 @@ function ayudawp_aiss_validate_options( $input ) {
 	foreach ( array( 'placements', 'floating_bar_placements' ) as $map_key ) {
 		$positions = ayudawp_aiss_get_placement_positions( $map_key );
 		$fallback  = ayudawp_aiss_get_default_placement_position( $map_key );
+
+		// The table did not come (v2.8.0): what was stored stays.
+		if ( ! in_array( $map_key, $sections, true ) && ! isset( $input[ $map_key . '_on' ] ) ) {
+			if ( isset( $stored_all[ $map_key ] ) && is_array( $stored_all[ $map_key ] ) ) {
+				$validated[ $map_key ] = $stored_all[ $map_key ];
+			} else {
+				$validated[ $map_key ] = array();
+			}
+			continue;
+		}
+
 		$validated[ $map_key ] = array();
 
 		// The form posts two halves: which destinations are ticked, and the
@@ -292,10 +369,11 @@ function ayudawp_aiss_validate_options( $input ) {
 		$validated['google_preferred_placement'] = 'social';
 	}
 
-	// Validate mobile_compact (v2.5.0).
-	$valid_compact_modes = array( 'disabled', 'single', 'partial' );
-	if ( isset( $validated['mobile_compact'] ) && ! in_array( $validated['mobile_compact'], $valid_compact_modes, true ) ) {
-		$validated['mobile_compact'] = 'disabled';
+	// Validate mobile_compact (v2.5.0). Same words as the floating bar's own
+	// (v2.8.0), whose list is the one used here; "a few and More" is the
+	// default of both since 2.8.0.
+	if ( isset( $validated['mobile_compact'] ) && ! in_array( $validated['mobile_compact'], ayudawp_aiss_get_floating_bar_choices( 'compact' ), true ) ) {
+		$validated['mobile_compact'] = 'partial';
 	}
 
 	/*
@@ -307,6 +385,87 @@ function ayudawp_aiss_validate_options( $input ) {
 	if ( isset( $input['mobile_compact_visible'] ) ) {
 		$visible = (int) $input['mobile_compact_visible'];
 		$validated['mobile_compact_visible'] = max( 1, min( 5, $visible ) );
+	}
+
+	/*
+	 * The floating bar's own choices (v2.8.0). Every value is checked against
+	 * the closed list the screen paints, and the buttons ticked for the bar
+	 * are crossed with the catalog of this same save. Only when the bar's
+	 * section posted: an update from code that does not know these keys
+	 * carries the stored ones over instead of dropping them, which would turn
+	 * a migrated site (all in sight, brand colours) into the new defaults
+	 * without anybody deciding it.
+	 */
+	$bar_keys = array(
+		'floating_bar_buttons',
+		'floating_bar_picked',
+		'floating_bar_groups',
+		'floating_bar_order_ai',
+		'floating_bar_order_social',
+		'floating_bar_compact',
+		'floating_bar_compact_visible',
+		'floating_bar_look',
+		'floating_bar_color',
+		'floating_bar_corners',
+		'floating_bar_size',
+		'floating_bar_dark',
+	);
+
+	if ( isset( $input['floating_bar_buttons'] ) ) {
+		$bar_closed = array(
+			'floating_bar_buttons' => ayudawp_aiss_get_floating_bar_choices( 'buttons' ),
+			'floating_bar_groups'  => ayudawp_aiss_get_floating_bar_choices( 'groups' ),
+			'floating_bar_compact' => ayudawp_aiss_get_floating_bar_choices( 'compact' ),
+			'floating_bar_look'    => ayudawp_aiss_get_floating_bar_choices( 'look' ),
+			'floating_bar_color'   => ayudawp_aiss_get_look_choices( 'colors' ),
+			'floating_bar_corners' => ayudawp_aiss_get_look_choices( 'corners' ),
+			'floating_bar_size'    => ayudawp_aiss_get_floating_bar_choices( 'size' ),
+			'floating_bar_dark'    => ayudawp_aiss_get_look_choices( 'dark' ),
+		);
+		foreach ( $bar_closed as $bar_key => $bar_choices ) {
+			$bar_value             = isset( $input[ $bar_key ] ) && is_string( $input[ $bar_key ] ) ? sanitize_key( $input[ $bar_key ] ) : '';
+			$validated[ $bar_key ] = in_array( $bar_value, $bar_choices, true ) ? $bar_value : $bar_choices[0];
+		}
+
+		// Clamped, as the content's: the field is a number input, so an out
+		// of range value is a typo, not an attack.
+		$bar_visible = isset( $input['floating_bar_compact_visible'] ) && is_scalar( $input['floating_bar_compact_visible'] ) ? (int) $input['floating_bar_compact_visible'] : 4;
+		$validated['floating_bar_compact_visible'] = max( 1, min( 5, $bar_visible ) );
+
+		$validated['floating_bar_picked'] = ayudawp_aiss_sanitize_button_list(
+			isset( $input['floating_bar_picked'] ) ? $input['floating_bar_picked'] : array(),
+			$validated['enabled_buttons']
+		);
+
+		// Its own order of each group: only buttons of that group, and only
+		// ones that exist. Every button of the group goes in, ticked or not,
+		// so unticking one does not lose its place.
+		$bar_order_groups = array(
+			'floating_bar_order_ai'     => ayudawp_aiss_get_ai_buttons(),
+			'floating_bar_order_social' => ayudawp_aiss_get_social_buttons(),
+		);
+		foreach ( $bar_order_groups as $bar_key => $group_keys ) {
+			$validated[ $bar_key ] = array_values(
+				array_intersect(
+					ayudawp_aiss_sanitize_button_list( isset( $input[ $bar_key ] ) ? $input[ $bar_key ] : array() ),
+					$group_keys
+				)
+			);
+		}
+
+		// "Choose" with nothing left to show would be a bar with no buttons.
+		if ( 'pick' === $validated['floating_bar_buttons'] && empty( $validated['floating_bar_picked'] ) ) {
+			$validated['floating_bar_buttons'] = 'inherit';
+		}
+	} else {
+		$stored_bar = get_option( 'ayudawp_aiss_options', array() );
+		if ( is_array( $stored_bar ) ) {
+			foreach ( $bar_keys as $bar_key ) {
+				if ( isset( $stored_bar[ $bar_key ] ) && ! isset( $validated[ $bar_key ] ) ) {
+					$validated[ $bar_key ] = $stored_bar[ $bar_key ];
+				}
+			}
+		}
 	}
 
 	// Validate dark_mode_adaptation.
@@ -338,7 +497,18 @@ function ayudawp_aiss_validate_options( $input ) {
 	 * save does not bring it back. A rollback is safe to 2.3.0 or later, where
 	 * the summary has its own option.
 	 */
-	$stored = get_option( 'ayudawp_aiss_options', array() );
+	/*
+	 * The look of the content (v2.8.0): radios and colour fields, which always
+	 * travel when their section is in the form. Missing, the section did not
+	 * come, and what was stored stays.
+	 */
+	foreach ( array( 'button_content', 'button_colors', 'button_corners', 'button_size', 'dark_mode_adaptation', 'custom_color_bg', 'custom_color_text' ) as $look_key ) {
+		if ( ! isset( $validated[ $look_key ] ) && isset( $stored_all[ $look_key ] ) && is_scalar( $stored_all[ $look_key ] ) ) {
+			$validated[ $look_key ] = $stored_all[ $look_key ];
+		}
+	}
+
+	$stored = $stored_all;
 	if ( is_array( $stored ) ) {
 		/*
 		 * Rollback snapshot of the three keys `placements` replaced in 2.5.0
@@ -349,7 +519,13 @@ function ayudawp_aiss_validate_options( $input ) {
 		 * snapshot went in 2.6.0: 2.5.0 is recent, and its removal has its own
 		 * release once the 2.5 series has settled (roadmap, entry 38).
 		 */
-		foreach ( array( 'display_locations', 'auto_insert_content_types', 'auto_insert_position' ) as $legacy_key ) {
+		/*
+		 * Same for `icon_style` (v2.8.0), the corners of "Icons only" until
+		 * 2.7.x. The screen no longer has it, but a shortcode with
+		 * style="icons-only" on a site whose own buttons carry text still
+		 * draws its icons with these corners, as it did.
+		 */
+		foreach ( array( 'display_locations', 'auto_insert_content_types', 'auto_insert_position', 'icon_style' ) as $legacy_key ) {
 			if ( isset( $stored[ $legacy_key ] ) && ! isset( $validated[ $legacy_key ] ) ) {
 				$validated[ $legacy_key ] = $stored[ $legacy_key ];
 			}
@@ -1929,6 +2105,510 @@ function ayudawp_aiss_resolve_floating_bar_visibility( $post_id = null ) {
 }
 
 /**
+ * Closed list of values for each setting of the buttons' look (v2.8.0)
+ *
+ * One list for the sanitizer, the readers and the screen, so the three cannot
+ * disagree about what is valid. The content and the floating bar use the same
+ * lists; the bar leaves out "fluid", which has no meaning in a bar, and has no
+ * "content" row because it is always icons.
+ *
+ * @since 2.8.0
+ * @param string $setting 'content', 'colors', 'corners', 'size' or 'dark'.
+ * @return array Valid values, the default first.
+ */
+function ayudawp_aiss_get_look_choices( $setting ) {
+	$choices = array(
+		'content' => array( 'text', 'both', 'icon' ),
+		'colors'  => array( 'minimal', 'brand', 'outline', 'dark', 'custom' ),
+		'corners' => array( 'rounded', 'circle', 'square' ),
+		'size'    => array( 'normal', 'compact', 'large', 'fluid' ),
+		'dark'    => array( 'disabled', 'auto' ),
+	);
+
+	return isset( $choices[ $setting ] ) ? $choices[ $setting ] : array();
+}
+
+/**
+ * Corners from the pre-2.8.0 `icon_style` (v2.8.0)
+ *
+ * Until 2.7.x the corners only existed for "Icons only" and were called
+ * circular, rounded and square. What a value that is not one of those painted
+ * depended on who read it: the block printed it as a class that matched no
+ * rule (the 6px of every icon button, now "rounded"), and the floating bar
+ * replaced it with a circle. The caller says which of the two it is reading
+ * for, so the migration keeps both as they were.
+ *
+ * @since 2.8.0
+ * @param mixed  $icon_style Stored value, or null when the key is missing.
+ * @param string $unknown    Corners for a value that is not one of the three.
+ * @return string 'rounded', 'circle' or 'square'.
+ */
+function ayudawp_aiss_corners_from_icon_style( $icon_style, $unknown = 'rounded' ) {
+	if ( null === $icon_style ) {
+		// Missing: both readers fell back to circular.
+		return 'circle';
+	}
+
+	$map = array(
+		'circular' => 'circle',
+		'rounded'  => 'rounded',
+		'square'   => 'square',
+	);
+
+	// A non-string (an array written by hand in the database) is just unknown.
+	return is_string( $icon_style ) && isset( $map[ $icon_style ] ) ? $map[ $icon_style ] : $unknown;
+}
+
+/**
+ * The look of the buttons in the content, defaults and old keys resolved (v2.8.0)
+ *
+ * Until 2.7.x the look was one list of styles where "Icons only" sat next to
+ * "Minimal" or "Outline", plus an "add icons" box and corners that only
+ * applied to icons. Since 2.8.0 what a button carries (text, icon and text,
+ * icon) and how it is painted (the colour) are separate settings, and the
+ * corners apply to every button. A key that is missing is worked out from the
+ * old ones, the same way the 2.8.0 migration writes it, so a site that has not
+ * been migrated, or a shortcode that still says style="icons-only", paints
+ * what it painted before.
+ *
+ * @since 2.8.0
+ * @param array|null $options Plugin options, or null to read them.
+ * @return array {
+ *     @type string $content 'text', 'both' or 'icon'.
+ *     @type string $colors  'minimal', 'brand', 'outline', 'dark' or 'custom'.
+ *     @type string $corners 'rounded', 'circle' or 'square'.
+ *     @type string $size    'normal', 'compact', 'large' or 'fluid'.
+ *     @type string $dark    'disabled' or 'auto'.
+ * }
+ */
+function ayudawp_aiss_get_button_look( $options = null ) {
+	if ( null === $options ) {
+		$options = get_option( 'ayudawp_aiss_options' );
+	}
+	if ( ! is_array( $options ) ) {
+		$options = array();
+	}
+
+	$colors     = isset( $options['button_colors'] ) ? (string) $options['button_colors'] : 'minimal';
+	$icons_only = ( 'icons-only' === $colors );
+
+	if ( $icons_only ) {
+		// "Icons only" was icons in brand colours: it says both things.
+		$content = 'icon';
+		$colors  = 'brand';
+	} else {
+		$content = isset( $options['button_content'] ) ? (string) $options['button_content'] : '';
+		if ( ! in_array( $content, ayudawp_aiss_get_look_choices( 'content' ), true ) ) {
+			$content = ! empty( $options['show_icons'] ) ? 'both' : 'text';
+		}
+		if ( ! in_array( $colors, ayudawp_aiss_get_look_choices( 'colors' ), true ) ) {
+			$colors = 'minimal';
+		}
+	}
+
+	/*
+	 * A stored "icons-only" means what it meant in 2.7.x, corners included,
+	 * even next to the new keys: the 2.8.0 migration leaves it in place so that
+	 * going back to 2.7.x right after updating shows the same buttons. The
+	 * first save in 2.8.0 replaces it with "brand" and the new keys rule.
+	 */
+	$corners = ( ! $icons_only && isset( $options['button_corners'] ) ) ? (string) $options['button_corners'] : '';
+	if ( ! in_array( $corners, ayudawp_aiss_get_look_choices( 'corners' ), true ) ) {
+		$corners = ( 'icon' === $content )
+			? ayudawp_aiss_corners_from_icon_style( isset( $options['icon_style'] ) ? $options['icon_style'] : null )
+			: 'rounded';
+	}
+
+	$size = isset( $options['button_size'] ) ? (string) $options['button_size'] : 'normal';
+	if ( ! in_array( $size, ayudawp_aiss_get_look_choices( 'size' ), true ) ) {
+		$size = 'normal';
+	}
+
+	$dark = isset( $options['dark_mode_adaptation'] ) ? (string) $options['dark_mode_adaptation'] : 'disabled';
+	if ( ! in_array( $dark, ayudawp_aiss_get_look_choices( 'dark' ), true ) ) {
+		$dark = 'disabled';
+	}
+
+	return array(
+		'content' => $content,
+		'colors'  => $colors,
+		'corners' => $corners,
+		'size'    => $size,
+		'dark'    => $dark,
+	);
+}
+
+/**
+ * Container classes that paint a look (v2.8.0)
+ *
+ * Shared by the block, the floating bar and their previews. The defaults
+ * (normal size, minimal colours, rounded corners, text only) add no class, so
+ * a block with the look most sites have prints the markup it always did.
+ *
+ * Since 2.8.0 the brand colours of an icon button come from `.brand`, as for
+ * any other button, and `.icons-only` only makes the button a square of the
+ * chosen size. The corners are `.corners-circle` and `.corners-square`, for
+ * every button; until 2.7.x they were `.circular` and `.square`, next to
+ * `.icons-only` only.
+ *
+ * @since 2.8.0
+ * @param array $look Result of ayudawp_aiss_get_button_look() or of
+ *                    ayudawp_aiss_get_floating_bar_look().
+ * @return array Class names, in the order the block has always printed them.
+ */
+function ayudawp_aiss_get_look_classes( $look ) {
+	$classes = array();
+
+	if ( isset( $look['size'] ) && 'normal' !== $look['size'] && in_array( $look['size'], ayudawp_aiss_get_look_choices( 'size' ), true ) ) {
+		$classes[] = 'size-' . $look['size'];
+	}
+
+	if ( isset( $look['content'] ) && 'icon' === $look['content'] ) {
+		$classes[] = 'icons-only';
+	}
+
+	if ( isset( $look['colors'] ) && 'minimal' !== $look['colors'] && in_array( $look['colors'], ayudawp_aiss_get_look_choices( 'colors' ), true ) ) {
+		$classes[] = $look['colors'];
+	}
+
+	if ( isset( $look['corners'] ) && in_array( $look['corners'], array( 'circle', 'square' ), true ) ) {
+		$classes[] = 'corners-' . $look['corners'];
+	}
+
+	if ( isset( $look['content'] ) && 'both' === $look['content'] ) {
+		$classes[] = 'with-icons';
+	}
+
+	return $classes;
+}
+
+/**
+ * The style attribute that carries the custom colours (v2.8.0)
+ *
+ * Empty unless the look is "Custom colors". The values are escaped here, at
+ * the point they become an attribute; the content and the floating bar share
+ * the two colours.
+ *
+ * @since 2.8.0
+ * @param array $look    The look in use.
+ * @param array $options Plugin options.
+ * @return string Attribute string starting with a space, or ''.
+ */
+function ayudawp_aiss_get_custom_colors_attr( $look, $options ) {
+	$custom_bg   = isset( $options['custom_color_bg'] ) ? (string) $options['custom_color_bg'] : '';
+	$custom_text = isset( $options['custom_color_text'] ) ? (string) $options['custom_color_text'] : '';
+
+	if ( ! isset( $look['colors'] ) || 'custom' !== $look['colors'] || '' === $custom_bg ) {
+		return '';
+	}
+
+	return sprintf(
+		' style="--ayudawp-custom-bg:%s;--ayudawp-custom-text:%s;"',
+		esc_attr( $custom_bg ),
+		esc_attr( '' !== $custom_text ? $custom_text : '#ffffff' )
+	);
+}
+
+/**
+ * A posted list of button keys, cleaned (v2.8.0)
+ *
+ * Keeps strings only, in the order received, without repeats, and only keys
+ * of buttons that exist. With `$allowed`, only the ones in that list too: the
+ * buttons chosen for the content or for the bar are always a subset of the
+ * catalog saved in the same request.
+ *
+ * @since 2.8.0
+ * @param mixed      $raw     Posted value.
+ * @param array|null $allowed Keys allowed, or null for every button that exists.
+ * @return array Button keys.
+ */
+function ayudawp_aiss_sanitize_button_list( $raw, $allowed = null ) {
+	$available = ayudawp_aiss_get_available_buttons();
+	$clean     = array();
+
+	foreach ( is_array( $raw ) ? $raw : array() as $key ) {
+		if ( ! is_string( $key ) ) {
+			continue;
+		}
+		$key = sanitize_key( $key );
+		if ( ! isset( $available[ $key ] ) || in_array( $key, $clean, true ) ) {
+			continue;
+		}
+		if ( is_array( $allowed ) && ! in_array( $key, $allowed, true ) ) {
+			continue;
+		}
+		$clean[] = $key;
+	}
+
+	return $clean;
+}
+
+/**
+ * Which of the available buttons the content shows (v2.8.0)
+ *
+ * "All the available ones" is what every version did until 2.7.x; "Choose"
+ * keeps the ones ticked under "Buttons and order", crossed with the catalog,
+ * so a button switched off there leaves the content too. Not ordered here:
+ * the order is applied afterwards, as it always was.
+ *
+ * @since 2.8.0
+ * @param array $enabled Buttons available on the site.
+ * @param array $options Plugin options.
+ * @return array Button keys.
+ */
+function ayudawp_aiss_get_content_buttons( $enabled, $options ) {
+	$enabled = array_values( array_filter( (array) $enabled, 'is_string' ) );
+	$mode    = isset( $options['content_buttons_mode'] ) ? (string) $options['content_buttons_mode'] : 'all';
+
+	if ( 'pick' !== $mode || ! isset( $options['content_buttons_picked'] ) || ! is_array( $options['content_buttons_picked'] ) ) {
+		return $enabled;
+	}
+
+	$picked = array_values( array_intersect( $enabled, $options['content_buttons_picked'] ) );
+
+	// Nothing ticked that is still available: the sanitizer turns that into
+	// "all", and this covers options written some other way.
+	return empty( $picked ) ? $enabled : $picked;
+}
+
+/**
+ * The floating bar's own choices, with defaults resolved (v2.8.0)
+ *
+ * The bar takes its buttons, their order and its look from the content by
+ * default, and can have its own. A key that is missing resolves to the
+ * defaults (as in the content; a few in sight and "More", four of them); the
+ * 2.8.0 migration writes the bar of 2.7.x for sites that already had it on
+ * (every button in sight, brand colours), so nothing changes for them until
+ * they decide. A value that is not in its closed list falls back to its
+ * default without a word, which also covers what a pre-release of 2.8.0 may
+ * have stored.
+ *
+ * @since 2.8.0
+ * @param array|null $options Plugin options, or null to read them.
+ * @return array {
+ *     @type string     $buttons         'inherit' or 'pick'.
+ *     @type array|null $picked          Keys ticked under "Choose", or null if never saved.
+ *     @type string     $groups          'ai', 'social' or 'mixed'.
+ *     @type array|null $order_ai        Own order of the AI group, or null.
+ *     @type array|null $order_social    Own order of the other group, or null.
+ *     @type string     $compact         'partial', 'single' or 'disabled'.
+ *     @type int        $compact_visible Buttons in sight in 'partial', 1 to 5.
+ *     @type string     $look            'inherit' or 'own'.
+ *     @type string     $color           Own colours.
+ *     @type string     $corners         Own corners.
+ *     @type string     $size            Own size, never 'fluid'.
+ *     @type string     $dark            Own dark backgrounds setting.
+ * }
+ */
+function ayudawp_aiss_get_floating_bar_settings( $options = null ) {
+	if ( null === $options ) {
+		$options = get_option( 'ayudawp_aiss_options' );
+	}
+	if ( ! is_array( $options ) ) {
+		$options = array();
+	}
+
+	$pick = function ( $key, $choices, $fallback ) use ( $options ) {
+		$value = isset( $options[ $key ] ) && is_scalar( $options[ $key ] ) ? (string) $options[ $key ] : '';
+		return in_array( $value, $choices, true ) ? $value : $fallback;
+	};
+
+	$list = function ( $key ) use ( $options ) {
+		return ( isset( $options[ $key ] ) && is_array( $options[ $key ] ) )
+			? array_values( array_filter( $options[ $key ], 'is_string' ) )
+			: null;
+	};
+
+	$visible = isset( $options['floating_bar_compact_visible'] ) && is_scalar( $options['floating_bar_compact_visible'] )
+		? (int) $options['floating_bar_compact_visible']
+		: 4;
+
+	return array(
+		'buttons'         => $pick( 'floating_bar_buttons', ayudawp_aiss_get_floating_bar_choices( 'buttons' ), 'inherit' ),
+		'picked'          => $list( 'floating_bar_picked' ),
+		'groups'          => $pick( 'floating_bar_groups', ayudawp_aiss_get_floating_bar_choices( 'groups' ), 'ai' ),
+		'order_ai'        => $list( 'floating_bar_order_ai' ),
+		'order_social'    => $list( 'floating_bar_order_social' ),
+		'compact'         => $pick( 'floating_bar_compact', ayudawp_aiss_get_floating_bar_choices( 'compact' ), 'partial' ),
+		'compact_visible' => max( 1, min( 5, $visible ) ),
+		'look'            => $pick( 'floating_bar_look', ayudawp_aiss_get_floating_bar_choices( 'look' ), 'inherit' ),
+		'color'           => $pick( 'floating_bar_color', ayudawp_aiss_get_look_choices( 'colors' ), 'minimal' ),
+		'corners'         => $pick( 'floating_bar_corners', ayudawp_aiss_get_look_choices( 'corners' ), 'rounded' ),
+		'size'            => $pick( 'floating_bar_size', ayudawp_aiss_get_floating_bar_choices( 'size' ), 'normal' ),
+		'dark'            => $pick( 'floating_bar_dark', ayudawp_aiss_get_look_choices( 'dark' ), 'disabled' ),
+	);
+}
+
+/**
+ * Closed list of values for each of the floating bar's own settings (v2.8.0)
+ *
+ * The look reuses the content's lists (ayudawp_aiss_get_look_choices()),
+ * except the size, which has no "fluid".
+ *
+ * @since 2.8.0
+ * @param string $setting 'buttons', 'groups', 'compact', 'look' or 'size'.
+ * @return array Valid values, the default first.
+ */
+function ayudawp_aiss_get_floating_bar_choices( $setting ) {
+	$choices = array(
+		'buttons' => array( 'inherit', 'pick' ),
+		'groups'  => array( 'ai', 'social', 'mixed' ),
+		'compact' => array( 'partial', 'single', 'disabled' ),
+		'look'    => array( 'inherit', 'own' ),
+		'size'    => array( 'normal', 'compact', 'large' ),
+	);
+
+	return isset( $choices[ $setting ] ) ? $choices[ $setting ] : array();
+}
+
+/**
+ * The look the floating bar paints with: the content's or its own (v2.8.0)
+ *
+ * Always icons. Taken from the content, "fluid" becomes "normal": a bar of
+ * buttons stretched to fill the width is not a bar.
+ *
+ * @since 2.8.0
+ * @param array|null $options Plugin options, or null to read them.
+ * @return array Same shape as ayudawp_aiss_get_button_look().
+ */
+function ayudawp_aiss_get_floating_bar_look( $options = null ) {
+	if ( null === $options ) {
+		$options = get_option( 'ayudawp_aiss_options' );
+	}
+	$settings = ayudawp_aiss_get_floating_bar_settings( $options );
+
+	if ( 'own' === $settings['look'] ) {
+		return array(
+			'content' => 'icon',
+			'colors'  => $settings['color'],
+			'corners' => $settings['corners'],
+			'size'    => $settings['size'],
+			'dark'    => $settings['dark'],
+		);
+	}
+
+	$look            = ayudawp_aiss_get_button_look( $options );
+	$look['content'] = 'icon';
+	if ( 'fluid' === $look['size'] ) {
+		$look['size'] = 'normal';
+	}
+
+	return $look;
+}
+
+/**
+ * The content's buttons, in the order the content shows them (v2.8.0)
+ *
+ * Same steps as the block: the available ones (all, or the ones chosen),
+ * ordered by group and within each group, without the buttons this site
+ * cannot show. The Google button set to go outside the block stays out.
+ *
+ * @since 2.8.0
+ * @param array $options Plugin options.
+ * @return array Button keys, in order.
+ */
+function ayudawp_aiss_get_content_ordered_buttons( $options ) {
+	$enabled = isset( $options['enabled_buttons'] ) && is_array( $options['enabled_buttons'] ) ? $options['enabled_buttons'] : array();
+	$order   = isset( $options['button_order'] ) ? (string) $options['button_order'] : 'ayudawp_ai_first';
+	$buttons = ayudawp_aiss_get_content_buttons( $enabled, $options );
+	$ordered = ayudawp_aiss_remove_unavailable_buttons( AyudaWP_AISS_Buttons::ayudawp_order_buttons( $buttons, $order, $options ) );
+
+	if ( 'outside' === ayudawp_aiss_get_google_preferred_placement( $options ) ) {
+		$ordered = array_diff( $ordered, array( 'google_preferred' ) );
+	}
+
+	return array_values( $ordered );
+}
+
+/**
+ * The floating bar's buttons, in order (v2.8.0)
+ *
+ * "As in the content" is the content's list as it is shown, order included.
+ * "Choose and order its own" takes the ones ticked for the bar, crossed with
+ * the catalog, and orders them with the bar's own groups and order. Either
+ * way the buttons the site cannot show, and the Google button set to go
+ * outside the block, stay out.
+ *
+ * @since 2.8.0
+ * @param array|null $options Plugin options, or null to read them.
+ * @return array Button keys for the bar, in order.
+ */
+function ayudawp_aiss_get_floating_bar_buttons( $options = null ) {
+	if ( null === $options ) {
+		$options = get_option( 'ayudawp_aiss_options' );
+	}
+	if ( ! is_array( $options ) ) {
+		$options = array();
+	}
+
+	$settings = ayudawp_aiss_get_floating_bar_settings( $options );
+
+	if ( 'pick' !== $settings['buttons'] || null === $settings['picked'] ) {
+		return ayudawp_aiss_get_content_ordered_buttons( $options );
+	}
+
+	$enabled = isset( $options['enabled_buttons'] ) && is_array( $options['enabled_buttons'] ) ? $options['enabled_buttons'] : array();
+	$picked  = array_values( array_intersect( $enabled, $settings['picked'] ) );
+	if ( empty( $picked ) ) {
+		// The sanitizer turns "Choose" with nothing left into "as in the
+		// content"; this covers options written some other way.
+		return ayudawp_aiss_get_content_ordered_buttons( $options );
+	}
+
+	$groups = array(
+		'ai'     => 'ayudawp_ai_first',
+		'social' => 'ayudawp_social_first',
+		'mixed'  => 'ayudawp_mixed',
+	);
+
+	// The block's ordering, fed with the bar's own lists. Without an own
+	// order yet, a group keeps the content's.
+	$order_options = array(
+		'button_custom_order_ai'     => null !== $settings['order_ai'] ? $settings['order_ai'] : ( isset( $options['button_custom_order_ai'] ) ? (array) $options['button_custom_order_ai'] : array() ),
+		'button_custom_order_social' => null !== $settings['order_social'] ? $settings['order_social'] : ( isset( $options['button_custom_order_social'] ) ? (array) $options['button_custom_order_social'] : array() ),
+	);
+
+	$ordered = ayudawp_aiss_remove_unavailable_buttons( AyudaWP_AISS_Buttons::ayudawp_order_buttons( $picked, $groups[ $settings['groups'] ], $order_options ) );
+
+	if ( 'outside' === ayudawp_aiss_get_google_preferred_placement( $options ) ) {
+		$ordered = array_diff( $ordered, array( 'google_preferred' ) );
+	}
+
+	return array_values( $ordered );
+}
+
+/**
+ * Split the bar's buttons into the ones in sight and the ones behind a toggle (v2.8.0)
+ *
+ * The same three choices as the content on phones. "A few and More" leaves
+ * the first N in sight and the rest behind "More", but only when that would
+ * hide two or more: a button that opens a panel with a single button in it
+ * costs the same room and one click more than showing that button. "A single
+ * Share button" leaves nothing in sight and everything in the panel, as long
+ * as there are two buttons or more. "All" shows them all.
+ *
+ * @since 2.8.0
+ * @param array  $buttons Button keys, in order.
+ * @param string $mode    'partial', 'single' or 'disabled'.
+ * @param int    $visible Buttons in sight in 'partial'.
+ * @return array Two lists: in sight, and behind the toggle.
+ */
+function ayudawp_aiss_split_floating_bar_buttons( $buttons, $mode, $visible = 4 ) {
+	$buttons = array_values( (array) $buttons );
+	$visible = max( 1, (int) $visible );
+
+	if ( 'single' === $mode && count( $buttons ) > 1 ) {
+		return array( array(), $buttons );
+	}
+
+	if ( 'partial' === $mode && count( $buttons ) > $visible + 1 ) {
+		return array( array_slice( $buttons, 0, $visible ), array_slice( $buttons, $visible ) );
+	}
+
+	return array( $buttons, array() );
+}
+
+/**
  * Platform names sent to the front end, limited to the buttons in use (v2.5.0)
  *
  * @since 2.5.0
@@ -2011,8 +2691,10 @@ function ayudawp_aiss_enqueue_frontend_assets() {
 		true
 	);
 
-	$options          = get_option( 'ayudawp_aiss_options', array() );
-	$dark_adapt_mode  = isset( $options['dark_mode_adaptation'] ) ? $options['dark_mode_adaptation'] : 'disabled';
+	$options         = get_option( 'ayudawp_aiss_options', array() );
+	$dark_adapt_mode = isset( $options['dark_mode_adaptation'] ) ? $options['dark_mode_adaptation'] : 'disabled';
+	// The floating bar has its own since 2.8.0, the content's unless it says otherwise.
+	$bar_look = ayudawp_aiss_get_floating_bar_look( $options );
 
 	wp_localize_script( 'ayudawp-aiss-scripts', 'ayudawpAissL10n', array(
 		'promptCopied'       => __( 'Prompt copied to clipboard!', 'ai-share-summarize' ),
@@ -2036,6 +2718,7 @@ function ayudawp_aiss_enqueue_frontend_assets() {
 		// Dark-mode adaptation: 'disabled' (default) or 'auto'
 		// ('auto' enables the JS background detector that toggles .is-on-dark).
 		'darkAdaptMode'      => $dark_adapt_mode,
+		'darkAdaptBar'       => $bar_look['dark'],
 		// Public AI summary generation (v2.0.0).
 		'publicGenerateUrl'    => esc_url_raw( rest_url( 'aiss/v1/summary/generate' ) ),
 		'summaryGenerating'    => __( 'Generating…', 'ai-share-summarize' ),

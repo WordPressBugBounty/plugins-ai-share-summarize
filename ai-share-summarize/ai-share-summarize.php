@@ -1,14 +1,13 @@
 <?php
 /**
- * Plugin Name: Share Buttons & AI-powered Summaries
+ * Plugin Name: AI Summaries & Share Buttons
  * Plugin URI: https://servicios.ayudawp.com/
  * Description: Inline AI summary on every post + one-click sharing to social networks and 11 AI assistants (Claude, ChatGPT, Gemini, Grok, Perplexity, DeepSeek, Mistral, Copilot, Qwen, Meta AI). Powered by the new WordPress 7.x AI Connectors.
- * Version: 2.7.1
+ * Version: 2.8.0
  * Author: Fernando Tellado
  * Author URI: https://ayudawp.com/
  * Text Domain: ai-share-summarize
  * Requires at least: 6.1
- * Tested up to: 7.1
  * Requires PHP: 7.4
  * License: GPL v2 or later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -22,7 +21,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 // Define plugin constants.
-define( 'AYUDAWP_AISS_VERSION', '2.7.1' );
+define( 'AYUDAWP_AISS_VERSION', '2.8.0' );
 define( 'AYUDAWP_AISS_PLUGIN_DIR', plugin_dir_path( __FILE__ ) );
 define( 'AYUDAWP_AISS_PLUGIN_URL', plugin_dir_url( __FILE__ ) );
 define( 'AYUDAWP_AISS_PLUGIN_BASENAME', plugin_basename( __FILE__ ) );
@@ -290,6 +289,11 @@ class AyudaWP_AI_Share_Summarize {
 			}
 		}
 
+		// Migration for v2.8.0: the look and the floating bar, see the method.
+		if ( version_compare( $from_version, '2.8.0', '<' ) ) {
+			$options = self::ayudawp_migrate_look_280( $options );
+		}
+
 		// Persist before the 2.3.0 block: its derivation helper reads this
 		// option back from the database, so earlier in-memory migrations
 		// (mode materialization above) must already be stored.
@@ -335,6 +339,82 @@ class AyudaWP_AI_Share_Summarize {
 				}
 			}
 		}
+	}
+
+	/**
+	 * The 2.8.0 migration: the new look keys and the floating bar of 2.7.x (v2.8.0)
+	 *
+	 * 2.8.0 sets up the buttons in the content and the floating bar the same
+	 * way. "Icons only" stops being a colour and becomes what the buttons carry,
+	 * the corners apply to every button, and the bar takes its buttons and look
+	 * from the content unless it has its own. What is migrated is what each site
+	 * SEES, so nobody sees a change (decided by Fernando on 14 Nov 2026):
+	 *
+	 * - "Icons only" becomes icons, brand colours and the corners of
+	 *   `icon_style`. Any other style keeps its colour, carries text and icon or
+	 *   text only as `show_icons` said, and gets rounded corners, the 4px every
+	 *   text button has always had.
+	 * - A site that never saved the compact mode rendered every button on
+	 *   phones; "a few and More" is the default from 2.8.0, so that site gets
+	 *   "all" written instead.
+	 * - A site with the bar on gets the bar of 2.7.x written: the content's
+	 *   buttons (the same list, since the content is migrated to "all"), every
+	 *   one in sight, and its own look in brand colours, with the corners of
+	 *   `icon_style`, the content's size ("fluid" was drawn as normal) and the
+	 *   content's dark backgrounds setting. A site with the bar off gets nothing
+	 *   for it and sees the defaults the day it turns it on.
+	 *
+	 * Nothing 2.7.x reads is changed: `button_colors`, `show_icons` and
+	 * `icon_style` are left as they were, and "icons-only" keeps meaning icons
+	 * in brand colours with the corners of `icon_style` for the 2.8.0 reader
+	 * too (ayudawp_aiss_get_button_look()). The new keys are only added, and
+	 * `mobile_compact` is written with the value 2.7.x already rendered for a
+	 * missing key. So going back to 2.7.x right after updating, before saving,
+	 * shows the same buttons. After the first save in 2.8.0 it no longer does,
+	 * and cannot: the form posts "brand" instead of "icons-only", drops
+	 * `show_icons`, and 2.7.x knows nothing of the new settings (found by the
+	 * cross review of 14 Nov 2026, H3). Static and side-effect free, so the
+	 * release harness can call it with fabricated inputs and compare what both
+	 * versions draw.
+	 *
+	 * @since 2.8.0
+	 * @param array $options Stored options, pre-migration.
+	 * @return array Options with the 2.8.0 keys written.
+	 */
+	public static function ayudawp_migrate_look_280( $options ) {
+		if ( ! is_array( $options ) ) {
+			return $options;
+		}
+
+		// Worked out exactly as the renderer works out a missing key.
+		$look = ayudawp_aiss_get_button_look( $options );
+
+		// `button_colors` stays as it was, "icons-only" included: see above.
+		if ( ! isset( $options['button_content'] ) ) {
+			$options['button_content'] = $look['content'];
+		}
+		if ( ! isset( $options['button_corners'] ) ) {
+			$options['button_corners'] = $look['corners'];
+		}
+
+		if ( ! isset( $options['mobile_compact'] ) ) {
+			$options['mobile_compact'] = 'disabled';
+		}
+
+		if ( ! empty( $options['floating_bar_placements'] ) && ! isset( $options['floating_bar_look'] ) ) {
+			$icon_style = isset( $options['icon_style'] ) ? $options['icon_style'] : null;
+
+			$options['floating_bar_buttons'] = 'inherit';
+			$options['floating_bar_compact'] = 'disabled';
+			$options['floating_bar_look']    = 'own';
+			$options['floating_bar_color']   = 'brand';
+			// The bar of 2.7.x drew a value it did not know as a circle.
+			$options['floating_bar_corners'] = ayudawp_aiss_corners_from_icon_style( $icon_style, 'circle' );
+			$options['floating_bar_size']    = in_array( $look['size'], array( 'compact', 'large' ), true ) ? $look['size'] : 'normal';
+			$options['floating_bar_dark']    = $look['dark'];
+		}
+
+		return $options;
 	}
 
 	/**
@@ -483,13 +563,16 @@ class AyudaWP_AI_Share_Summarize {
 			'social_section_title'       => '',
 			'button_order'               => 'ayudawp_ai_first',
 			'button_alignment'           => 'left',
+			// The look since 2.8.0: text only, minimal, rounded corners.
+			'button_content'             => 'text',
 			'button_colors'              => 'minimal',
+			'button_corners'             => 'rounded',
 			'button_size'                => 'normal',
 			'custom_color_bg'            => '#333333',
 			'custom_color_text'          => '#ffffff',
 			'dark_mode_adaptation'       => 'disabled',
-			'show_icons'                 => false,
-			'icon_style'                 => 'circular',
+			// v2.8.0: all the available buttons in the content.
+			'content_buttons_mode'       => 'all',
 			'delete_data_on_uninstall'   => false,
 			'data_retention'             => 'forever',
 			'seo_button_type'            => 'link',
@@ -501,9 +584,17 @@ class AyudaWP_AI_Share_Summarize {
 			'floating_bar_autohide'      => true,
 			'floating_bar_hide_mobile'   => true,
 			'floating_bar_hide_with_inline' => false,
+			// v2.8.0: the bar takes its buttons and look from the content and
+			// keeps four in sight. Same values the reader falls back to, written
+			// here only so the defaults are in one view.
+			'floating_bar_buttons'       => 'inherit',
+			'floating_bar_compact'       => 'partial',
+			'floating_bar_compact_visible' => 4,
+			'floating_bar_look'          => 'inherit',
 			// Compact mode on by default: a phone screen with fifteen buttons
-			// is the complaint this setting exists to answer.
-			'mobile_compact'             => 'single',
+			// is the complaint this setting exists to answer. "A few and More"
+			// with three since 2.8.0 (until then, a single Share button).
+			'mobile_compact'             => 'partial',
 			'mobile_compact_visible'     => 3,
 			'utm_enabled'                => false,
 			'utm_campaign'               => '',
@@ -520,9 +611,20 @@ class AyudaWP_AI_Share_Summarize {
 			'ai_summary_content_types'           => array( 'post' ),
 		);
 
+		/*
+		 * The version is only written on a fresh install (v2.8.0). A site that
+		 * already has settings keeps the version they were saved with, so the
+		 * migrations run on the next load: until now, updating the plugin while
+		 * it was deactivated and then activating it wrote the new version here
+		 * and skipped them. Found by the cross review of 14 Nov 2026 (H2).
+		 */
+		$fresh_install = false === get_option( 'ayudawp_aiss_options' );
+
 		add_option( 'ayudawp_aiss_options', $default_options );
 		add_option( 'ayudawp_aiss_summary_options', $default_summary_options );
-		update_option( 'ayudawp_aiss_version', AYUDAWP_AISS_VERSION );
+		if ( $fresh_install ) {
+			update_option( 'ayudawp_aiss_version', AYUDAWP_AISS_VERSION );
+		}
 		set_transient( 'ayudawp_aiss_just_activated', true, 60 );
 
 		// Create analytics database tables.

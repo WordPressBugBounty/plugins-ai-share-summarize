@@ -1,9 +1,14 @@
 /**
- * Share Buttons & AI-powered Summaries — floating bar (v2.5.0)
+ * AI Summaries & Share Buttons — floating bar (v2.5.0, own look v2.8.0)
  *
- * Loaded only on pages where the bar renders. It inherits the button look from
- * the main stylesheet (the bar carries .ayudawp-share-buttons.icons-only), so
- * everything here is placement, stacking and the optional auto-hide.
+ * Loaded only on pages where the bar renders, and on the settings screen for
+ * its preview. The buttons take their whole look from the main stylesheet,
+ * with the same classes as the buttons in the content (since 2.8.0 the bar
+ * carries .icons-only plus the colour, corners and size classes of the look
+ * in use); what is here is placement, stacking, the optional auto-hide and
+ * the "More" panel. The rules that are not about placement hang from
+ * .ayudawp-aiss-bar and not from .ayudawp-aiss-floating, so the preview in
+ * Settings can use them without being pinned to the screen.
  */
 
 /* =============================================
@@ -79,6 +84,134 @@
 	flex-direction: row;
 	flex-wrap: wrap;
 	justify-content: center;
+}
+
+/*
+ * With a "More" panel the side bar holds at most six buttons, so it no longer
+ * needs its own scroll, and the scroll would clip the panel that opens beside
+ * it (v2.8.0).
+ */
+.ayudawp-aiss-floating--left.has-more,
+.ayudawp-aiss-floating--right.has-more {
+	max-height: none;
+	overflow: visible;
+}
+
+/* =============================================
+   "For dark backgrounds" (v2.8.0)
+   The bar is its own background, so with the colours for dark backgrounds
+   it is dark too; otherwise its light icons would sit on white.
+   ============================================= */
+.ayudawp-aiss-floating.dark {
+	background: rgba(24, 24, 24, 0.92);
+	box-shadow: 0 2px 14px rgba(0, 0, 0, 0.5);
+}
+
+/* =============================================
+   "More" and its panel (v2.8.0)
+   A native <details>: the summary takes the size and shape of the buttons
+   next to it, and the panel opens beside the bar instead of making it taller.
+   ============================================= */
+.ayudawp-aiss-bar-more {
+	display: flex;
+	margin: 0;
+	padding: 0;
+	border: 0;
+}
+
+.ayudawp-share-buttons.icons-only.ayudawp-aiss-bar .ayudawp-share-btn.ayudawp-aiss-bar-more-btn {
+	list-style: none;
+	background: #fff;
+	border: 1px dashed #8c8f94;
+	color: #1d2327;
+	box-shadow: none;
+	filter: none;
+}
+
+.ayudawp-share-buttons.icons-only.ayudawp-aiss-bar .ayudawp-share-btn.ayudawp-aiss-bar-more-btn:hover,
+.ayudawp-share-buttons.icons-only.ayudawp-aiss-bar .ayudawp-share-btn.ayudawp-aiss-bar-more-btn:focus-visible {
+	background: #f0f0f1;
+	border-color: #1d2327;
+	color: #1d2327;
+}
+
+.ayudawp-share-buttons.icons-only.ayudawp-aiss-bar.is-on-dark .ayudawp-share-btn.ayudawp-aiss-bar-more-btn,
+.ayudawp-share-buttons.icons-only.ayudawp-aiss-bar.dark .ayudawp-share-btn.ayudawp-aiss-bar-more-btn {
+	background: #1e1e1e;
+	border-color: #8c8f94;
+	color: #e6e6e6;
+}
+
+.ayudawp-aiss-bar-more-btn::-webkit-details-marker {
+	display: none;
+}
+
+.ayudawp-aiss-bar-more-btn svg {
+	transition: transform 0.2s ease;
+}
+
+.ayudawp-aiss-bar-more:not(.is-single)[open] > .ayudawp-aiss-bar-more-btn svg {
+	transform: rotate(45deg);
+}
+
+/*
+ * "A single Share button" (v2.8.0): the toggle is the only thing in sight, so
+ * it looks like a button and not like the dashed "+" that hangs off a row of
+ * buttons; it shows the share icon and stays still when the panel opens.
+ */
+.ayudawp-share-buttons.icons-only.ayudawp-aiss-bar .ayudawp-aiss-bar-more.is-single > .ayudawp-share-btn.ayudawp-aiss-bar-more-btn {
+	border-style: solid;
+}
+
+.ayudawp-aiss-bar-more.is-single > .ayudawp-aiss-bar-more-btn .ayudawp-icon-wrapper {
+	display: inline-flex;
+}
+
+.ayudawp-aiss-bar-panel {
+	position: absolute;
+	z-index: 1;
+	display: grid;
+	grid-template-columns: repeat(var(--aiss-cols, 1), auto);
+	gap: 8px;
+	padding: 8px;
+	border-radius: 10px;
+	background: rgba(255, 255, 255, 0.97);
+	box-shadow: 0 2px 14px rgba(0, 0, 0, 0.14);
+	max-height: 80vh;
+	overflow-y: auto;
+	overscroll-behavior: contain;
+	box-sizing: border-box;
+}
+
+.ayudawp-aiss-bar.is-on-dark .ayudawp-aiss-bar-panel,
+.ayudawp-aiss-bar.dark .ayudawp-aiss-bar-panel {
+	background: rgba(24, 24, 24, 0.96);
+	box-shadow: 0 2px 14px rgba(0, 0, 0, 0.5);
+}
+
+/* Beside a side bar, centred on it; above the bottom one. */
+.ayudawp-aiss-floating--right .ayudawp-aiss-bar-panel {
+	right: calc(100% + 8px);
+	top: 50%;
+	transform: translateY(-50%);
+}
+
+.ayudawp-aiss-floating--left .ayudawp-aiss-bar-panel {
+	left: calc(100% + 8px);
+	top: 50%;
+	transform: translateY(-50%);
+}
+
+.ayudawp-aiss-floating--bottom .ayudawp-aiss-bar-panel {
+	bottom: calc(100% + 8px);
+	left: 50%;
+	transform: translateX(-50%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+	.ayudawp-aiss-bar-more-btn svg {
+		transition: none;
+	}
 }
 
 /* =============================================
@@ -181,6 +314,20 @@
 	.ayudawp-aiss-floating--right.js-autohide.is-visible,
 	.ayudawp-aiss-floating--bottom.js-autohide.is-visible {
 		transform: translateY(0);
+	}
+
+	/* Every position is a strip along the bottom here, so "More" opens above
+	   it, five to a row (v2.8.0). */
+	.ayudawp-aiss-floating--left .ayudawp-aiss-bar-panel,
+	.ayudawp-aiss-floating--right .ayudawp-aiss-bar-panel,
+	.ayudawp-aiss-floating--bottom .ayudawp-aiss-bar-panel {
+		top: auto;
+		right: auto;
+		bottom: calc(100% + 8px);
+		left: 50%;
+		transform: translateX(-50%);
+		grid-template-columns: repeat(var(--aiss-cols-phone, 5), auto);
+		max-height: 60vh;
 	}
 
 	.ayudawp-aiss-floating.hide-on-mobile {
