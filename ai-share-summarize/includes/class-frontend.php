@@ -758,10 +758,10 @@ class AyudaWP_AISS_Frontend {
 		 * defence in depth as the floating bar.
 		 *
 		 * Except the custom content of the summary (v2.7.0), which is printed between
-		 * the two halves around it: wp_kses() would strip its <template> and
-		 * <script> and turn the && of its JavaScript into &amp;&amp;. The slot
-		 * is built once per post and request, so this is the very string the
-		 * summary carries.
+		 * the two halves around it: wp_kses() would strip the script element
+		 * that carries it as JSON (since 2.8.1; a <template> until then) and
+		 * leave the JSON as visible text. The slot is built once per post and
+		 * request, so this is the very string the summary carries.
 		 */
 		$html = $parts[ $anchor ];
 		$slot = class_exists( 'AyudaWP_AISS_AI_Summary' ) ? AyudaWP_AISS_AI_Summary::get_custom_slot_html( $post_id ) : '';
@@ -773,7 +773,7 @@ class AyudaWP_AISS_Frontend {
 		}
 
 		echo wp_kses( substr( $html, 0, $at ), ayudawp_aiss_kses_content_blocks() );
-		echo $slot; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- custom content (scripts included) by design, storable only with unfiltered_html (functions-helpers.php:630); label and heights escaped in AyudaWP_AISS_AI_Summary::get_custom_slot_html().
+		echo $slot; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- custom content by design, storable only with unfiltered_html (ayudawp_aiss_validate_summary_custom_code(), functions-helpers.php:806) and printed as JSON with < & [ ] escaped (AyudaWP_AISS_AI_Summary::custom_code_json()); label and heights escaped in AyudaWP_AISS_AI_Summary::get_custom_slot_html().
 		echo wp_kses( substr( $html, $at + strlen( $slot ) ), ayudawp_aiss_kses_content_blocks() );
 	}
 

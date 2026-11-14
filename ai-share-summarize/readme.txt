@@ -3,7 +3,7 @@ Contributors: fernandot,ayudawp
 Tags: claude, chatgpt, social share, ai, perplexity
 Requires at least: 6.1
 Tested up to: 7.1
-Stable tag: 2.8.0
+Stable tag: 2.8.1
 Requires PHP: 7.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
@@ -454,6 +454,17 @@ The social and AI sharing buttons render as `<a>` / `<button>` elements that ope
 
 == Changelog ==
 
+= 2.8.1 =
+The floating bar now shows on short pages and in themes that scroll inside their own container. Custom content inside the summary box can no longer break the page, keeps its shortcodes as written and loads in only one box.
+
+* Improved: Custom content inside the summary box can now contain a closing template tag, which was refused until now.
+* Improved: For developers, the custom content now arrives in the `ayudawp_aiss_summary_custom_html` filter inside a `script` element of type `application/json` with the class `ayudawp-aiss-custom-code`, instead of a `template`. The front-end script still reads the `template` of pages cached before this version.
+* Fix: With Show it only while scrolling down on, which is the default, the floating bar never showed on pages too short to scroll 200 pixels. On those pages it now stays in sight, on a page with a little more room it appears halfway down, and long pages work as before.
+* Fix: In themes that scroll inside their own container instead of the window, the floating bar with that same setting never showed, not even on long pages. It now stays in sight there.
+* Fix: Custom content inside the summary box that left something open, such as a comment, a script or a style, hid the rest of the page. The content is now printed as inert data and turned into markup inside its space when the box opens, so whatever it leaves open stays there.
+* Fix: Shortcodes written in the custom content ran when the box was next to the share buttons, and plugins that read the text of the post, such as SEO plugins building the article body, got the text of the custom content too. Neither happens now.
+* Fix: With the summary box twice on a page, such as the shortcode plus the automatic box, the custom content loaded twice, in two spaces with the same id. Now only the first box that is opened gets it.
+
 = 2.8.0 =
 New name: AI Summaries & Share Buttons. The Share Buttons tab is redone: available buttons, then in-content buttons and floating bar set up the same way, with previews. The bar can have its own buttons, order and look. Your site looks the same until you change it.
 
@@ -477,8 +488,8 @@ For older changelog entries, please check the [changelog.txt](https://plugins.sv
 
 == Upgrade Notice ==
 
-= 2.8.0 =
-New name: AI Summaries & Share Buttons. The Share Buttons tab is redone: available buttons, then in-content buttons and floating bar set up the same way, with previews. The bar can have its own buttons, order and look. Your site looks the same until you change it.
+= 2.8.1 =
+The floating bar now shows on short pages and in themes that scroll inside their own container. Custom content inside the summary box can no longer break the page, keeps its shortcodes as written and loads in only one box.
 
 == Advanced Usage ==
 

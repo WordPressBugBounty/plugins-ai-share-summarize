@@ -1336,14 +1336,15 @@ class AyudaWP_AISS_AI_Summary {
 	 * newsletter form, a map or a notice. Two elements, so whatever an ad
 	 * server or Tag Manager does to the space never touches the label:
 	 * `.ayudawp-aiss-custom` holds the optional label and `#ayudawp-aiss-custom`,
-	 * the space itself, with the optional heights. The pasted content goes in a
-	 * <template> inside it, inert until ai-share-summarize.js puts it in place
-	 * the first time the box is open. That way nothing is ever requested into a
-	 * hidden container (an ad would get no size), and a box that arrives later
-	 * through the visitor button behaves the same.
+	 * the space itself, with the optional heights. The pasted content goes
+	 * inside it as a JSON string (see custom_code_json()), inert until
+	 * ai-share-summarize.js turns it into markup the first time the box is
+	 * open. That way nothing is ever requested into a hidden container (an ad
+	 * would get no size), and a box that arrives later through the visitor
+	 * button behaves the same.
 	 *
-	 * The content is not escaped: running its scripts is the feature, and only
-	 * a user with `unfiltered_html` can store it
+	 * Running its scripts is the feature, so the content is not filtered, and
+	 * only a user with `unfiltered_html` can store it
 	 * (ayudawp_aiss_validate_summary_custom_code(), functions-helpers.php). The
 	 * label and the heights are escaped here.
 	 *
@@ -1396,7 +1397,7 @@ class AyudaWP_AISS_AI_Summary {
 					? '<span class="ayudawp-aiss-custom-label">' . esc_html( $text ) . '</span>'
 					: '' )
 				. '<div class="ayudawp-aiss-custom-slot" id="ayudawp-aiss-custom"' . ( '' !== $style ? ' style="' . esc_attr( $style ) . '"' : '' ) . '>'
-				. ( '' !== $code ? '<template class="ayudawp-aiss-custom-code">' . $code . '</template>' : '' )
+				. ( '' !== $code ? self::custom_code_json( $code ) : '' )
 				. '</div>'
 				. '</div>';
 		}
@@ -1418,6 +1419,41 @@ class AyudaWP_AISS_AI_Summary {
 		$built[ $key ] = $html;
 
 		return $html;
+	}
+
+	/**
+	 * The pasted custom content as an inert JSON string (v2.8.1)
+	 *
+	 * Until 2.8.0 the content went into the page as markup inside a <template>,
+	 * and markup is what everything after this plugin works on. An opening it
+	 * left unclosed (a comment, a <script>, a <style>) swallowed the rest of
+	 * the page; the_content filters that run later (do_shortcode at 11 with the
+	 * box next to the buttons, at 10) rewrote it; and whoever read the post's
+	 * text from the_content, like an SEO plugin building articleBody, got the
+	 * text of the ad too.
+	 *
+	 * As a JSON string inside a non-executable script element there is no
+	 * markup left to touch: `<` and `&` go as \u escapes, so the content can
+	 * neither close the element nor open anything, and the square brackets as
+	 * well, so no shortcode parser finds a tag in it. Anything beyond ASCII
+	 * goes as an escape too, so a filter that reserializes the page with the
+	 * wrong charset cannot change it either. wp_strip_all_tags()
+	 * drops the element whole. The front-end script parses it into the space
+	 * when the box opens, where an unclosed opening only reaches the space.
+	 *
+	 * @since 2.8.1
+	 * @param string $code Stored custom content.
+	 * @return string The script element, or '' when the content cannot be encoded.
+	 */
+	private static function custom_code_json( $code ) {
+		$json = wp_json_encode( $code, JSON_HEX_TAG | JSON_HEX_AMP );
+		if ( ! is_string( $json ) ) {
+			return '';
+		}
+
+		$json = str_replace( array( '[', ']' ), array( '\u005B', '\u005D' ), $json );
+
+		return '<script type="application/json" class="ayudawp-aiss-custom-code">' . $json . '</script>';
 	}
 
 	/**

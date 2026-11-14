@@ -807,23 +807,14 @@ function ayudawp_aiss_validate_summary_custom_code( $input ) {
 		return $stored;
 	}
 
-	$code = trim( $input['ai_summary_custom_content_code'] );
-
-	// The code is printed inside a <template> so it stays inert until the box
-	// opens: a closing tag of its own would end that template early and run
-	// the rest of the code on page load, hidden box or not.
-	if ( false !== stripos( $code, '</template' ) ) {
-		if ( function_exists( 'add_settings_error' ) ) {
-			add_settings_error(
-				'ayudawp_aiss_summary_options',
-				'ayudawp_aiss_custom_template',
-				__( 'The custom content was not saved: it cannot contain a closing template tag. The previous content is kept.', 'ai-share-summarize' )
-			);
-		}
-		return $stored;
-	}
-
-	return $code;
+	/*
+	 * Until 2.8.0 a closing template tag was refused here, because the content
+	 * was printed inside a <template> and that tag would have ended it early.
+	 * Since 2.8.1 it is printed as a JSON string
+	 * (AyudaWP_AISS_AI_Summary::custom_code_json()), which no content can
+	 * break out of, so it is kept like anything else.
+	 */
+	return trim( $input['ai_summary_custom_content_code'] );
 }
 
 /**

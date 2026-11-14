@@ -827,12 +827,17 @@
 /**
  * Custom content inside the summary box (v2.7.0).
  *
- * Text, HTML or scripts (an ad, a form, a map...). It arrives inert, inside a
- * <template> in #ayudawp-aiss-custom, and is put in place the first time its
- * box is open: on load when the box starts open, on the first click
- * otherwise, and also for a box that arrives later through the visitor
- * button. Nothing is requested into a folded box, where an ad would have no
- * size.
+ * Text, HTML or scripts (an ad, a form, a map...). It arrives inert in
+ * #ayudawp-aiss-custom, as a JSON string since 2.8.1 (a <template> until
+ * then), and is put in place the first time its box is open: on load when the
+ * box starts open, on the first click otherwise, and also for a box that
+ * arrives later through the visitor button. Nothing is requested into a
+ * folded box, where an ad would have no size.
+ *
+ * Only one box on the page gets it (v2.8.1): the shortcode plus the automatic
+ * box, or a box printed twice by a theme, used to load it twice, with two
+ * spaces under the same id. The first box opened keeps it, and the others
+ * lose their space and label at that moment.
  *
  * Each <script> is created anew rather than taken from the template. One
  * that came in through innerHTML (the visitor button) is marked as already
@@ -904,6 +909,57 @@
         runScripts(pairs, 0);
     }
 
+    /**
+     * The content of a space as a <template> ready for inject() (v2.8.1).
+     *
+     * The JSON is parsed into a template made here, so whatever the pasted
+     * markup leaves open (a comment, a script) closes at the end of its own
+     * string instead of running into the rest of the page. A page cached
+     * before 2.8.1 still carries the old <template>, taken as it is.
+     *
+     * @param {Element} slot The space.
+     * @return {HTMLTemplateElement|null}
+     */
+    function payload(slot) {
+        var json = slot.querySelector('script.ayudawp-aiss-custom-code');
+        if (!json) {
+            return slot.querySelector('template.ayudawp-aiss-custom-code');
+        }
+
+        var code = '';
+        try {
+            code = JSON.parse(json.textContent);
+        } catch (e) {
+            code = '';
+        }
+
+        if ('string' !== typeof code || '' === code) {
+            json.parentNode.removeChild(json);
+            return null;
+        }
+
+        var template = document.createElement('template');
+        template.innerHTML = code;
+        json.parentNode.replaceChild(template, json);
+        return template;
+    }
+
+    /** The space that took the content, once a box has been opened. */
+    var taken = null;
+
+    /**
+     * Remove a space and its label (v2.8.1).
+     *
+     * @param {Element} slot The space.
+     */
+    function drop(slot) {
+        var box = slot.closest ? slot.closest('.ayudawp-aiss-custom') : null;
+        var el  = box || slot;
+        if (el.parentNode) {
+            el.parentNode.removeChild(el);
+        }
+    }
+
     function announce(slot) {
         try {
             slot.dispatchEvent(new CustomEvent(EVENT, { bubbles: true }));
@@ -919,15 +975,42 @@
         }
         var slots = details.querySelectorAll('.ayudawp-aiss-custom-slot');
         for (var i = 0; i < slots.length; i++) {
-            if (slots[i].__aissCustomShown) {
+            var slot = slots[i];
+            if (slot.__aissCustomShown) {
                 continue;
             }
-            slots[i].__aissCustomShown = true;
-            var template = slots[i].querySelector('template.ayudawp-aiss-custom-code');
+
+            // A space with no content to load (left empty for an ad server
+            // or Tag Manager) only announces itself. Only one that carries
+            // the content can take it from the others: post content can hold
+            // a look-alike space, but kses never lets it carry the content.
+            if (!slot.querySelector('script.ayudawp-aiss-custom-code, template.ayudawp-aiss-custom-code')) {
+                slot.__aissCustomShown = true;
+                announce(slot);
+                continue;
+            }
+
+            // Another box already has it: this one goes without.
+            if (taken && taken !== slot && document.documentElement.contains(taken)) {
+                drop(slot);
+                continue;
+            }
+
+            slot.__aissCustomShown = true;
+            taken = slot;
+
+            var others = document.querySelectorAll('.ayudawp-aiss-custom-slot');
+            for (var j = 0; j < others.length; j++) {
+                if (others[j] !== slot) {
+                    drop(others[j]);
+                }
+            }
+
+            var template = payload(slot);
             if (template) {
                 inject(template);
             }
-            announce(slots[i]);
+            announce(slot);
         }
     }
 
